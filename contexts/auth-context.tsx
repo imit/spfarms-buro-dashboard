@@ -4,9 +4,12 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api";
 
+export type UserRole = "admin" | "editor" | "dispensary";
+
 interface User {
   id: number;
   email: string;
+  role: UserRole;
   created_at: string;
 }
 

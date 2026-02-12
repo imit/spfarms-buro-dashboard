@@ -13,7 +13,85 @@ interface LoginCredentials {
 interface User {
   id: number;
   email: string;
+  role: "admin" | "editor" | "dispensary";
   created_at: string;
+}
+
+export type Region =
+  | "manhattan"
+  | "brooklyn"
+  | "bronx"
+  | "queens"
+  | "staten_island"
+  | "long_island"
+  | "upstate"
+  | "other";
+
+export const REGION_LABELS: Record<Region, string> = {
+  manhattan: "Manhattan",
+  brooklyn: "Brooklyn",
+  bronx: "Bronx",
+  queens: "Queens",
+  staten_island: "Staten Island",
+  long_island: "Long Island",
+  upstate: "Upstate",
+  other: "Other",
+};
+
+export type CompanyType = "dispensary" | "distributor" | "partner" | "processor";
+
+export const COMPANY_TYPE_LABELS: Record<CompanyType, string> = {
+  dispensary: "Dispensary",
+  distributor: "Distributor",
+  partner: "Partner",
+  processor: "Processor",
+};
+
+export interface Location {
+  id: number;
+  name: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  region: Region | null;
+  phone_number: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Company {
+  id: number;
+  name: string;
+  slug: string;
+  company_type: CompanyType;
+  website: string | null;
+  description: string | null;
+  phone_number: string | null;
+  email: string | null;
+  social_media: Record<string, string>;
+  license_number: string | null;
+  active: boolean;
+  logo_url: string | null;
+  locations: Location[];
+  created_at: string;
+  updated_at: string;
+}
+
+interface JsonApiRecord<T> {
+  id: string;
+  type: string;
+  attributes: T;
+}
+
+interface JsonApiResponse<T> {
+  data: JsonApiRecord<T>;
+}
+
+interface JsonApiCollectionResponse<T> {
+  data: JsonApiRecord<T>[];
 }
 
 export class ApiClient {
@@ -114,14 +192,59 @@ export class ApiClient {
       if (!token) {
         return null;
       }
-
-      // You'll need to implement a /users/current endpoint in Rails
-      // For now, we'll decode the JWT client-side (not recommended for production)
-      // but will work for this setup
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
+  }
+
+  // Companies
+
+  async getCompanies(): Promise<Company[]> {
+    const res = await this.request<JsonApiCollectionResponse<Company>>(
+      "/api/v1/companies"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getCompany(slug: string): Promise<Company> {
+    const res = await this.request<JsonApiResponse<Company>>(
+      `/api/v1/companies/${slug}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createCompany(
+    company: Record<string, unknown>
+  ): Promise<Company> {
+    const res = await this.request<JsonApiResponse<Company>>(
+      "/api/v1/companies",
+      {
+        method: "POST",
+        body: JSON.stringify({ company }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateCompany(
+    slug: string,
+    company: Record<string, unknown>
+  ): Promise<Company> {
+    const res = await this.request<JsonApiResponse<Company>>(
+      `/api/v1/companies/${slug}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ company }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteCompany(slug: string): Promise<void> {
+    await this.request(`/api/v1/companies/${slug}`, {
+      method: "DELETE",
+    });
   }
 }
 
