@@ -94,6 +94,15 @@ interface JsonApiCollectionResponse<T> {
   data: JsonApiRecord<T>[];
 }
 
+export interface Invitation {
+  id: number;
+  email: string;
+  accepted_at: string | null;
+  accepted: boolean;
+  invited_by_email: string;
+  created_at: string;
+}
+
 export class ApiClient {
   private baseUrl: string;
 
@@ -196,6 +205,70 @@ export class ApiClient {
     } catch {
       return null;
     }
+  }
+
+  // Magic link login
+
+  async requestMagicLink(email: string): Promise<{ message: string }> {
+    const res = await this.request<ApiResponse<never>>("/api/v1/magic_links", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+    return { message: res.status.message };
+  }
+
+  async verifyMagicLink(
+    token: string
+  ): Promise<{ user: User; token: string }> {
+    const res = await this.request<ApiResponse<User> & { token: string }>(
+      "/api/v1/magic_links/verify",
+      {
+        method: "POST",
+        body: JSON.stringify({ token }),
+      }
+    );
+
+    const jwt = res.token;
+    if (typeof window !== "undefined" && jwt) {
+      localStorage.setItem("auth_token", jwt);
+    }
+
+    return { user: res.data!, token: jwt };
+  }
+
+  // Invitations
+
+  async createInvitation(email: string): Promise<void> {
+    await this.request("/api/v1/invitations", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async getInvitations(): Promise<Invitation[]> {
+    const res = await this.request<JsonApiCollectionResponse<Invitation>>(
+      "/api/v1/invitations"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async acceptInvitation(
+    token: string
+  ): Promise<{ user: User; token: string }> {
+    const res = await this.request<ApiResponse<User> & { token: string }>(
+      "/api/v1/invitations/accept",
+      {
+        method: "POST",
+        body: JSON.stringify({ token }),
+      }
+    );
+
+    const jwt = res.token;
+    if (typeof window !== "undefined" && jwt) {
+      localStorage.setItem("auth_token", jwt);
+    }
+
+    return { user: res.data!, token: jwt };
   }
 
   // Companies

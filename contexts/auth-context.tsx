@@ -17,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithToken: (user: User) => void;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -46,6 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithToken = (authenticatedUser: User) => {
+    setUser(authenticatedUser);
+    setHasToken(true);
+    router.push("/dashboard");
+  };
+
   const logout = async () => {
     try {
       await apiClient.logout();
@@ -65,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         login,
+        loginWithToken,
         logout,
         isAuthenticated: !!user || hasToken,
       }}
