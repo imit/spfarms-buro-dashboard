@@ -1,0 +1,234 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import { apiClient, type User, type UserRole, ROLE_LABELS } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PlusIcon, SendIcon } from "lucide-react";
+
+const ROLES = Object.entries(ROLE_LABELS) as [UserRole, string][];
+
+export default function UsersPage() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<UserRole>("dispensary");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState("");
+  const [inviteError, setInviteError] = useState("");
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/");
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    async function fetchUsers() {
+      try {
+        const data = await apiClient.getUsers();
+        setUsers(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load users");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchUsers();
+  }, [isAuthenticated]);
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    setInviteError("");
+    setInviteSuccess("");
+    setInviteLoading(true);
+
+    try {
+      await apiClient.createInvitation(inviteEmail, inviteRole);
+      setInviteSuccess(`Invitation sent to ${inviteEmail}`);
+      setInviteEmail("");
+      setInviteRole("dispensary");
+    } catch (err) {
+      setInviteError(
+        err instanceof Error ? err.message : "Failed to send invitation"
+      );
+    } finally {
+      setInviteLoading(false);
+    }
+  }
+
+  function handleInviteOpenChange(open: boolean) {
+    setInviteOpen(open);
+    if (!open) {
+      setInviteEmail("");
+      setInviteRole("dispensary");
+      setInviteError("");
+      setInviteSuccess("");
+    }
+  }
+
+  if (authLoading || !isAuthenticated) return null;
+
+  return (
+    <div className="space-y-6 px-10">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">Users</h2>
+          <p className="text-sm text-muted-foreground">
+            Manage user accounts and roles
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Dialog open={inviteOpen} onOpenChange={handleInviteOpenChange}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <SendIcon className="mr-2 size-4" />
+                Invite User
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <form onSubmit={handleInvite}>
+                <DialogHeader>
+                  <DialogTitle>Invite User</DialogTitle>
+                  <DialogDescription>
+                    Send a magic link invitation. The recipient will be able to
+                    create their account by clicking the link.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  {inviteError && (
+                    <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm mb-4">
+                      {inviteError}
+                    </div>
+                  )}
+                  {inviteSuccess && (
+                    <div className="bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 rounded-md p-3 text-sm mb-4">
+                      {inviteSuccess}
+                    </div>
+                  )}
+                  <Field>
+                    <FieldLabel htmlFor="invite-email">Email address</FieldLabel>
+                    <Input
+                      id="invite-email"
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="user@example.com"
+                      required
+                      disabled={inviteLoading}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="invite-role">Role</FieldLabel>
+                    <Select
+                      value={inviteRole}
+                      onValueChange={(v) => setInviteRole(v as UserRole)}
+                      disabled={inviteLoading}
+                    >
+                      <SelectTrigger id="invite-role">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLES.map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+                <DialogFooter>
+                  <Button type="submit" disabled={inviteLoading}>
+                    {inviteLoading ? "Sending..." : "Send Invitation"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <Button asChild>
+            <Link href="/dashboard/users/new">
+              <PlusIcon className="mr-2 size-4" />
+              Add User
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
+          {error}
+        </div>
+      )}
+
+      {isLoading ? (
+        <p className="text-muted-foreground">Loading...</p>
+      ) : users.length === 0 ? (
+        <div className="rounded-lg border bg-card p-12 text-center">
+          <p className="text-muted-foreground">No users yet.</p>
+          <Button asChild className="mt-4">
+            <Link href="/dashboard/users/new">Add your first user</Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="rounded-lg border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="px-4 py-3 text-left font-medium">Email</th>
+                <th className="px-4 py-3 text-left font-medium">Role</th>
+                <th className="px-4 py-3 text-left font-medium">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr
+                  key={u.id}
+                  className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
+                  onClick={() => router.push(`/dashboard/users/${u.id}`)}
+                >
+                  <td className="px-4 py-3 font-medium">{u.email}</td>
+                  <td className="px-4 py-3">
+                    <Badge variant="outline">{ROLE_LABELS[u.role]}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {new Date(u.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

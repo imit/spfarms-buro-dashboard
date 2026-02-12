@@ -11,6 +11,8 @@ function usePageTitle() {
     "/dashboard": "Dashboard",
     "/dashboard/companies": "Companies",
     "/dashboard/companies/new": "New Company",
+    "/dashboard/users": "Users",
+    "/dashboard/users/new": "New User",
   }
 
   // Exact match first

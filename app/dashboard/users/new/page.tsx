@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { CompanyForm } from "@/components/company-form";
+import { UserForm } from "@/components/user-form";
 
-export default function NewCompanyPage() {
+export default function NewUserPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
@@ -18,14 +18,14 @@ export default function NewCompanyPage() {
   if (isLoading || !isAuthenticated) return null;
 
   return (
-    <div className="max-w-2xl space-y-6 px-10">
+    <div className="max-w-lg space-y-6 px-10">
       <div>
-        <h2 className="text-2xl font-semibold">New Company</h2>
+        <h2 className="text-2xl font-semibold">New User</h2>
         <p className="text-sm text-muted-foreground">
-          Add a dispensary, distributor, or partner
+          Create a new user account. They can log in via magic link.
         </p>
       </div>
-      <CompanyForm />
+      <UserForm />
     </div>
   );
 }

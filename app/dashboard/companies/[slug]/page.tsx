@@ -131,7 +131,7 @@ export default function CompanyDetailPage({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-10">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">

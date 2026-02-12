@@ -10,10 +10,18 @@ interface LoginCredentials {
   password: string;
 }
 
-interface User {
+export type UserRole = "admin" | "editor" | "dispensary";
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  admin: "Admin",
+  editor: "Editor",
+  dispensary: "Dispensary",
+};
+
+export interface User {
   id: number;
   email: string;
-  role: "admin" | "editor" | "dispensary";
+  role: UserRole;
   created_at: string;
 }
 
@@ -238,10 +246,10 @@ export class ApiClient {
 
   // Invitations
 
-  async createInvitation(email: string): Promise<void> {
+  async createInvitation(email: string, role: UserRole): Promise<void> {
     await this.request("/api/v1/invitations", {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, role }),
     });
   }
 
@@ -269,6 +277,39 @@ export class ApiClient {
     }
 
     return { user: res.data!, token: jwt };
+  }
+
+  // Users
+
+  async getUsers(): Promise<User[]> {
+    const res = await this.request<JsonApiCollectionResponse<User>>(
+      "/api/v1/users"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getUser(id: number): Promise<User> {
+    const res = await this.request<JsonApiResponse<User>>(
+      `/api/v1/users/${id}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createUser(user: { email: string; role: string }): Promise<User> {
+    const res = await this.request<JsonApiResponse<User>>(
+      "/api/v1/users",
+      {
+        method: "POST",
+        body: JSON.stringify({ user }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await this.request(`/api/v1/users/${id}`, {
+      method: "DELETE",
+    });
   }
 
   // Companies
