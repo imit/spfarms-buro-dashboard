@@ -8,14 +8,16 @@ function usePageTitle() {
   const pathname = usePathname()
 
   const titles: Record<string, string> = {
-    "/dashboard": "Dashboard",
-    "/dashboard/companies": "Companies",
-    "/dashboard/companies/new": "New Company",
-    "/dashboard/strains": "Strains",
-    "/dashboard/strains/new": "New Strain",
-    "/dashboard/strains/edit": "Edit Strain",
-    "/dashboard/users": "Users",
-    "/dashboard/users/new": "New User",
+    "/admin": "Dashboard",
+    "/admin/companies": "Companies",
+    "/admin/companies/new": "New Company",
+    "/admin/strains": "Strains",
+    "/admin/strains/new": "New Strain",
+    "/admin/strains/edit": "Edit Strain",
+    "/admin/users": "Users",
+    "/admin/users/new": "New User",
+    "/admin/onboard": "Quick Onboard",
+    "/admin/companies/edit": "Edit Company",
   }
 
   // Exact match first

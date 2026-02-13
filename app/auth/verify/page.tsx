@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiClient } from "@/lib/api";
@@ -8,6 +8,24 @@ import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function VerifyMagicLinkPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-svh flex-col items-center justify-center p-6">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-6 text-center">
+              <h2 className="text-xl font-semibold mb-2">Loading...</h2>
+            </CardContent>
+          </Card>
+        </div>
+      }
+    >
+      <VerifyMagicLinkContent />
+    </Suspense>
+  );
+}
+
+function VerifyMagicLinkContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const { loginWithToken } = useAuth();

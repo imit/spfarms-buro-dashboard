@@ -1,17 +1,40 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { user, isLoading, isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      router.push("/");
+      return;
+    }
+    // Account users cannot access admin
+    if (user && user.role === "account") {
+      const redirectTo = user.company_slug ? `/${user.company_slug}` : "/";
+      router.push(redirectTo);
+    }
+  }, [isLoading, isAuthenticated, user, router]);
+
+  if (isLoading) return null;
+  if (!isAuthenticated) return null;
+  if (user && user.role === "account") return null;
+
   return (
     <SidebarProvider
       style={

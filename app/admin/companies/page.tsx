@@ -51,7 +51,7 @@ export default function CompaniesPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/dashboard/companies/new">
+          <Link href="/admin/companies/new">
             <PlusIcon className="mr-2 size-4" />
             Add Company
           </Link>
@@ -70,7 +70,7 @@ export default function CompaniesPage() {
         <div className="rounded-lg border bg-card p-12 text-center">
           <p className="text-muted-foreground">No companies yet.</p>
           <Button asChild className="mt-4">
-            <Link href="/dashboard/companies/new">Add your first company</Link>
+            <Link href="/admin/companies/new">Add your first company</Link>
           </Button>
         </div>
       ) : (
@@ -98,7 +98,7 @@ export default function CompaniesPage() {
                   <tr
                     key={c.id}
                     className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
-                    onClick={() => router.push(`/dashboard/companies/${c.slug}`)}
+                    onClick={() => router.push(`/admin/companies/${c.slug}`)}
                   >
                     <td className="px-4 py-3 font-medium">{c.name}</td>
                     <td className="px-4 py-3 text-muted-foreground">

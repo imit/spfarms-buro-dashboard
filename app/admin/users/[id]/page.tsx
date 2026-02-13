@@ -79,7 +79,7 @@ export default function UserDetailPage({
     setIsDeleting(true);
     try {
       await apiClient.deleteUser(user.id);
-      router.push("/dashboard/users");
+      router.push("/admin/users");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete user");
       setIsDeleting(false);
@@ -103,11 +103,18 @@ export default function UserDetailPage({
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/dashboard/users">
+              <Link href="/admin/users">
                 <ArrowLeftIcon className="size-4" />
               </Link>
             </Button>
-            <h2 className="text-2xl font-semibold">{user.email}</h2>
+            <div>
+              <h2 className="text-2xl font-semibold">
+                {user.full_name || user.email}
+              </h2>
+              {user.full_name && (
+                <p className="text-sm text-muted-foreground">{user.email}</p>
+              )}
+            </div>
             <Badge variant="outline">{ROLE_LABELS[user.role]}</Badge>
           </div>
         </div>
@@ -139,7 +146,9 @@ export default function UserDetailPage({
         <h3 className="font-medium mb-3">Details</h3>
         <Separator className="mb-1" />
         <dl>
+          <DetailRow label="Full Name" value={user.full_name} />
           <DetailRow label="Email" value={user.email} />
+          <DetailRow label="Phone" value={user.phone_number} />
           <DetailRow
             label="Role"
             value={<Badge variant="outline">{ROLE_LABELS[user.role]}</Badge>}
@@ -150,6 +159,22 @@ export default function UserDetailPage({
           />
         </dl>
       </div>
+
+      {user.companies && user.companies.length > 0 && (
+        <div className="max-w-md rounded-lg border bg-card p-5">
+          <h3 className="font-medium mb-3">Companies</h3>
+          <Separator className="mb-1" />
+          <dl>
+            {user.companies.map((c) => (
+              <DetailRow
+                key={c.slug}
+                label={c.name}
+                value={c.company_title || "Member"}
+              />
+            ))}
+          </dl>
+        </div>
+      )}
     </div>
   );
 }

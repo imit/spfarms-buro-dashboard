@@ -51,7 +51,7 @@ export default function StrainsPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/dashboard/strains/new">
+          <Link href="/admin/strains/new">
             <PlusIcon className="mr-2 size-4" />
             Add Strain
           </Link>
@@ -70,7 +70,7 @@ export default function StrainsPage() {
         <div className="rounded-lg border bg-card p-12 text-center">
           <p className="text-muted-foreground">No strains yet.</p>
           <Button asChild className="mt-4">
-            <Link href="/dashboard/strains/new">Add your first strain</Link>
+            <Link href="/admin/strains/new">Add your first strain</Link>
           </Button>
         </div>
       ) : (
@@ -91,7 +91,7 @@ export default function StrainsPage() {
                 <tr
                   key={s.id}
                   className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
-                  onClick={() => router.push(`/dashboard/strains/${s.id}`)}
+                  onClick={() => router.push(`/admin/strains/${s.id}`)}
                 >
                   <td className="px-4 py-3 font-medium">{s.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">

@@ -22,7 +22,7 @@ export function UserForm() {
   const [error, setError] = useState("");
 
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<UserRole>("dispensary");
+  const [role, setRole] = useState<UserRole>("account");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -31,7 +31,7 @@ export function UserForm() {
 
     try {
       await apiClient.createUser({ email, role });
-      router.push("/dashboard/users");
+      router.push("/admin/users");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create user");
     } finally {
@@ -85,7 +85,7 @@ export function UserForm() {
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push("/dashboard/users")}
+          onClick={() => router.push("/admin/users")}
           disabled={isSubmitting}
         >
           Cancel

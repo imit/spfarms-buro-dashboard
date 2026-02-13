@@ -10,18 +10,29 @@ interface LoginCredentials {
   password: string;
 }
 
-export type UserRole = "admin" | "editor" | "dispensary";
+export type UserRole = "admin" | "editor" | "account";
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Admin",
   editor: "Editor",
-  dispensary: "Dispensary",
+  account: "Account",
 };
+
+export interface UserCompanyMembership {
+  slug: string;
+  name: string;
+  company_title: string | null;
+}
 
 export interface User {
   id: number;
   email: string;
   role: UserRole;
+  full_name: string | null;
+  phone_number: string | null;
+  company_slug: string | null;
+  company_name: string | null;
+  companies: UserCompanyMembership[];
   created_at: string;
 }
 
@@ -70,6 +81,14 @@ export interface Location {
   updated_at: string;
 }
 
+export interface CompanyMember {
+  id: number;
+  full_name: string | null;
+  email: string;
+  role: UserRole;
+  company_title: string | null;
+}
+
 export interface Company {
   id: number;
   name: string;
@@ -84,6 +103,7 @@ export interface Company {
   active: boolean;
   logo_url: string | null;
   locations: Location[];
+  members: CompanyMember[];
   created_at: string;
   updated_at: string;
 }
@@ -186,6 +206,11 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("auth:session-expired"));
+        }
+      }
       const error = await response.json().catch(() => ({
         message: "An error occurred",
       }));
@@ -221,6 +246,11 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("auth:session-expired"));
+        }
+      }
       const error = await response.json().catch(() => ({
         message: "An error occurred",
       }));
@@ -508,6 +538,44 @@ export class ApiClient {
     await this.request(`/api/v1/strains/${strainId}/coas/${coaId}`, {
       method: "DELETE",
     });
+  }
+
+  // Onboard Representative
+
+  async onboardRepresentative(data: {
+    company: {
+      name: string;
+      website?: string;
+      phone_number?: string;
+      email?: string;
+      license_number?: string;
+    };
+    location?: {
+      name?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      zip_code?: string;
+      latitude?: number;
+      longitude?: number;
+      region?: string;
+      phone_number?: string;
+    };
+    representative: {
+      full_name: string;
+      email: string;
+      phone_number?: string;
+      company_title?: string;
+    };
+  }): Promise<{ company: Company; user: User }> {
+    const res = await this.request<{ data: { company: Company; user: User } }>(
+      "/api/v1/onboard_representative",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    );
+    return res.data;
   }
 }
 

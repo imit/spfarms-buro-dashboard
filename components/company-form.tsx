@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   apiClient,
+  type Company,
   type Region,
   type CompanyType,
   REGION_LABELS,
@@ -24,31 +25,39 @@ import {
 const REGIONS = Object.entries(REGION_LABELS) as [Region, string][];
 const COMPANY_TYPES = Object.entries(COMPANY_TYPE_LABELS) as [CompanyType, string][];
 
-export function CompanyForm() {
+interface CompanyFormProps {
+  company?: Company;
+  mode?: "create" | "edit";
+}
+
+export function CompanyForm({ company, mode = "create" }: CompanyFormProps) {
+  const isEdit = mode === "edit";
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const firstLocation = company?.locations?.[0];
+
   const [form, setForm] = useState({
-    name: "",
-    company_type: "dispensary" as CompanyType,
-    website: "",
-    description: "",
-    phone_number: "",
-    email: "",
-    license_number: "",
+    name: company?.name ?? "",
+    company_type: (company?.company_type ?? "dispensary") as CompanyType,
+    website: company?.website ?? "",
+    description: company?.description ?? "",
+    phone_number: company?.phone_number ?? "",
+    email: company?.email ?? "",
+    license_number: company?.license_number ?? "",
     social_media: {
-      instagram: "",
-      twitter: "",
-      facebook: "",
+      instagram: company?.social_media?.instagram ?? "",
+      twitter: company?.social_media?.twitter ?? "",
+      facebook: company?.social_media?.facebook ?? "",
     },
-    // Inline first location
     location: {
-      address: "",
-      city: "",
-      state: "NY",
-      zip_code: "",
-      region: "" as Region | "",
+      id: firstLocation?.id ?? null as number | null,
+      address: firstLocation?.address ?? "",
+      city: firstLocation?.city ?? "",
+      state: firstLocation?.state ?? "NY",
+      zip_code: firstLocation?.zip_code ?? "",
+      region: (firstLocation?.region ?? "") as Region | "",
     },
   });
 
@@ -98,6 +107,7 @@ export function CompanyForm() {
       if (hasLocation) {
         payload.locations_attributes = [
           {
+            ...(form.location.id ? { id: form.location.id } : {}),
             address: loc.address || undefined,
             city: loc.city || undefined,
             state: loc.state || undefined,
@@ -107,10 +117,15 @@ export function CompanyForm() {
         ];
       }
 
-      await apiClient.createCompany(payload);
-      router.push("/dashboard/companies");
+      if (isEdit && company) {
+        await apiClient.updateCompany(company.slug, payload);
+        router.push(`/admin/companies/${company.slug}`);
+      } else {
+        await apiClient.createCompany(payload);
+        router.push("/admin/companies");
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create company");
+      setError(err instanceof Error ? err.message : `Failed to ${isEdit ? "update" : "create"} company`);
     } finally {
       setIsSubmitting(false);
     }
@@ -334,12 +349,14 @@ export function CompanyForm() {
       {/* Actions */}
       <div className="flex gap-3">
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Creating..." : "Create Company"}
+          {isSubmitting
+            ? isEdit ? "Saving..." : "Creating..."
+            : isEdit ? "Save Changes" : "Create Company"}
         </Button>
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push("/dashboard/companies")}
+          onClick={() => router.push(isEdit && company ? `/admin/companies/${company.slug}` : "/admin/companies")}
           disabled={isSubmitting}
         >
           Cancel

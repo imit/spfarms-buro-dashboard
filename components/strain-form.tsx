@@ -127,10 +127,10 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
 
       if (isEdit && strain) {
         await apiClient.updateStrain(strain.id, formData);
-        router.push(`/dashboard/strains/${strain.id}`);
+        router.push(`/admin/strains/${strain.id}`);
       } else {
         await apiClient.createStrain(formData);
-        router.push("/dashboard/strains");
+        router.push("/admin/strains");
       }
     } catch (err) {
       setError(
@@ -416,8 +416,8 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
           onClick={() =>
             router.push(
               isEdit && strain
-                ? `/dashboard/strains/${strain.id}`
-                : "/dashboard/strains"
+                ? `/admin/strains/${strain.id}`
+                : "/admin/strains"
             )
           }
           disabled={isSubmitting}

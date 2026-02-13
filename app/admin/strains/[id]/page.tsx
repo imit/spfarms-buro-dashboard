@@ -135,7 +135,7 @@ export default function StrainDetailPage({
     setIsDeleting(true);
     try {
       await apiClient.deleteStrain(strain.id);
-      router.push("/dashboard/strains");
+      router.push("/admin/strains");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to delete strain"
@@ -242,7 +242,7 @@ export default function StrainDetailPage({
           {error}
         </div>
         <Button variant="outline" asChild>
-          <Link href="/dashboard/strains">
+          <Link href="/admin/strains">
             <ArrowLeftIcon className="mr-2 size-4" />
             Back to Strains
           </Link>
@@ -266,7 +266,7 @@ export default function StrainDetailPage({
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon-sm" asChild>
-              <Link href="/dashboard/strains">
+              <Link href="/admin/strains">
                 <ArrowLeftIcon className="size-4" />
               </Link>
             </Button>
@@ -288,7 +288,7 @@ export default function StrainDetailPage({
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/dashboard/strains/${strain.id}/edit`}>
+            <Link href={`/admin/strains/${strain.id}/edit`}>
               <PencilIcon className="mr-2 size-4" />
               Edit
             </Link>

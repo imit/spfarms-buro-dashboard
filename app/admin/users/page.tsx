@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
@@ -27,6 +27,9 @@ import {
 } from "@/components/ui/select";
 import { PlusIcon, SendIcon } from "lucide-react";
 
+type RoleFilter = "all" | UserRole;
+
+
 const ROLES = Object.entries(ROLE_LABELS) as [UserRole, string][];
 
 export default function UsersPage() {
@@ -35,10 +38,11 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<UserRole>("dispensary");
+  const [inviteRole, setInviteRole] = useState<UserRole>("account");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState("");
   const [inviteError, setInviteError] = useState("");
@@ -76,7 +80,7 @@ export default function UsersPage() {
       await apiClient.createInvitation(inviteEmail, inviteRole);
       setInviteSuccess(`Invitation sent to ${inviteEmail}`);
       setInviteEmail("");
-      setInviteRole("dispensary");
+      setInviteRole("account");
     } catch (err) {
       setInviteError(
         err instanceof Error ? err.message : "Failed to send invitation"
@@ -90,11 +94,16 @@ export default function UsersPage() {
     setInviteOpen(open);
     if (!open) {
       setInviteEmail("");
-      setInviteRole("dispensary");
+      setInviteRole("account");
       setInviteError("");
       setInviteSuccess("");
     }
   }
+
+  const filteredUsers = useMemo(() => {
+    if (roleFilter === "all") return users;
+    return users.filter((u) => u.role === roleFilter);
+  }, [users, roleFilter]);
 
   if (authLoading || !isAuthenticated) return null;
 
@@ -176,7 +185,7 @@ export default function UsersPage() {
             </DialogContent>
           </Dialog>
           <Button asChild>
-            <Link href="/dashboard/users/new">
+            <Link href="/admin/users/new">
               <PlusIcon className="mr-2 size-4" />
               Add User
             </Link>
@@ -190,13 +199,37 @@ export default function UsersPage() {
         </div>
       )}
 
+      {!isLoading && users.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg border p-1">
+            <Button
+              variant={roleFilter === "all" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setRoleFilter("all")}
+            >
+              All
+            </Button>
+            {ROLES.map(([value, label]) => (
+              <Button
+                key={value}
+                variant={roleFilter === value ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setRoleFilter(value)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>
       ) : users.length === 0 ? (
         <div className="rounded-lg border bg-card p-12 text-center">
           <p className="text-muted-foreground">No users yet.</p>
           <Button asChild className="mt-4">
-            <Link href="/dashboard/users/new">Add your first user</Link>
+            <Link href="/admin/users/new">Add your first user</Link>
           </Button>
         </div>
       ) : (
@@ -204,19 +237,43 @@ export default function UsersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium">Email</th>
+                <th className="px-4 py-3 text-left font-medium">Name</th>
+                <th className="px-4 py-3 text-left font-medium">Company</th>
                 <th className="px-4 py-3 text-left font-medium">Role</th>
                 <th className="px-4 py-3 text-left font-medium">Created</th>
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <tr
                   key={u.id}
                   className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
-                  onClick={() => router.push(`/dashboard/users/${u.id}`)}
+                  onClick={() => router.push(`/admin/users/${u.id}`)}
                 >
-                  <td className="px-4 py-3 font-medium">{u.email}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-medium">
+                      {u.full_name || <span className="text-muted-foreground italic">No name</span>}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{u.email}</div>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {u.companies && u.companies.length > 0 ? (
+                      <div className="space-y-0.5">
+                        {u.companies.map((c) => (
+                          <div key={c.slug}>
+                            <span>{c.name}</span>
+                            {c.company_title && (
+                              <span className="text-muted-foreground ml-1">
+                                ({c.company_title})
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline">{ROLE_LABELS[u.role]}</Badge>
                   </td>

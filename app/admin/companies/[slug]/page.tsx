@@ -10,6 +10,7 @@ import {
   type Company,
   COMPANY_TYPE_LABELS,
   REGION_LABELS,
+  ROLE_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,8 +31,10 @@ import {
   GlobeIcon,
   MailIcon,
   MapPinIcon,
+  PencilIcon,
   PhoneIcon,
   Trash2Icon,
+  UserIcon,
 } from "lucide-react";
 
 function DetailRow({
@@ -93,7 +96,7 @@ export default function CompanyDetailPage({
     setIsDeleting(true);
     try {
       await apiClient.deleteCompany(company.slug);
-      router.push("/dashboard/companies");
+      router.push("/admin/companies");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to delete company"
@@ -115,7 +118,7 @@ export default function CompanyDetailPage({
           {error}
         </div>
         <Button variant="outline" asChild>
-          <Link href="/dashboard/companies">
+          <Link href="/admin/companies">
             <ArrowLeftIcon className="mr-2 size-4" />
             Back to Companies
           </Link>
@@ -137,7 +140,7 @@ export default function CompanyDetailPage({
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon-sm" asChild>
-              <Link href="/dashboard/companies">
+              <Link href="/admin/companies">
                 <ArrowLeftIcon className="size-4" />
               </Link>
             </Button>
@@ -155,13 +158,20 @@ export default function CompanyDetailPage({
             </p>
           )}
         </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" disabled={isDeleting}>
-              <Trash2Icon className="mr-2 size-4" />
-              Delete
-            </Button>
-          </AlertDialogTrigger>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/admin/companies/${company.slug}/edit`}>
+              <PencilIcon className="mr-2 size-4" />
+              Edit
+            </Link>
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={isDeleting}>
+                <Trash2Icon className="mr-2 size-4" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete company?</AlertDialogTitle>
@@ -178,6 +188,7 @@ export default function CompanyDetailPage({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        </div>
       </div>
 
       {/* Cards */}
@@ -257,6 +268,63 @@ export default function CompanyDetailPage({
                 />
               ))}
             </dl>
+          </div>
+        )}
+      </div>
+
+      {/* Members */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Members</h3>
+        {!company.members || company.members.length === 0 ? (
+          <div className="rounded-lg border bg-card p-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              No members yet.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-3 text-left font-medium">Name</th>
+                  <th className="px-4 py-3 text-left font-medium">Title</th>
+                  <th className="px-4 py-3 text-left font-medium">Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {company.members.map((member) => (
+                  <tr
+                    key={member.id}
+                    className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
+                    onClick={() => router.push(`/admin/users/${member.id}`)}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="size-4 text-muted-foreground shrink-0" />
+                        <div>
+                          <div className="font-medium">
+                            {member.full_name || member.email}
+                          </div>
+                          {member.full_name && (
+                            <div className="text-xs text-muted-foreground">
+                              {member.email}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {member.company_title || "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant="outline">
+                        {ROLE_LABELS[member.role]}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
