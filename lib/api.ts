@@ -111,6 +111,52 @@ export interface Invitation {
   created_at: string;
 }
 
+export type StrainCategory = "indica" | "sativa" | "hybrid";
+
+export const CATEGORY_LABELS: Record<StrainCategory, string> = {
+  indica: "Indica",
+  sativa: "Sativa",
+  hybrid: "Hybrid",
+};
+
+export interface Coa {
+  id: number;
+  tested_at: string | null;
+  status: string | null;
+  thc_percent: string | null;
+  cbd_percent: string | null;
+  total_terpenes_percent: string | null;
+  terpenes: Record<string, number> | null;
+  results: Record<string, unknown> | null;
+  current: boolean;
+  pdf_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Strain {
+  id: number;
+  name: string;
+  code: string | null;
+  category: StrainCategory | null;
+  description: string | null;
+  notes: string | null;
+  dominant_terpenes: string | null;
+  thc_range: string | null;
+  total_terpenes: string | null;
+  cbg: string | null;
+  cbd: string | null;
+  total_thc: string | null;
+  total_cannabinoids: string | null;
+  smell_tags: string[];
+  active: boolean;
+  image_url: string | null;
+  coas_count: number;
+  current_coa: Coa | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export class ApiClient {
   private baseUrl: string;
 
@@ -125,9 +171,8 @@ export class ApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
 
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
     };
 
     if (token) {
@@ -148,6 +193,40 @@ export class ApiClient {
     }
 
     // Check if response has a body
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return response.json();
+    }
+
+    return {} as T;
+  }
+
+  private async requestFormData<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+
+    const headers: Record<string, string> = {};
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({
+        message: "An error occurred",
+      }));
+      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    }
+
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
       return response.json();
@@ -357,6 +436,76 @@ export class ApiClient {
 
   async deleteCompany(slug: string): Promise<void> {
     await this.request(`/api/v1/companies/${slug}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Strains
+
+  async getStrains(): Promise<Strain[]> {
+    const res = await this.request<JsonApiCollectionResponse<Strain>>(
+      "/api/v1/strains"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getStrain(id: number): Promise<Strain> {
+    const res = await this.request<JsonApiResponse<Strain>>(
+      `/api/v1/strains/${id}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createStrain(formData: FormData): Promise<Strain> {
+    const res = await this.requestFormData<JsonApiResponse<Strain>>(
+      "/api/v1/strains",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateStrain(id: number, formData: FormData): Promise<Strain> {
+    const res = await this.requestFormData<JsonApiResponse<Strain>>(
+      `/api/v1/strains/${id}`,
+      {
+        method: "PATCH",
+        body: formData,
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteStrain(id: number): Promise<void> {
+    await this.request(`/api/v1/strains/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // COAs
+
+  async getStrainCoas(strainId: number): Promise<Coa[]> {
+    const res = await this.request<JsonApiCollectionResponse<Coa>>(
+      `/api/v1/strains/${strainId}/coas`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createCoa(strainId: number, formData: FormData): Promise<Coa> {
+    const res = await this.requestFormData<JsonApiResponse<Coa>>(
+      `/api/v1/strains/${strainId}/coas`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteCoa(strainId: number, coaId: number): Promise<void> {
+    await this.request(`/api/v1/strains/${strainId}/coas/${coaId}`, {
       method: "DELETE",
     });
   }

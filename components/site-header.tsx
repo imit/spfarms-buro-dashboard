@@ -11,6 +11,9 @@ function usePageTitle() {
     "/dashboard": "Dashboard",
     "/dashboard/companies": "Companies",
     "/dashboard/companies/new": "New Company",
+    "/dashboard/strains": "Strains",
+    "/dashboard/strains/new": "New Strain",
+    "/dashboard/strains/edit": "Edit Strain",
     "/dashboard/users": "Users",
     "/dashboard/users/new": "New User",
   }

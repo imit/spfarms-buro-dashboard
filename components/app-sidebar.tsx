@@ -15,7 +15,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon, BoxIcon, PandaSymbolIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon, BoxIcon } from "lucide-react"
 import { PandaSymbol } from "@/components/shared/panda-symbol"
 import { Logo } from "@/components/shared/logo"
 const data = {
@@ -43,7 +43,7 @@ const data = {
     },
     {
       title: "Strains",
-      url: "#",
+      url: "/dashboard/strains",
       icon: (
         <ChartBarIcon
         />
