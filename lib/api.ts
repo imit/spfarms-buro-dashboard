@@ -451,6 +451,78 @@ export interface Cart {
   subtotal: number;
 }
 
+// ---- Payment Terms ----
+
+export interface PaymentTerm {
+  id: number;
+  name: string;
+  days: number;
+  discount_percentage: string;
+  active: boolean;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---- Discounts ----
+
+export type DiscountType = "percentage" | "fixed";
+
+export interface DiscountRecord {
+  id: number;
+  name: string;
+  discount_type: DiscountType;
+  value: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---- App Settings ----
+
+export interface AppSettings {
+  tax_rate: string;
+}
+
+// ---- Checkout Preview ----
+
+export interface CheckoutPreviewDiscount {
+  name: string;
+  type: string;
+  value: number;
+  amount: number;
+}
+
+export interface CheckoutPreviewItem {
+  id: number;
+  product_id: number;
+  product_name: string;
+  product_slug: string;
+  product_type: ProductType;
+  quantity: number;
+  unit_price: string;
+  line_total: number;
+  thumbnail_url: string | null;
+  strain_name: string | null;
+}
+
+export interface CheckoutPreview {
+  items: CheckoutPreviewItem[];
+  subtotal: string;
+  payment_term: {
+    id: number;
+    name: string;
+    days: number;
+    discount_percentage: string;
+  } | null;
+  payment_term_discount_amount: string;
+  discounts: CheckoutPreviewDiscount[];
+  discount_amount: string;
+  tax_rate: string;
+  tax_amount: string;
+  total: string;
+}
+
 // ---- Orders ----
 
 export type OrderStatus =
@@ -518,6 +590,14 @@ export interface Order {
   status: OrderStatus;
   subtotal: string;
   total: string;
+  payment_term_name: string | null;
+  payment_term_days: number | null;
+  payment_term_discount_percentage: string | null;
+  payment_term_discount_amount: string | null;
+  discount_amount: string | null;
+  discount_details: CheckoutPreviewDiscount[] | null;
+  tax_rate: string | null;
+  tax_amount: string | null;
   notes_to_vendor: string | null;
   internal_notes: string | null;
   desired_delivery_date: string | null;
@@ -548,6 +628,7 @@ export interface CreateOrderParams {
   notes_to_vendor?: string;
   desired_delivery_date?: string;
   contact_users?: { full_name: string; email: string; phone_number?: string }[];
+  payment_term_id?: number;
 }
 
 export class ApiClient {
@@ -1322,6 +1403,98 @@ export class ApiClient {
       { method: "DELETE" }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  // Checkout Preview
+
+  async getCheckoutPreview(
+    companyId: number,
+    paymentTermId?: number
+  ): Promise<CheckoutPreview> {
+    const body: Record<string, unknown> = { company_id: companyId };
+    if (paymentTermId) body.payment_term_id = paymentTermId;
+
+    const res = await this.request<{ data: CheckoutPreview }>(
+      "/api/v1/cart/checkout_preview",
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      }
+    );
+    return res.data;
+  }
+
+  // Payment Terms
+
+  async getPaymentTerms(): Promise<PaymentTerm[]> {
+    const res = await this.request<JsonApiCollectionResponse<PaymentTerm>>(
+      "/api/v1/payment_terms"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createPaymentTerm(data: { name: string; days: number; discount_percentage: number; active: boolean; position: number }): Promise<PaymentTerm> {
+    const res = await this.request<JsonApiResponse<PaymentTerm>>(
+      "/api/v1/payment_terms",
+      { method: "POST", body: JSON.stringify({ payment_term: data }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updatePaymentTerm(id: number, data: Partial<{ name: string; days: number; discount_percentage: number; active: boolean; position: number }>): Promise<PaymentTerm> {
+    const res = await this.request<JsonApiResponse<PaymentTerm>>(
+      `/api/v1/payment_terms/${id}`,
+      { method: "PATCH", body: JSON.stringify({ payment_term: data }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deletePaymentTerm(id: number): Promise<void> {
+    await this.request(`/api/v1/payment_terms/${id}`, { method: "DELETE" });
+  }
+
+  // Discounts
+
+  async getDiscounts(): Promise<DiscountRecord[]> {
+    const res = await this.request<JsonApiCollectionResponse<DiscountRecord>>(
+      "/api/v1/discounts"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createDiscount(data: { name: string; discount_type: DiscountType; value: number; active: boolean }): Promise<DiscountRecord> {
+    const res = await this.request<JsonApiResponse<DiscountRecord>>(
+      "/api/v1/discounts",
+      { method: "POST", body: JSON.stringify({ discount: data }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateDiscount(id: number, data: Partial<{ name: string; discount_type: DiscountType; value: number; active: boolean }>): Promise<DiscountRecord> {
+    const res = await this.request<JsonApiResponse<DiscountRecord>>(
+      `/api/v1/discounts/${id}`,
+      { method: "PATCH", body: JSON.stringify({ discount: data }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteDiscount(id: number): Promise<void> {
+    await this.request(`/api/v1/discounts/${id}`, { method: "DELETE" });
+  }
+
+  // Settings
+
+  async getSettings(): Promise<AppSettings> {
+    const res = await this.request<{ data: AppSettings }>("/api/v1/settings");
+    return res.data;
+  }
+
+  async updateSettings(data: Partial<AppSettings>): Promise<AppSettings> {
+    const res = await this.request<{ data: AppSettings }>("/api/v1/settings", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return res.data;
   }
 
   // Orders

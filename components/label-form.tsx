@@ -25,6 +25,11 @@ import {
 
 const STATUSES = Object.entries(LABEL_STATUS_LABELS) as [LabelStatus, string][];
 
+const AVAILABLE_FONTS = [
+  { label: "Circular Std", value: "Circular Std, sans-serif" },
+  { label: "Sardin", value: "Sardin, sans-serif" },
+];
+
 const BADGE_OPTIONS = [
   { key: "category", label: "Category" },
   { key: "thc", label: "THC %" },
@@ -83,7 +88,7 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
   // Design
   const [design, setDesign] = useState({
     background_color: label?.design?.background_color ?? "#f5f5f5",
-    font_primary: label?.design?.font_primary ?? "Arial, sans-serif",
+    font_primary: label?.design?.font_primary ?? "Circular Std, sans-serif",
   });
 
   // Info group
@@ -469,15 +474,24 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
             </Field>
             <Field>
               <FieldLabel htmlFor="font_primary">Font</FieldLabel>
-              <Input
-                id="font_primary"
+              <Select
                 value={design.font_primary}
-                onChange={(e) =>
-                  setDesign((p) => ({ ...p, font_primary: e.target.value }))
+                onValueChange={(v) =>
+                  setDesign((p) => ({ ...p, font_primary: v }))
                 }
-                placeholder="Arial, sans-serif"
                 disabled={isSubmitting}
-              />
+              >
+                <SelectTrigger id="font_primary">
+                  <SelectValue placeholder="Select font" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AVAILABLE_FONTS.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
           </div>
         </FieldGroup>
