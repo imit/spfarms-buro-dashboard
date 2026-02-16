@@ -382,6 +382,39 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       <section className="space-y-4">
         <h3 className="text-lg font-medium">Weight & Packaging</h3>
         <FieldGroup>
+          <div>
+            <p className="text-xs text-muted-foreground mb-2">Quick templates</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "QP — 32 × 3.5g", weight: "3.5", count: "32" },
+                { label: "HP — 16 × 3.5g", weight: "3.5", count: "16" },
+                { label: "Eighth", weight: "3.5", count: "1" },
+                { label: "Quarter", weight: "7", count: "1" },
+                { label: "Half", weight: "14", count: "1" },
+                { label: "Ounce", weight: "28", count: "1" },
+              ].map((tpl) => (
+                <button
+                  key={tpl.label}
+                  type="button"
+                  className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent ${
+                    form.unit_weight === tpl.weight && form.unit_count === tpl.count
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-input text-muted-foreground"
+                  }`}
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      unit_weight: tpl.weight,
+                      unit_count: tpl.count,
+                    }))
+                  }
+                  disabled={isSubmitting}
+                >
+                  {tpl.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="unit_weight">Weight (grams)</FieldLabel>

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/auth-context";
-import { TooltipProvider } from "@/components/ui/tooltip"
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "sonner";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -31,6 +32,7 @@ export default function RootLayout({
         <TooltipProvider>
           <AuthProvider>{children}</AuthProvider>
         </TooltipProvider>
+        <Toaster />
       </body>
     </html>
   );

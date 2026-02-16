@@ -428,6 +428,128 @@ export interface QrCode {
   updated_at: string;
 }
 
+// ---- Cart ----
+
+export interface CartItem {
+  id: number;
+  product_id: number;
+  quantity: number;
+  product_name: string;
+  product_slug: string;
+  product_type: ProductType;
+  unit_price: string | null;
+  thumbnail_url: string | null;
+  strain_name: string | null;
+}
+
+export interface Cart {
+  id: number;
+  user_id: number;
+  company_id: number;
+  items: CartItem[];
+  item_count: number;
+  subtotal: number;
+}
+
+// ---- Orders ----
+
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
+
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  pending: "Pending",
+  confirmed: "Confirmed",
+  processing: "Processing",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+export interface OrderItem {
+  id: number;
+  product_id: number;
+  product_name: string;
+  product_slug: string;
+  product_type: ProductType;
+  quantity: number;
+  unit_price: string;
+  line_total: string;
+  thumbnail_url: string | null;
+  strain_name: string | null;
+}
+
+export interface OrderUser {
+  id: number;
+  role: "orderer" | "contact";
+  user_id: number;
+  email: string;
+  full_name: string | null;
+  phone_number: string | null;
+}
+
+export interface OrderLocation {
+  id: number;
+  name: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+}
+
+export interface OrderCompanyDetails {
+  id: number;
+  name: string;
+  slug: string;
+  company_type: CompanyType;
+  email: string | null;
+  phone_number: string | null;
+  locations: OrderLocation[];
+  members: CompanyMember[];
+}
+
+export interface Order {
+  id: number;
+  order_number: string;
+  status: OrderStatus;
+  subtotal: string;
+  total: string;
+  notes_to_vendor: string | null;
+  internal_notes: string | null;
+  desired_delivery_date: string | null;
+  user: {
+    id: number;
+    email: string;
+    full_name: string | null;
+    phone_number: string | null;
+  };
+  company: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+  items: OrderItem[];
+  order_users: OrderUser[];
+  shipping_location: OrderLocation | null;
+  billing_location: OrderLocation | null;
+  company_details: OrderCompanyDetails;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateOrderParams {
+  company_id: number;
+  shipping_location_id?: number;
+  billing_location_id?: number;
+  notes_to_vendor?: string;
+  desired_delivery_date?: string;
+  contact_users?: { full_name: string; email: string; phone_number?: string }[];
+}
+
 export class ApiClient {
   private baseUrl: string;
 
@@ -1145,6 +1267,116 @@ export class ApiClient {
       }
     );
     return res.data;
+  }
+
+  // Cart
+
+  async getCart(companyId: number): Promise<Cart> {
+    const res = await this.request<JsonApiResponse<Cart>>(
+      `/api/v1/cart?company_id=${companyId}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async addToCart(
+    companyId: number,
+    productId: number,
+    quantity: number = 1
+  ): Promise<Cart> {
+    const res = await this.request<JsonApiResponse<Cart>>(
+      `/api/v1/cart/items?company_id=${companyId}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ product_id: productId, quantity }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateCartItem(
+    companyId: number,
+    itemId: number,
+    quantity: number
+  ): Promise<Cart> {
+    const res = await this.request<JsonApiResponse<Cart>>(
+      `/api/v1/cart/items/${itemId}?company_id=${companyId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ quantity }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async removeCartItem(companyId: number, itemId: number): Promise<Cart> {
+    const res = await this.request<JsonApiResponse<Cart>>(
+      `/api/v1/cart/items/${itemId}?company_id=${companyId}`,
+      { method: "DELETE" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async clearCart(companyId: number): Promise<Cart> {
+    const res = await this.request<JsonApiResponse<Cart>>(
+      `/api/v1/cart?company_id=${companyId}`,
+      { method: "DELETE" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  // Orders
+
+  async createOrder(params: CreateOrderParams): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      "/api/v1/orders",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async getOrders(): Promise<Order[]> {
+    const res = await this.request<JsonApiCollectionResponse<Order>>(
+      "/api/v1/orders"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getOrder(id: number): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${id}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateOrder(
+    id: number,
+    data: { status?: string; internal_notes?: string }
+  ): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ order: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async getOrderInvoice(id: number): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/orders/${id}/invoice`;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(url, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to generate invoice");
+    return res.blob();
   }
 }
 

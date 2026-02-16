@@ -1,0 +1,212 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { MinusIcon, PlusIcon, ShoppingCartIcon, FileTextIcon, LeafIcon } from "lucide-react";
+import { type Product, type Strain, PRODUCT_TYPE_LABELS } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+function formatPrice(price: string | null) {
+  if (!price) return "—";
+  return `$${parseFloat(price).toFixed(2)}`;
+}
+
+const WEIGHT_NAMES: Record<number, string> = {
+  3.5: "Eighth",
+  7: "Quarter",
+  14: "Half",
+  28: "Ounce",
+};
+
+function formatPackaging(weight: string | null, count: number | null) {
+  if (!weight) return null;
+  const w = parseFloat(weight);
+  if (isNaN(w)) return null;
+  const commonName = WEIGHT_NAMES[w];
+  const weightLabel = commonName ? `${commonName} (${w}g)` : `${w}g`;
+  if (count && count > 1) return `${count} × ${weightLabel}`;
+  return weightLabel;
+}
+
+function totalPackageWeight(weight: string | null, count: number | null) {
+  if (!weight) return null;
+  const w = parseFloat(weight);
+  if (isNaN(w) || w <= 0) return null;
+  const c = count && count > 0 ? count : 1;
+  const totalG = w * c;
+  const totalOz = totalG / 28;
+  return `${totalG % 1 === 0 ? totalG.toFixed(0) : totalG.toFixed(1)}g / ${totalOz % 1 === 0 ? totalOz.toFixed(0) : totalOz.toFixed(2)}oz`;
+}
+
+export function ProductCard({
+  product,
+  slug,
+  strain,
+  onAddToCart,
+}: {
+  product: Product;
+  slug: string;
+  strain?: Strain;
+  onAddToCart: (productId: number, quantity: number) => Promise<void>;
+}) {
+  const [quantity, setQuantity] = useState(1);
+  const [adding, setAdding] = useState(false);
+
+  const handleAdd = async () => {
+    setAdding(true);
+    try {
+      await onAddToCart(product.id, quantity);
+      setQuantity(1);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const packaging = formatPackaging(product.unit_weight, product.unit_count);
+  const totalWeight = totalPackageWeight(product.unit_weight, product.unit_count);
+  const coaPdfUrl = strain?.current_coa?.pdf_url;
+
+  // Cannabinoid values — prefer strain data, fall back to product fields; hide zeros
+  const nonZero = (v: string | null | undefined) => v && parseFloat(v) > 0 ? v : null;
+  const thc = nonZero(strain?.total_thc) || nonZero(product.thc_content);
+  const cbd = nonZero(strain?.cbd) || nonZero(product.cbd_content);
+  const cbg = nonZero(strain?.cbg);
+  const hasCannabinoids = thc || cbd || cbg;
+
+  // Flavor
+  const smellTags = strain?.smell_tags ?? [];
+
+  return (
+    <div className="group rounded-lg border bg-card overflow-hidden">
+      <Link href={`/${slug}/storefront/${product.slug}`}>
+        <div className="aspect-square bg-muted overflow-hidden relative">
+          {product.thumbnail_url ? (
+            <img
+              src={product.thumbnail_url}
+              alt={product.name}
+              className="size-full object-cover transition-transform group-hover:scale-105"
+            />
+          ) : (
+            <div className="size-full flex items-center justify-center text-muted-foreground text-sm">
+              No image
+            </div>
+          )}
+          {packaging && (
+            <span className="absolute bottom-2 left-2 rounded bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white">
+              {packaging}
+            </span>
+          )}
+        </div>
+      </Link>
+
+      <div className="p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <Link
+            href={`/${slug}/storefront/${product.slug}`}
+            className="font-medium text-sm leading-tight hover:underline line-clamp-2"
+          >
+            {product.name}
+          </Link>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Badge variant="outline" className="text-xs">
+            {PRODUCT_TYPE_LABELS[product.product_type]}
+          </Badge>
+          {product.strain_name && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <LeafIcon className="size-3" />
+              {product.strain_name}
+            </Badge>
+          )}
+        </div>
+
+        {/* Cannabinoid profile */}
+        {hasCannabinoids && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+            {thc && <span>THC {thc}%</span>}
+            {cbd && <span>CBD {cbd}%</span>}
+            {cbg && <span>CBG {cbg}%</span>}
+          </div>
+        )}
+
+        {/* Flavor / smell tags */}
+        {smellTags.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {smellTags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+              >
+                {tag}
+              </span>
+            ))}
+            {smellTags.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">
+                +{smellTags.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Total package weight */}
+        {totalWeight && (
+          <p className="text-xs text-muted-foreground">
+            Total: {totalWeight}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-semibold">
+            {formatPrice(product.default_price)}
+          </div>
+          {coaPdfUrl && (
+            <a
+              href={coaPdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <FileTextIcon className="size-3.5" />
+              COA
+            </a>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-md border">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              disabled={quantity <= 1}
+            >
+              <MinusIcon className="size-3" />
+            </Button>
+            <span className="w-8 text-center text-sm">{quantity}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              onClick={() => setQuantity(quantity + 1)}
+            >
+              <PlusIcon className="size-3" />
+            </Button>
+          </div>
+          <Button
+            size="sm"
+            className="flex-1"
+            onClick={handleAdd}
+            disabled={adding}
+          >
+            <ShoppingCartIcon className="mr-1.5 size-3.5" />
+            {adding ? "Adding..." : "Add"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

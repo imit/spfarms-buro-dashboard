@@ -2,12 +2,7 @@
 
 import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { PortalSidebar } from "@/components/portal-sidebar";
-import { PortalHeader } from "@/components/portal-header";
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@/components/ui/sidebar";
+import { ShopHeader } from "@/components/shop-header";
 import { useAuth } from "@/contexts/auth-context";
 
 export default function PortalLayout({
@@ -31,25 +26,11 @@ export default function PortalLayout({
   if (isLoading || !isAuthenticated) return null;
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <PortalSidebar slug={slug} variant="inset" />
-      <SidebarInset>
-        <PortalHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              {children}
-            </div>
-          </div>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen">
+      <ShopHeader slug={slug} />
+      <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+        {children}
+      </main>
+    </div>
   );
 }
