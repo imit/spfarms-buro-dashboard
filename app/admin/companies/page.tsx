@@ -4,10 +4,31 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { apiClient, type Company, COMPANY_TYPE_LABELS, REGION_LABELS } from "@/lib/api";
+import {
+  apiClient,
+  type Company,
+  type LeadStatus,
+  COMPANY_TYPE_LABELS,
+  LEAD_STATUS_LABELS,
+  REGION_LABELS,
+} from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { PlusIcon } from "lucide-react";
+
+const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
+  idle: "bg-slate-100 text-slate-700",
+  contacted: "bg-blue-100 text-blue-700",
+  sampled: "bg-purple-100 text-purple-700",
+  follow_up: "bg-amber-100 text-amber-700",
+  negotiating: "bg-orange-100 text-orange-700",
+  first_order: "bg-green-100 text-green-700",
+  repeat: "bg-emerald-100 text-emerald-700",
+  loyal: "bg-emerald-200 text-emerald-800",
+  inactive: "bg-gray-100 text-gray-500",
+  lost: "bg-red-100 text-red-700",
+};
+
+const LEAD_STATUSES = Object.entries(LEAD_STATUS_LABELS) as [LeadStatus, string][];
 
 export default function CompaniesPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -15,6 +36,7 @@ export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [leadFilter, setLeadFilter] = useState<LeadStatus | "all">("all");
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -39,6 +61,11 @@ export default function CompaniesPage() {
     fetchCompanies();
   }, [isAuthenticated]);
 
+  const filtered = companies.filter((c) => {
+    if (leadFilter !== "all" && c.lead_status !== leadFilter) return false;
+    return true;
+  });
+
   if (authLoading || !isAuthenticated) return null;
 
   return (
@@ -58,6 +85,40 @@ export default function CompaniesPage() {
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setLeadFilter("all")}
+          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all ${
+            leadFilter === "all"
+              ? "bg-foreground text-background ring-2 ring-foreground/20"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          }`}
+        >
+          All
+          <span className="ml-1.5 opacity-70">{companies.length}</span>
+        </button>
+        {LEAD_STATUSES.map(([value, label]) => {
+          const count = companies.filter((c) => c.lead_status === value).length;
+          const isActive = leadFilter === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setLeadFilter(isActive ? "all" : value)}
+              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all ${
+                isActive
+                  ? `${LEAD_STATUS_COLORS[value]} ring-2 ring-current/20`
+                  : `${LEAD_STATUS_COLORS[value]} opacity-50 hover:opacity-80`
+              }`}
+            >
+              {label}
+              {count > 0 && <span className="ml-1.5 opacity-70">{count}</span>}
+            </button>
+          );
+        })}
+      </div>
+
       {error && (
         <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
           {error}
@@ -66,12 +127,16 @@ export default function CompaniesPage() {
 
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>
-      ) : companies.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="rounded-lg border bg-card p-12 text-center">
-          <p className="text-muted-foreground">No companies yet.</p>
-          <Button asChild className="mt-4">
-            <Link href="/admin/companies/new">Add your first company</Link>
-          </Button>
+          <p className="text-muted-foreground">
+            {companies.length === 0 ? "No companies yet." : "No companies match this filter."}
+          </p>
+          {companies.length === 0 && (
+            <Button asChild className="mt-4">
+              <Link href="/admin/companies/new">Add your first company</Link>
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-lg border">
@@ -80,13 +145,13 @@ export default function CompaniesPage() {
               <tr className="border-b bg-muted/50">
                 <th className="px-4 py-3 text-left font-medium">Name</th>
                 <th className="px-4 py-3 text-left font-medium">Type</th>
+                <th className="px-4 py-3 text-left font-medium">Lead Status</th>
                 <th className="px-4 py-3 text-left font-medium">Location</th>
                 <th className="px-4 py-3 text-left font-medium">License #</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
               </tr>
             </thead>
             <tbody>
-              {companies.map((c) => {
+              {filtered.map((c) => {
                 const firstLoc = c.locations?.[0];
                 const locationLabel = firstLoc
                   ? [firstLoc.city, firstLoc.region ? REGION_LABELS[firstLoc.region] : null]
@@ -104,6 +169,13 @@ export default function CompaniesPage() {
                     <td className="px-4 py-3 text-muted-foreground">
                       {COMPANY_TYPE_LABELS[c.company_type]}
                     </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_STATUS_COLORS[c.lead_status] || ""}`}
+                      >
+                        {LEAD_STATUS_LABELS[c.lead_status] || c.lead_status}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {locationLabel}
                       {c.locations?.length > 1 && (
@@ -114,11 +186,6 @@ export default function CompaniesPage() {
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {c.license_number || "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={c.active ? "default" : "secondary"}>
-                        {c.active ? "Active" : "Inactive"}
-                      </Badge>
                     </td>
                   </tr>
                 );

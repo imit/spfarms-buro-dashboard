@@ -66,6 +66,31 @@ export const COMPANY_TYPE_LABELS: Record<CompanyType, string> = {
   processor: "Processor",
 };
 
+export type LeadStatus =
+  | "idle"
+  | "contacted"
+  | "sampled"
+  | "follow_up"
+  | "negotiating"
+  | "first_order"
+  | "repeat"
+  | "loyal"
+  | "inactive"
+  | "lost";
+
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  idle: "Idle",
+  contacted: "Contacted",
+  sampled: "Sampled",
+  follow_up: "Follow Up",
+  negotiating: "Negotiating",
+  first_order: "First Order",
+  repeat: "Repeat",
+  loyal: "Loyal",
+  inactive: "Inactive",
+  lost: "Lost",
+};
+
 export interface Location {
   id: number;
   name: string | null;
@@ -94,6 +119,7 @@ export interface Company {
   name: string;
   slug: string;
   company_type: CompanyType;
+  lead_status: LeadStatus;
   website: string | null;
   description: string | null;
   phone_number: string | null;
@@ -173,6 +199,231 @@ export interface Strain {
   image_url: string | null;
   coas_count: number;
   current_coa: Coa | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ProductType =
+  | "flower"
+  | "pre_roll"
+  | "concentrate"
+  | "edible"
+  | "vape"
+  | "tincture"
+  | "topical"
+  | "capsule"
+  | "seed"
+  | "merchandise"
+  | "gear"
+  | "apparel";
+
+export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
+  flower: "Flower",
+  pre_roll: "Pre-Roll",
+  concentrate: "Concentrate",
+  edible: "Edible",
+  vape: "Vape",
+  tincture: "Tincture",
+  topical: "Topical",
+  capsule: "Capsule",
+  seed: "Seed",
+  merchandise: "Merchandise",
+  gear: "Gear",
+  apparel: "Apparel",
+};
+
+export type ProductStatus = "draft" | "active" | "archived";
+
+export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
+  draft: "Draft",
+  active: "Active",
+  archived: "Archived",
+};
+
+export interface Product {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  cannabis: boolean;
+  product_type: ProductType;
+  product_uid: string | null;
+  strain_id: number | null;
+  strain_name: string | null;
+  sku: string | null;
+  barcode: string | null;
+  unit_weight: string | null;
+  unit_weight_uom: string | null;
+  unit_count: number | null;
+  default_price: string | null;
+  status: ProductStatus;
+  tags: string[];
+  meta_title: string | null;
+  meta_description: string | null;
+  thc_content: string | null;
+  cbd_content: string | null;
+  ingredients: string | null;
+  brand: string | null;
+  requires_shipping: boolean;
+  position: number | null;
+  active: boolean;
+  thumbnail_url: string | null;
+  image_urls: string[];
+  metrc_item_id: string | null;
+  metrc_item_name: string | null;
+  metrc_license_number: string | null;
+  metrc_tag: string | null;
+  webpage_url: string | null;
+  metrc_last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---- Sheet Layouts ----
+
+export interface SheetLayout {
+  id: number;
+  name: string;
+  slug: string;
+  sheet_width_cm: string;
+  sheet_height_cm: string;
+  label_width_cm: string;
+  label_height_cm: string;
+  margin_top_cm: string;
+  margin_bottom_cm: string;
+  margin_left_cm: string;
+  margin_right_cm: string;
+  gap_x_cm: string;
+  gap_y_cm: string;
+  corner_radius_mm: string;
+  default: boolean;
+  columns: number;
+  rows: number;
+  labels_per_sheet: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---- Labels ----
+
+export type LabelStatus = "draft" | "active" | "archived";
+
+export const LABEL_STATUS_LABELS: Record<LabelStatus, string> = {
+  draft: "Draft",
+  active: "Active",
+  archived: "Archived",
+};
+
+export interface LabelOverlayData {
+  id: number;
+  name: string | null;
+  position_x: string;
+  position_y: string;
+  width: string;
+  height: string;
+  rotation: string;
+  z_index: number;
+  opacity: string;
+  overlay_type: "image" | "svg_inline";
+  svg_content: string | null;
+  asset_url: string | null;
+}
+
+export interface LabelLineConfig {
+  visible?: boolean;
+  fontSize?: number;
+  color?: string;
+  fontWeight?: string;
+  override?: string | null;
+  letterSpacing?: number;
+}
+
+export interface LabelDesign {
+  background_color?: string;
+  font_primary?: string;
+  info_group?: {
+    visible?: boolean;
+    x?: number;
+    y?: number;
+    product_type?: LabelLineConfig;
+    strain_name?: LabelLineConfig;
+    weight_line?: LabelLineConfig;
+    badges?: {
+      visible?: boolean;
+      items?: string[];
+      fontSize?: number;
+      color?: string;
+      bg?: string;
+      radius?: number;
+      paddingX?: number;
+      paddingY?: number;
+      gap?: number;
+    };
+  };
+  qr?: {
+    enabled?: boolean;
+    data_source?: "product_url" | "custom";
+    custom_url?: string | null;
+    x?: number;
+    y?: number;
+    size?: number;
+    error_correction?: string;
+    fg_color?: string;
+    bg_color?: string;
+  };
+  logo?: {
+    visible?: boolean;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+  };
+}
+
+export interface Label {
+  id: number;
+  name: string;
+  slug: string;
+  strain_id: number | null;
+  strain_name: string | null;
+  product_id: number | null;
+  product_name: string | null;
+  width_cm: string;
+  height_cm: string;
+  corner_radius_mm: string;
+  design: LabelDesign;
+  status: LabelStatus;
+  logo_url: string | null;
+  overlays: LabelOverlayData[];
+  render_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---- QR Codes ----
+
+export type QrDataType = "url" | "custom_text";
+
+export const QR_DATA_TYPE_LABELS: Record<QrDataType, string> = {
+  url: "URL",
+  custom_text: "Custom Text",
+};
+
+export interface QrCode {
+  id: number;
+  name: string;
+  slug: string;
+  product_id: number | null;
+  product_name: string | null;
+  data_type: QrDataType;
+  url: string | null;
+  custom_text: string | null;
+  encoded_data: string;
+  size_px: number;
+  error_correction: string;
+  fg_color: string;
+  bg_color: string;
+  include_logo: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -514,6 +765,50 @@ export class ApiClient {
     });
   }
 
+  // Products
+
+  async getProducts(): Promise<Product[]> {
+    const res = await this.request<JsonApiCollectionResponse<Product>>(
+      "/api/v1/products"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getProduct(slug: string): Promise<Product> {
+    const res = await this.request<JsonApiResponse<Product>>(
+      `/api/v1/products/${slug}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createProduct(formData: FormData): Promise<Product> {
+    const res = await this.requestFormData<JsonApiResponse<Product>>(
+      "/api/v1/products",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateProduct(slug: string, formData: FormData): Promise<Product> {
+    const res = await this.requestFormData<JsonApiResponse<Product>>(
+      `/api/v1/products/${slug}`,
+      {
+        method: "PATCH",
+        body: formData,
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteProduct(slug: string): Promise<void> {
+    await this.request(`/api/v1/products/${slug}`, {
+      method: "DELETE",
+    });
+  }
+
   // COAs
 
   async getStrainCoas(strainId: number): Promise<Coa[]> {
@@ -538,6 +833,280 @@ export class ApiClient {
     await this.request(`/api/v1/strains/${strainId}/coas/${coaId}`, {
       method: "DELETE",
     });
+  }
+
+  // Labels
+
+  async getLabels(): Promise<Label[]> {
+    const res = await this.request<JsonApiCollectionResponse<Label>>(
+      "/api/v1/labels"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getLabel(slug: string): Promise<Label> {
+    const res = await this.request<JsonApiResponse<Label>>(
+      `/api/v1/labels/${slug}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createLabel(data: Record<string, unknown>): Promise<Label> {
+    const res = await this.request<JsonApiResponse<Label>>("/api/v1/labels", {
+      method: "POST",
+      body: JSON.stringify({ label: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateLabel(
+    slug: string,
+    data: Record<string, unknown>
+  ): Promise<Label> {
+    const res = await this.request<JsonApiResponse<Label>>(
+      `/api/v1/labels/${slug}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ label: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateLabelWithFormData(
+    slug: string,
+    formData: FormData
+  ): Promise<Label> {
+    const res = await this.requestFormData<JsonApiResponse<Label>>(
+      `/api/v1/labels/${slug}`,
+      {
+        method: "PATCH",
+        body: formData,
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteLabel(slug: string): Promise<void> {
+    await this.request(`/api/v1/labels/${slug}`, { method: "DELETE" });
+  }
+
+  async getLabelSvgPreview(slug: string): Promise<string> {
+    const url = `${this.baseUrl}/api/v1/labels/${slug}/render_svg`;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to render label SVG");
+    return res.text();
+  }
+
+  async getLabelPdf(slug: string): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/labels/${slug}/render_pdf`;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to render label PDF");
+    return res.blob();
+  }
+
+  async printLabels(
+    slug: string,
+    sheetLayoutId: string,
+    copies: number
+  ): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/labels/${slug}/print`;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        sheet_layout_id: sheetLayoutId,
+        copies,
+      }),
+    });
+    if (!res.ok) throw new Error("Failed to generate print PDF");
+    return res.blob();
+  }
+
+  // Label Overlays
+
+  async createLabelOverlay(
+    labelSlug: string,
+    formData: FormData
+  ): Promise<Label> {
+    const res = await this.requestFormData<JsonApiResponse<Label>>(
+      `/api/v1/labels/${labelSlug}/label_overlays`,
+      { method: "POST", body: formData }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateLabelOverlay(
+    labelSlug: string,
+    overlayId: number,
+    formData: FormData
+  ): Promise<Label> {
+    const res = await this.requestFormData<JsonApiResponse<Label>>(
+      `/api/v1/labels/${labelSlug}/label_overlays/${overlayId}`,
+      { method: "PATCH", body: formData }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteLabelOverlay(
+    labelSlug: string,
+    overlayId: number
+  ): Promise<Label> {
+    const res = await this.request<JsonApiResponse<Label>>(
+      `/api/v1/labels/${labelSlug}/label_overlays/${overlayId}`,
+      { method: "DELETE" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  // Sheet Layouts
+
+  async getSheetLayouts(): Promise<SheetLayout[]> {
+    const res = await this.request<JsonApiCollectionResponse<SheetLayout>>(
+      "/api/v1/sheet_layouts"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getSheetLayout(slug: string): Promise<SheetLayout> {
+    const res = await this.request<JsonApiResponse<SheetLayout>>(
+      `/api/v1/sheet_layouts/${slug}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createSheetLayout(
+    data: Record<string, unknown>
+  ): Promise<SheetLayout> {
+    const res = await this.request<JsonApiResponse<SheetLayout>>(
+      "/api/v1/sheet_layouts",
+      {
+        method: "POST",
+        body: JSON.stringify({ sheet_layout: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateSheetLayout(
+    slug: string,
+    data: Record<string, unknown>
+  ): Promise<SheetLayout> {
+    const res = await this.request<JsonApiResponse<SheetLayout>>(
+      `/api/v1/sheet_layouts/${slug}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ sheet_layout: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteSheetLayout(slug: string): Promise<void> {
+    await this.request(`/api/v1/sheet_layouts/${slug}`, { method: "DELETE" });
+  }
+
+  // QR Codes
+
+  async getQrCodes(): Promise<QrCode[]> {
+    const res = await this.request<JsonApiCollectionResponse<QrCode>>(
+      "/api/v1/qr_codes"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getQrCode(slug: string): Promise<QrCode> {
+    const res = await this.request<JsonApiResponse<QrCode>>(
+      `/api/v1/qr_codes/${slug}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createQrCode(data: Record<string, unknown>): Promise<QrCode> {
+    const res = await this.request<JsonApiResponse<QrCode>>(
+      "/api/v1/qr_codes",
+      {
+        method: "POST",
+        body: JSON.stringify({ qr_code: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateQrCode(
+    slug: string,
+    data: Record<string, unknown>
+  ): Promise<QrCode> {
+    const res = await this.request<JsonApiResponse<QrCode>>(
+      `/api/v1/qr_codes/${slug}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ qr_code: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteQrCode(slug: string): Promise<void> {
+    await this.request(`/api/v1/qr_codes/${slug}`, { method: "DELETE" });
+  }
+
+  async getQrCodeSvg(slug: string): Promise<string> {
+    const url = `${this.baseUrl}/api/v1/qr_codes/${slug}/render_svg`;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(url, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to render QR code SVG");
+    return res.text();
+  }
+
+  async getQrCodePdf(slug: string): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/qr_codes/${slug}/render_pdf`;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(url, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to render QR code PDF");
+    return res.blob();
   }
 
   // Onboard Representative

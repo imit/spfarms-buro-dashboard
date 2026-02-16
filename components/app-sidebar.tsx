@@ -45,7 +45,7 @@ const data = {
     },
     {
       title: "Products",
-      url: "#",
+      url: "/admin/products",
       icon: (
         <BoxIcon
         />
@@ -53,7 +53,7 @@ const data = {
     },
     {
       title: "Projects",
-      url: "#",
+      url: "/admin/projects",
       icon: (
         <FolderIcon
         />

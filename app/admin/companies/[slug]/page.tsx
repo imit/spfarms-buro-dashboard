@@ -8,13 +8,21 @@ import { useAuth } from "@/contexts/auth-context";
 import {
   apiClient,
   type Company,
+  type LeadStatus,
   COMPANY_TYPE_LABELS,
+  LEAD_STATUS_LABELS,
   REGION_LABELS,
   ROLE_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +44,21 @@ import {
   Trash2Icon,
   UserIcon,
 } from "lucide-react";
+
+const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
+  idle: "bg-slate-100 text-slate-700",
+  contacted: "bg-blue-100 text-blue-700",
+  sampled: "bg-purple-100 text-purple-700",
+  follow_up: "bg-amber-100 text-amber-700",
+  negotiating: "bg-orange-100 text-orange-700",
+  first_order: "bg-green-100 text-green-700",
+  repeat: "bg-emerald-100 text-emerald-700",
+  loyal: "bg-emerald-200 text-emerald-800",
+  inactive: "bg-gray-100 text-gray-500",
+  lost: "bg-red-100 text-red-700",
+};
+
+const LEAD_STATUSES = Object.entries(LEAD_STATUS_LABELS) as [LeadStatus, string][];
 
 function DetailRow({
   label,
@@ -105,6 +128,18 @@ export default function CompanyDetailPage({
     }
   }
 
+  async function handleLeadStatusChange(status: string) {
+    if (!company) return;
+    try {
+      const updated = await apiClient.updateCompany(company.slug, { lead_status: status });
+      setCompany(updated);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to update status"
+      );
+    }
+  }
+
   if (authLoading || !isAuthenticated) return null;
 
   if (isLoading) {
@@ -151,6 +186,38 @@ export default function CompanyDetailPage({
             <Badge variant={company.active ? "default" : "secondary"}>
               {company.active ? "Active" : "Inactive"}
             </Badge>
+          </div>
+          <div className="ml-11 mt-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-opacity hover:opacity-80 ${LEAD_STATUS_COLORS[company.lead_status] || ""}`}
+                >
+                  {LEAD_STATUS_LABELS[company.lead_status] || company.lead_status}
+                  <svg width="10" height="10" viewBox="0 0 10 10" className="opacity-50">
+                    <path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {LEAD_STATUSES.map(([value, label]) => (
+                  <DropdownMenuItem
+                    key={value}
+                    onClick={() => handleLeadStatusChange(value)}
+                  >
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_STATUS_COLORS[value]}`}
+                    >
+                      {label}
+                    </span>
+                    {value === company.lead_status && (
+                      <span className="ml-auto text-xs text-muted-foreground">current</span>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           {company.description && (
             <p className="text-sm text-muted-foreground ml-11">
