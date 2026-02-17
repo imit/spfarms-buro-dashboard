@@ -24,6 +24,21 @@ export interface UserCompanyMembership {
   company_title: string | null;
 }
 
+export interface UserReferral {
+  company_id: number;
+  company_name: string;
+  company_slug: string;
+  total_orders: number;
+  completed_orders: number;
+  total_revenue: number;
+}
+
+export interface UserInviter {
+  id: number;
+  full_name: string | null;
+  email: string;
+}
+
 export interface User {
   id: number;
   email: string;
@@ -33,7 +48,16 @@ export interface User {
   company_slug: string | null;
   company_name: string | null;
   companies: UserCompanyMembership[];
+  referrals: UserReferral[];
+  invited_by: UserInviter | null;
   created_at: string;
+  invitation_sent_at: string | null;
+  sign_in_count: number;
+  current_sign_in_at: string | null;
+  last_sign_in_at: string | null;
+  current_sign_in_ip: string | null;
+  last_sign_in_ip: string | null;
+  last_active_at: string | null;
 }
 
 export type Region =
@@ -114,6 +138,12 @@ export interface CompanyMember {
   company_title: string | null;
 }
 
+export interface CompanyReferrer {
+  id: number;
+  full_name: string | null;
+  email: string;
+}
+
 export interface Company {
   id: number;
   name: string;
@@ -130,6 +160,7 @@ export interface Company {
   logo_url: string | null;
   locations: Location[];
   members: CompanyMember[];
+  referred_by: CompanyReferrer | null;
   created_at: string;
   updated_at: string;
 }
@@ -1339,6 +1370,7 @@ export class ApiClient {
       phone_number?: string;
       company_title?: string;
     };
+    send_email?: boolean;
   }): Promise<{ company: Company; user: User }> {
     const res = await this.request<{ data: { company: Company; user: User } }>(
       "/api/v1/onboard_representative",
@@ -1348,6 +1380,14 @@ export class ApiClient {
       }
     );
     return res.data;
+  }
+
+  async sendWelcomeEmail(userId: number): Promise<User> {
+    const res = await this.request<{ data: { attributes: User } }>(
+      `/api/v1/users/${userId}/send_welcome_email`,
+      { method: "POST" }
+    );
+    return res.data.attributes;
   }
 
   // Cart

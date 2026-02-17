@@ -28,7 +28,7 @@ export default function PortalLayout({
   return (
     <div className="min-h-screen">
       <ShopHeader slug={slug} />
-      <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+      <main className="mx-auto max-w-9xl px-12 py-6">
         {children}
       </main>
     </div>

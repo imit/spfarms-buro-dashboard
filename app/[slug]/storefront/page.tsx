@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { apiClient, type Product, type Strain } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { ProductCard } from "@/components/storefront/product-card";
+import { PandaSymbol } from "@/components/shared/panda-symbol";
 import { toast } from "sonner";
 
 export default function StorefrontPage({
@@ -59,32 +60,41 @@ export default function StorefrontPage({
 
   if (isLoading) {
     return (
-      <div>
-        <h1 className="text-2xl font-bold mb-6">Shop</h1>
-        <p className="text-muted-foreground">Loading products...</p>
+      <div className="flex h-full">
+        <div className="w-1/2 flex items-center justify-center px-8">
+          <p style={{ color: "#050403", opacity: 0.5 }}>Loading products...</p>
+        </div>
+        <div className="w-1/2 flex items-center justify-center">
+          <PandaSymbol />
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Shop</h1>
+    <div className="flex h-full">
+      {/* Left side — store content */}
+      <div className="w-1/2 overflow-y-auto px-8 py-6">
+        <h1 className="text-2xl font-bold mb-6">Shop</h1>
 
-      {products.length === 0 ? (
-        <p className="text-muted-foreground">No products available.</p>
-      ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              slug={slug}
-              strain={product.strain_id ? strainMap[product.strain_id] : undefined}
-              onAddToCart={handleAddToCart}
-            />
-          ))}
-        </div>
-      )}
+        {products.length === 0 ? (
+          <p style={{ opacity: 0.5 }}>No products available.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {products.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                slug={slug}
+                strain={product.strain_id ? strainMap[product.strain_id] : undefined}
+                onAddToCart={handleAddToCart}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+    
     </div>
   );
 }

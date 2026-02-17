@@ -240,6 +240,8 @@ export default function UsersPage() {
                 <th className="px-4 py-3 text-left font-medium">Name</th>
                 <th className="px-4 py-3 text-left font-medium">Company</th>
                 <th className="px-4 py-3 text-left font-medium">Role</th>
+                <th className="px-4 py-3 text-left font-medium">Invited by</th>
+                <th className="px-4 py-3 text-left font-medium">Status</th>
                 <th className="px-4 py-3 text-left font-medium">Created</th>
               </tr>
             </thead>
@@ -276,6 +278,20 @@ export default function UsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline">{ROLE_LABELS[u.role]}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                    {u.invited_by
+                      ? (u.invited_by.full_name || u.invited_by.email)
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.sign_in_count > 0 ? (
+                      <Badge variant="default">Active</Badge>
+                    ) : u.invitation_sent_at ? (
+                      <Badge variant="secondary">Invited</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">Added</Badge>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(u.created_at).toLocaleDateString()}

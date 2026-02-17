@@ -39,7 +39,7 @@ export function ShopHeader({ slug }: { slug: string }) {
   }, [slug]);
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background">
+    <header className="sticky top-0 z-50 border-b" style={{ backgroundColor: "#F3F1EF", borderColor: "#050403/10" }}>
       <div className="flex h-14 items-center justify-between px-4 lg:px-6">
         <Link href={`/${slug}/storefront`} className="w-28">
           <Logo />

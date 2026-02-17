@@ -272,6 +272,17 @@ export default function CompanyDetailPage({
             <DetailRow label="License #" value={company.license_number} />
             <DetailRow label="Slug" value={company.slug} />
             <DetailRow
+              label="Referred by"
+              value={company.referred_by ? (
+                <Link
+                  href={`/admin/users/${company.referred_by.id}`}
+                  className="text-primary hover:underline"
+                >
+                  {company.referred_by.full_name || company.referred_by.email}
+                </Link>
+              ) : null}
+            />
+            <DetailRow
               label="Created"
               value={new Date(company.created_at).toLocaleDateString()}
             />

@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle2Icon, XIcon } from "lucide-react";
 
 const TITLE_SUGGESTIONS = [
@@ -40,6 +41,7 @@ export function OnboardRepresentativeForm() {
   const [success, setSuccess] = useState<{
     companyName: string;
     email: string;
+    emailSent: boolean;
   } | null>(null);
 
   // Dispensary mode: "search" (Google Places) or "manual" (type name)
@@ -57,6 +59,7 @@ export function OnboardRepresentativeForm() {
     company_title: "",
   });
   const [notes, setNotes] = useState("");
+  const [sendEmail, setSendEmail] = useState(false);
 
   function updateRep(field: string, value: string) {
     setRep((prev) => ({ ...prev, [field]: value }));
@@ -105,6 +108,7 @@ export function OnboardRepresentativeForm() {
           phone_number: rep.phone_number || undefined,
           company_title: rep.company_title || undefined,
         },
+        send_email: sendEmail,
       };
 
       // Add location data from Google Places
@@ -124,6 +128,7 @@ export function OnboardRepresentativeForm() {
       setSuccess({
         companyName,
         email: rep.email,
+        emailSent: sendEmail,
       });
 
       // Reset form
@@ -132,6 +137,7 @@ export function OnboardRepresentativeForm() {
       setOcmLicense("");
       setRep({ full_name: "", email: "", phone_number: "", company_title: "" });
       setNotes("");
+      setSendEmail(false);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to onboard representative"
@@ -147,9 +153,14 @@ export function OnboardRepresentativeForm() {
         <CheckCircle2Icon className="mx-auto size-12 text-green-600" />
         <h3 className="text-lg font-semibold">Representative Onboarded</h3>
         <p className="text-sm text-muted-foreground">
-          <strong>{success.companyName}</strong> has been created and a welcome
-          email with a login link has been sent to{" "}
-          <strong>{success.email}</strong>.
+          <strong>{success.companyName}</strong> has been created
+          {success.emailSent ? (
+            <> and a welcome email with a login link has been sent to{" "}
+            <strong>{success.email}</strong></>
+          ) : (
+            <>. No invitation email was sent to{" "}
+            <strong>{success.email}</strong> &mdash; you can send it later from the user&apos;s profile</>
+          )}.
         </p>
         <div className="flex gap-3 justify-center pt-2">
           <Button onClick={() => setSuccess(null)}>Onboard Another</Button>
@@ -334,6 +345,22 @@ export function OnboardRepresentativeForm() {
           </Field>
         </FieldGroup>
       </section>
+
+      {/* Send email option */}
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="send-email"
+          checked={sendEmail}
+          onCheckedChange={(checked) => setSendEmail(checked === true)}
+          disabled={isSubmitting}
+        />
+        <label
+          htmlFor="send-email"
+          className="text-sm cursor-pointer select-none"
+        >
+          Send invitation email with login link
+        </label>
+      </div>
 
       {/* Submit */}
       <Button

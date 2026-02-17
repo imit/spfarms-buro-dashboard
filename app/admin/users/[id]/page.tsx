@@ -20,13 +20,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeftIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, SendIcon, Trash2Icon } from "lucide-react";
+import { toast } from "sonner";
 
 function DetailRow({
   label,
   value,
 }: {
-  label: string;
+  label: React.ReactNode;
   value: React.ReactNode;
 }) {
   if (!value) return null;
@@ -50,6 +51,7 @@ export default function UserDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -86,6 +88,20 @@ export default function UserDetailPage({
     }
   }
 
+  async function handleSendEmail() {
+    if (!user) return;
+    setIsSendingEmail(true);
+    try {
+      const updated = await apiClient.sendWelcomeEmail(user.id);
+      setUser(updated);
+      toast.success(`Welcome email sent to ${user.email}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send email");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  }
+
   if (authLoading || !isAuthenticated) return null;
   if (isLoading)
     return <p className="text-muted-foreground px-10">Loading...</p>;
@@ -118,13 +134,25 @@ export default function UserDetailPage({
             <Badge variant="outline">{ROLE_LABELS[user.role]}</Badge>
           </div>
         </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" disabled={isDeleting}>
-              <Trash2Icon className="mr-2 size-4" />
-              Delete
+        <div className="flex gap-2">
+          {!user.invitation_sent_at && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSendEmail}
+              disabled={isSendingEmail}
+            >
+              <SendIcon className="mr-2 size-4" />
+              {isSendingEmail ? "Sending..." : "Send Email"}
             </Button>
-          </AlertDialogTrigger>
+          )}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={isDeleting}>
+                <Trash2Icon className="mr-2 size-4" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete user?</AlertDialogTitle>
@@ -140,6 +168,7 @@ export default function UserDetailPage({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        </div>
       </div>
 
       <div className="max-w-md rounded-lg border bg-card p-5">
@@ -152,6 +181,67 @@ export default function UserDetailPage({
           <DetailRow
             label="Role"
             value={<Badge variant="outline">{ROLE_LABELS[user.role]}</Badge>}
+          />
+          <DetailRow
+            label="Invited by"
+            value={user.invited_by ? (
+              <Link
+                href={`/admin/users/${user.invited_by.id}`}
+                className="text-primary hover:underline"
+              >
+                {user.invited_by.full_name || user.invited_by.email}
+              </Link>
+            ) : null}
+          />
+          <DetailRow
+            label="Status"
+            value={
+              user.sign_in_count > 0 ? (
+                <Badge variant="default">Active</Badge>
+              ) : user.invitation_sent_at ? (
+                <Badge variant="secondary">Invited</Badge>
+              ) : (
+                <Badge variant="outline" className="text-muted-foreground">Added</Badge>
+              )
+            }
+          />
+          {user.invitation_sent_at && (
+            <DetailRow
+              label="Email Sent"
+              value={new Date(user.invitation_sent_at).toLocaleString()}
+            />
+          )}
+          <DetailRow
+            label="Sign-ins"
+            value={String(user.sign_in_count)}
+          />
+          <DetailRow
+            label="Current Sign-in"
+            value={user.current_sign_in_at ? (
+              <>
+                {new Date(user.current_sign_in_at).toLocaleString()}
+                {user.current_sign_in_ip && (
+                  <span className="text-muted-foreground ml-1">({user.current_sign_in_ip})</span>
+                )}
+              </>
+            ) : <span className="text-muted-foreground">Never</span>}
+          />
+          <DetailRow
+            label="Last Sign-in"
+            value={user.last_sign_in_at ? (
+              <>
+                {new Date(user.last_sign_in_at).toLocaleString()}
+                {user.last_sign_in_ip && (
+                  <span className="text-muted-foreground ml-1">({user.last_sign_in_ip})</span>
+                )}
+              </>
+            ) : <span className="text-muted-foreground">Never</span>}
+          />
+          <DetailRow
+            label="Last Active"
+            value={user.last_active_at
+              ? new Date(user.last_active_at).toLocaleString()
+              : <span className="text-muted-foreground">Never</span>}
           />
           <DetailRow
             label="Created"
@@ -168,11 +258,79 @@ export default function UserDetailPage({
             {user.companies.map((c) => (
               <DetailRow
                 key={c.slug}
-                label={c.name}
+                label={
+                  <Link
+                    href={`/admin/companies/${c.slug}`}
+                    className="text-primary hover:underline"
+                  >
+                    {c.name}
+                  </Link>
+                }
                 value={c.company_title || "Member"}
               />
             ))}
           </dl>
+        </div>
+      )}
+
+      {user.referrals && user.referrals.length > 0 && (
+        <div className="max-w-lg rounded-lg border bg-card p-5">
+          <h3 className="font-medium mb-3">Referrals</h3>
+          <Separator className="mb-3" />
+          <div className="grid grid-cols-3 gap-4 mb-4 text-center">
+            <div>
+              <p className="text-2xl font-semibold">{user.referrals.length}</p>
+              <p className="text-xs text-muted-foreground">Companies</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">
+                {user.referrals.reduce((sum, r) => sum + r.completed_orders, 0)}
+              </p>
+              <p className="text-xs text-muted-foreground">Completed Orders</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">
+                ${user.referrals.reduce((sum, r) => sum + r.total_revenue, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-muted-foreground">Total Revenue</p>
+            </div>
+          </div>
+          <div className="rounded-md border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-3 py-2 text-left font-medium">Company</th>
+                  <th className="px-3 py-2 text-right font-medium">Orders</th>
+                  <th className="px-3 py-2 text-right font-medium">Completed</th>
+                  <th className="px-3 py-2 text-right font-medium">Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {user.referrals.map((r) => (
+                  <tr key={r.company_id} className="border-b last:border-0">
+                    <td className="px-3 py-2">
+                      <Link
+                        href={`/admin/companies/${r.company_slug}`}
+                        className="hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {r.company_name}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2 text-right text-muted-foreground">
+                      {r.total_orders}
+                    </td>
+                    <td className="px-3 py-2 text-right text-muted-foreground">
+                      {r.completed_orders}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      ${r.total_revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

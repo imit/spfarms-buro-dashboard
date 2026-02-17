@@ -110,17 +110,7 @@ export function ProductCard({
           </Link>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Badge variant="outline" className="text-xs">
-            {PRODUCT_TYPE_LABELS[product.product_type]}
-          </Badge>
-          {product.strain_name && (
-            <Badge variant="secondary" className="text-xs gap-1">
-              <LeafIcon className="size-3" />
-              {product.strain_name}
-            </Badge>
-          )}
-        </div>
+       
 
         {/* Cannabinoid profile */}
         {hasCannabinoids && (
@@ -131,24 +121,7 @@ export function ProductCard({
           </div>
         )}
 
-        {/* Flavor / smell tags */}
-        {smellTags.length > 0 && (
-          <div className="flex items-center gap-1 flex-wrap">
-            {smellTags.slice(0, 3).map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
-              >
-                {tag}
-              </span>
-            ))}
-            {smellTags.length > 3 && (
-              <span className="text-[10px] text-muted-foreground">
-                +{smellTags.length - 3}
-              </span>
-            )}
-          </div>
-        )}
+        
 
         {/* Total package weight */}
         {totalWeight && (
@@ -176,28 +149,10 @@ export function ProductCard({
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-md border">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              disabled={quantity <= 1}
-            >
-              <MinusIcon className="size-3" />
-            </Button>
-            <span className="w-8 text-center text-sm">{quantity}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              onClick={() => setQuantity(quantity + 1)}
-            >
-              <PlusIcon className="size-3" />
-            </Button>
-          </div>
+          
           <Button
-            size="sm"
+            size="lg"
+            variant="default"
             className="flex-1"
             onClick={handleAdd}
             disabled={adding}
