@@ -1,24 +1,14 @@
 "use client";
 
 import { useState, FormEvent } from "react"
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { apiClient } from "@/lib/api"
 
 type LoginMode = "password" | "magic_link"
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -64,86 +54,76 @@ export function LoginForm({
   }
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0">
-        <CardContent className="grid p-0 md:grid-cols-2">
-          <form
-            onSubmit={mode === "password" ? handlePasswordSubmit : handleMagicLinkSubmit}
-            className="p-6 md:p-8"
-          >
-            <FieldGroup>
-              <div className="flex flex-col items-center gap-2 text-center">
-                <h1 className="text-2xl font-bold">Welcome back</h1>
-                <p className="text-muted-foreground text-balance">
-                  Login to your SPFarms New York account
-                </p>
-              </div>
-              {error && (
-                <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div className="bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 rounded-md p-3 text-sm">
-                  {success}
-                </div>
-              )}
-              <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </Field>
-              {mode === "password" && (
-                <Field>
-                  <div className="flex items-center">
-                    <FieldLabel htmlFor="password">Password</FieldLabel>
-                  </div>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    disabled={isLoading}
-                  />
-                </Field>
-              )}
-              <Field>
-                <Button type="submit" disabled={isLoading} className="w-full">
-                  {isLoading
-                    ? (mode === "password" ? "Logging in..." : "Sending link...")
-                    : (mode === "password" ? "Login" : "Send login link")}
-                </Button>
-              </Field>
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={toggleMode}
-                  className="text-sm text-muted-foreground underline hover:text-foreground"
-                >
-                  {mode === "password"
-                    ? "Login with a magic link instead"
-                    : "Login with password instead"}
-                </button>
-              </div>
-            </FieldGroup>
-          </form>
-          <div className="bg-muted relative hidden md:block">
-            <img
-              src="/placeholder.svg"
-              alt="Image"
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-            />
+    <div className="flex flex-col items-center w-full max-w-sm">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/panda-symbol.svg" alt="SPFarms" className="w-20 h-auto mb-6" />
+
+      <h1 className="text-4xl font-light tracking-tight text-[#050403] mb-10">
+        Welcome friend
+      </h1>
+
+      <form
+        onSubmit={mode === "password" ? handlePasswordSubmit : handleMagicLinkSubmit}
+        className="w-full flex flex-col gap-4"
+      >
+        {error && (
+          <div className="bg-red-100 text-red-800 rounded-xl p-3 text-sm text-center">
+            {error}
           </div>
-        </CardContent>
-      </Card>
+        )}
+        {success && (
+          <div className="bg-green-100 text-green-800 rounded-xl p-3 text-sm text-center">
+            {success}
+          </div>
+        )}
+
+        <Input
+          id="email"
+          type="email"
+          placeholder="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          disabled={isLoading}
+          className="h-14 rounded-xl border-0 bg-white text-base px-5 shadow-none"
+        />
+
+        {mode === "password" && (
+          <Input
+            id="password"
+            type="password"
+            placeholder="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={isLoading}
+            className="h-14 rounded-xl border-0 bg-white text-base px-5 shadow-none"
+          />
+        )}
+
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="w-full h-14 rounded-xl text-lg font-medium mt-2"
+          style={{ backgroundColor: "#48A848" }}
+        >
+          {isLoading
+            ? (mode === "password" ? "Logging in..." : "Sending link...")
+            : (mode === "password" ? "Login" : "Send login link")}
+        </Button>
+
+        <div className="text-center mt-2">
+          <button
+            type="button"
+            onClick={toggleMode}
+            className="text-sm text-[#050403]/60 underline hover:text-[#050403]"
+          >
+            {mode === "password"
+              ? "Login with a magic link instead"
+              : "Login with password instead"}
+          </button>
+        </div>
+      </form>
     </div>
   )
 }
