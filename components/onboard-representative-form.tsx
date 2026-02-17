@@ -59,7 +59,7 @@ export function OnboardRepresentativeForm() {
     company_title: "",
   });
   const [notes, setNotes] = useState("");
-  const [sendEmail, setSendEmail] = useState(false);
+  const [sendEmail, setSendEmail] = useState(true);
 
   function updateRep(field: string, value: string) {
     setRep((prev) => ({ ...prev, [field]: value }));
@@ -260,16 +260,7 @@ export function OnboardRepresentativeForm() {
           </>
         )}
 
-        <Field>
-          <FieldLabel htmlFor="ocm-license">OCM License</FieldLabel>
-          <Input
-            id="ocm-license"
-            value={ocmLicense}
-            onChange={(e) => setOcmLicense(e.target.value)}
-            placeholder="OCM-XXXXX"
-            disabled={isSubmitting}
-          />
-        </Field>
+        
       </section>
 
       {/* Section 2: Representative */}
@@ -344,6 +335,16 @@ export function OnboardRepresentativeForm() {
             />
           </Field>
         </FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="ocm-license">OCM License</FieldLabel>
+          <Input
+            id="ocm-license"
+            value={ocmLicense}
+            onChange={(e) => setOcmLicense(e.target.value)}
+            placeholder="OCM-XXXXX"
+            disabled={isSubmitting}
+          />
+        </Field>
       </section>
 
       {/* Send email option */}

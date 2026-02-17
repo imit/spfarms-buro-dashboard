@@ -84,6 +84,7 @@ export default function StrainDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   // COA upload dialog state
   const [coaDialogOpen, setCoaDialogOpen] = useState(false);
@@ -141,6 +142,21 @@ export default function StrainDetailPage({
         err instanceof Error ? err.message : "Failed to delete strain"
       );
       setIsDeleting(false);
+    }
+  }
+
+  async function handleToggleActive() {
+    if (!strain) return;
+    setTogglingStatus(true);
+    try {
+      const formData = new FormData();
+      formData.append("strain[active]", String(!strain.active));
+      const updated = await apiClient.updateStrain(strain.id, formData);
+      setStrain(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update status");
+    } finally {
+      setTogglingStatus(false);
     }
   }
 
@@ -276,9 +292,11 @@ export default function StrainDetailPage({
                 {CATEGORY_LABELS[strain.category]}
               </Badge>
             )}
-            <Badge variant={strain.active ? "default" : "secondary"}>
-              {strain.active ? "Active" : "Inactive"}
-            </Badge>
+            <button onClick={handleToggleActive} disabled={togglingStatus}>
+              <Badge variant={strain.active ? "default" : "secondary"} className="cursor-pointer">
+                {togglingStatus ? "..." : strain.active ? "Active" : "Inactive"}
+              </Badge>
+            </button>
           </div>
           {strain.description && (
             <p className="text-sm text-muted-foreground ml-11">
