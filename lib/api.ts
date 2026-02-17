@@ -986,6 +986,20 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
+  async updateUser(
+    id: number,
+    data: { email?: string; full_name?: string; phone_number?: string; role?: UserRole }
+  ): Promise<User> {
+    const res = await this.request<JsonApiResponse<User>>(
+      `/api/v1/users/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ user: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async deleteUser(id: number): Promise<void> {
     await this.request(`/api/v1/users/${id}`, {
       method: "DELETE",
@@ -1457,6 +1471,7 @@ export class ApiClient {
       company_title?: string;
     };
     send_email?: boolean;
+    referred_by_id?: number;
   }): Promise<{ company: Company; user: User }> {
     const res = await this.request<{ data: { company: Company; user: User } }>(
       "/api/v1/onboard_representative",

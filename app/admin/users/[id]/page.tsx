@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeftIcon, SendIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, PencilIcon, SendIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 function DetailRow({
@@ -135,15 +135,21 @@ export default function UserDetailPage({
           </div>
         </div>
         <div className="flex gap-2">
-          {!user.invitation_sent_at && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSendEmail}
-              disabled={isSendingEmail}
-            >
-              <SendIcon className="mr-2 size-4" />
-              {isSendingEmail ? "Sending..." : "Send Email"}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSendEmail}
+            disabled={isSendingEmail}
+          >
+            <SendIcon className="mr-2 size-4" />
+            {isSendingEmail ? "Sending..." : user.invitation_sent_at ? "Resend Invitation" : "Send Invitation"}
+          </Button>
+          {currentUser?.role === "admin" && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/admin/users/${user.id}/edit`}>
+                <PencilIcon className="mr-2 size-4" />
+                Edit
+              </Link>
             </Button>
           )}
           {currentUser?.role === "admin" && (

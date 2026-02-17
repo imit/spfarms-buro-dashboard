@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, type FormEvent } from "react";
+import { useEffect, useState, useRef, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { apiClient } from "@/lib/api";
+import { apiClient, type User } from "@/lib/api";
+import { useAuth } from "@/contexts/auth-context";
 import {
   useGooglePlacesAutocomplete,
   type PlaceResult,
@@ -32,6 +33,7 @@ const TITLE_SUGGESTIONS = [
 
 export function OnboardRepresentativeForm() {
   const router = useRouter();
+  const { user: currentUser } = useAuth();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { selectedPlace, clearPlace, isLoaded } =
     useGooglePlacesAutocomplete(searchInputRef);
@@ -43,6 +45,18 @@ export function OnboardRepresentativeForm() {
     email: string;
     emailSent: boolean;
   } | null>(null);
+
+  // Staff users for "Referred by" dropdown (admin only)
+  const [staffUsers, setStaffUsers] = useState<User[]>([]);
+  const [referredById, setReferredById] = useState<string>("");
+
+  useEffect(() => {
+    if (currentUser?.role === "admin") {
+      apiClient.getUsers().then((users) => {
+        setStaffUsers(users.filter((u) => u.role !== "account"));
+      }).catch(() => {});
+    }
+  }, [currentUser]);
 
   // Dispensary mode: "search" (Google Places) or "manual" (type name)
   const [dispensaryMode, setDispensaryMode] = useState<"search" | "manual">(
@@ -109,6 +123,7 @@ export function OnboardRepresentativeForm() {
           company_title: rep.company_title || undefined,
         },
         send_email: sendEmail,
+        referred_by_id: referredById ? Number(referredById) : undefined,
       };
 
       // Add location data from Google Places
@@ -138,6 +153,7 @@ export function OnboardRepresentativeForm() {
       setRep({ full_name: "", email: "", phone_number: "", company_title: "" });
       setNotes("");
       setSendEmail(false);
+      setReferredById("");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to onboard representative"
@@ -346,6 +362,27 @@ export function OnboardRepresentativeForm() {
           />
         </Field>
       </section>
+
+      {/* Referred by (admin only) */}
+      {currentUser?.role === "admin" && staffUsers.length > 0 && (
+        <section className="space-y-4">
+          <Field>
+            <FieldLabel htmlFor="referred-by">Referred by</FieldLabel>
+            <Select value={referredById} onValueChange={setReferredById}>
+              <SelectTrigger id="referred-by" className="w-full">
+                <SelectValue placeholder="Myself (default)" />
+              </SelectTrigger>
+              <SelectContent>
+                {staffUsers.map((u) => (
+                  <SelectItem key={u.id} value={String(u.id)}>
+                    {u.full_name || u.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        </section>
+      )}
 
       {/* Send email option */}
       <div className="flex items-center gap-2">
