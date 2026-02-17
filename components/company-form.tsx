@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useRef, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   apiClient,
@@ -10,6 +10,9 @@ import {
   REGION_LABELS,
   COMPANY_TYPE_LABELS,
 } from "@/lib/api";
+import { useAuth } from "@/contexts/auth-context";
+import { useGooglePlacesAutocomplete } from "@/hooks/use-google-places-autocomplete";
+import { UserCombobox } from "@/components/user-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { XIcon } from "lucide-react";
 
 const REGIONS = Object.entries(REGION_LABELS) as [Region, string][];
 const COMPANY_TYPES = Object.entries(COMPANY_TYPE_LABELS) as [CompanyType, string][];
@@ -33,8 +37,16 @@ interface CompanyFormProps {
 export function CompanyForm({ company, mode = "create" }: CompanyFormProps) {
   const isEdit = mode === "edit";
   const router = useRouter();
+  const { user: currentUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [referredById, setReferredById] = useState<string>(
+    company?.referred_by?.id ? String(company.referred_by.id) : ""
+  );
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const { selectedPlace, clearPlace, isLoaded } =
+    useGooglePlacesAutocomplete(searchInputRef);
 
   const firstLocation = company?.locations?.[0];
 
@@ -58,8 +70,31 @@ export function CompanyForm({ company, mode = "create" }: CompanyFormProps) {
       state: firstLocation?.state ?? "NY",
       zip_code: firstLocation?.zip_code ?? "",
       region: (firstLocation?.region ?? "") as Region | "",
+      latitude: firstLocation?.latitude ?? null as number | null,
+      longitude: firstLocation?.longitude ?? null as number | null,
     },
   });
+
+  // Auto-fill form when a Google Place is selected
+  const lastPlaceId = useRef<string | null>(null);
+  if (selectedPlace && selectedPlace.place_id !== lastPlaceId.current) {
+    lastPlaceId.current = selectedPlace.place_id;
+    setForm((prev) => ({
+      ...prev,
+      name: selectedPlace.name || prev.name,
+      website: selectedPlace.website || prev.website,
+      phone_number: selectedPlace.phone_number || prev.phone_number,
+      location: {
+        ...prev.location,
+        address: selectedPlace.address || prev.location.address,
+        city: selectedPlace.city || prev.location.city,
+        state: selectedPlace.state || prev.location.state,
+        zip_code: selectedPlace.zip_code || prev.location.zip_code,
+        latitude: selectedPlace.latitude,
+        longitude: selectedPlace.longitude,
+      },
+    }));
+  }
 
   function updateField(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -102,6 +137,7 @@ export function CompanyForm({ company, mode = "create" }: CompanyFormProps) {
         email: form.email || undefined,
         license_number: form.license_number || undefined,
         social_media: socialMedia,
+        ...(currentUser?.role === "admin" && { referred_by_id: referredById ? Number(referredById) : null }),
       };
 
       if (hasLocation) {
@@ -113,6 +149,8 @@ export function CompanyForm({ company, mode = "create" }: CompanyFormProps) {
             state: loc.state || undefined,
             zip_code: loc.zip_code || undefined,
             region: loc.region || undefined,
+            latitude: loc.latitude || undefined,
+            longitude: loc.longitude || undefined,
           },
         ];
       }
@@ -204,6 +242,52 @@ export function CompanyForm({ company, mode = "create" }: CompanyFormProps) {
       <section className="space-y-4">
         <h3 className="text-lg font-medium">Location</h3>
         <FieldGroup>
+          {!isEdit && (
+            <Field>
+              <FieldLabel htmlFor="place-search">Search Google Places</FieldLabel>
+              {selectedPlace ? (
+                <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {selectedPlace.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[
+                        selectedPlace.address,
+                        selectedPlace.city,
+                        selectedPlace.state,
+                        selectedPlace.zip_code,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearPlace();
+                      lastPlaceId.current = null;
+                      if (searchInputRef.current) searchInputRef.current.value = "";
+                    }}
+                    className="rounded-full p-1 hover:bg-muted-foreground/20"
+                  >
+                    <XIcon className="size-4 text-muted-foreground" />
+                  </button>
+                </div>
+              ) : (
+                <Input
+                  ref={searchInputRef}
+                  id="place-search"
+                  placeholder={
+                    isLoaded
+                      ? "Start typing a business name..."
+                      : "Loading Google Places..."
+                  }
+                  disabled={!isLoaded || isSubmitting}
+                />
+              )}
+            </Field>
+          )}
           <Field>
             <FieldLabel htmlFor="address">Street Address</FieldLabel>
             <Input
@@ -345,6 +429,21 @@ export function CompanyForm({ company, mode = "create" }: CompanyFormProps) {
           </div>
         </FieldGroup>
       </section>
+
+      {/* Referred by (admin only) */}
+      {currentUser?.role === "admin" && (
+        <section className="space-y-4">
+          <Field>
+            <FieldLabel>Referred by</FieldLabel>
+            <UserCombobox
+              value={referredById}
+              onValueChange={setReferredById}
+              placeholder="Select referrer..."
+              disabled={isSubmitting}
+            />
+          </Field>
+        </section>
+      )}
 
       {/* Actions */}
       <div className="flex gap-3">

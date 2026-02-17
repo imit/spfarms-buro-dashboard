@@ -15,7 +15,7 @@ import {
   REGION_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, AlertTriangleIcon } from "lucide-react";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   idle: "bg-slate-100 text-slate-700",
@@ -156,6 +156,7 @@ export default function CompaniesPage() {
                 <th className="px-4 py-3 text-left font-medium">Name</th>
                 <th className="px-4 py-3 text-left font-medium">Type</th>
                 <th className="px-4 py-3 text-left font-medium">Lead Status</th>
+                <th className="px-4 py-3 text-left font-medium">Account</th>
                 <th className="px-4 py-3 text-left font-medium">Location</th>
                 <th className="px-4 py-3 text-left font-medium">License #</th>
               </tr>
@@ -187,6 +188,20 @@ export default function CompaniesPage() {
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_STATUS_COLORS[c.lead_status] || ""}`}
                         >
                           {LEAD_STATUS_LABELS[c.lead_status] || c.lead_status}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {c.deleted_at ? (
+                        <span className="text-muted-foreground">-</span>
+                      ) : c.members?.length > 0 ? (
+                        <span className="text-muted-foreground">
+                          {c.members.length} {c.members.length === 1 ? "member" : "members"}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-amber-600 text-xs font-medium">
+                          <AlertTriangleIcon className="size-3.5" />
+                          No account
                         </span>
                       )}
                     </td>
