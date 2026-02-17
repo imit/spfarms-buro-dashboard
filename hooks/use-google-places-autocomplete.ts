@@ -94,9 +94,17 @@ export function useGooglePlacesAutocomplete(
   useEffect(() => {
     if (!isLoaded || !inputRef.current || !window.google?.maps?.places) return;
 
+    // Restrict to New York state
+    const nyStateBounds = new google.maps.LatLngBounds(
+      new google.maps.LatLng(40.4961, -79.7624), // SW corner of NY state
+      new google.maps.LatLng(45.0153, -71.8562) // NE corner of NY state
+    );
+
     const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
       types: ["establishment"],
       componentRestrictions: { country: "us" },
+      bounds: nyStateBounds,
+      strictBounds: true,
       fields: [
         "name",
         "formatted_address",
@@ -107,13 +115,6 @@ export function useGooglePlacesAutocomplete(
         "website",
       ],
     });
-
-    // Bias results toward New York
-    const nyBounds = new google.maps.LatLngBounds(
-      new google.maps.LatLng(40.4774, -74.2591), // SW corner
-      new google.maps.LatLng(41.3875, -71.7517) // NE corner
-    );
-    autocomplete.setBounds(nyBounds);
 
     autocomplete.addListener("place_changed", () => {
       const place = autocomplete.getPlace();
