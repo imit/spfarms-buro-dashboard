@@ -12,6 +12,7 @@ import {
   type UserRole,
 } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
+import { Button } from "@/components/ui/button";
 import {
   ShoppingCartIcon,
   DollarSignIcon,
@@ -22,6 +23,7 @@ import {
   TrophyIcon,
   StarIcon,
   CrownIcon,
+  UserPlusIcon,
 } from "lucide-react";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
@@ -61,7 +63,7 @@ function timeAgo(dateStr: string) {
 }
 
 export default function DashboardPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user: currentUser } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,6 +112,24 @@ export default function DashboardPage() {
           Overview of your business
         </p>
       </div>
+
+      {/* Sales CTA */}
+      {currentUser?.role === "sales" && (
+        <Link
+          href="/admin/onboard"
+          className="flex items-center gap-5 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-6 hover:bg-primary/10 transition-colors"
+        >
+          <div className="flex items-center justify-center size-14 rounded-full bg-primary/10 text-primary shrink-0">
+            <UserPlusIcon className="size-7" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold">Quick Onboard</p>
+            <p className="text-sm text-muted-foreground">
+              Add a new dispensary and representative account
+            </p>
+          </div>
+        </Link>
+      )}
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -48,14 +48,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  // Redirect unauthenticated users to login for any non-public route
+  // Redirect unauthenticated users to login, or authenticated users away from login
   useEffect(() => {
     if (isLoading) return;
     const isPublic = PUBLIC_ROUTES.includes(pathname);
     if (!isPublic && !hasToken) {
       router.push("/");
+    } else if (pathname === "/" && hasToken && user) {
+      router.push(getRedirectPath(user));
     }
-  }, [isLoading, hasToken, pathname, router]);
+  }, [isLoading, hasToken, user, pathname, router]);
 
   // Auto-logout on session expiry (401 from API)
   useEffect(() => {
