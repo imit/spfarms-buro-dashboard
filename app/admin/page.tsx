@@ -155,7 +155,7 @@ export default function DashboardPage() {
           icon={<FlaskConicalIcon className="size-5" />}
           label="Samples Dropped"
           value={String(stats.samples_dropped)}
-          href="/admin/companies"
+          href="/admin/samples"
         />
       </div>
 

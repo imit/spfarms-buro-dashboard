@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Avatar from "boring-avatars";
-import { ShoppingCartIcon, BellIcon, LogOutIcon, PackageIcon, SettingsIcon } from "lucide-react";
+import { ShoppingCartIcon, BellIcon, LogOutIcon, PackageIcon, FlaskConicalIcon, SettingsIcon } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { useAuth } from "@/contexts/auth-context";
 import { apiClient } from "@/lib/api";
@@ -120,6 +120,10 @@ export function ShopHeader({ slug }: { slug: string }) {
               <DropdownMenuItem onClick={() => router.push(`/${slug}/orders`)}>
                 <PackageIcon className="mr-2 size-4" />
                 My Orders
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(`/${slug}/samples`)}>
+                <FlaskConicalIcon className="mr-2 size-4" />
+                My Samples
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>

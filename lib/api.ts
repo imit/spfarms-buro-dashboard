@@ -659,6 +659,52 @@ export interface Order {
   updated_at: string;
 }
 
+// ---- Samples ----
+
+export interface SampleItem {
+  id: number;
+  sample_uid: string;
+  product_id: number;
+  product_name: string;
+  product_slug: string;
+  product_type: ProductType;
+  weight: number;
+  thumbnail_url: string | null;
+  strain_name: string | null;
+}
+
+export interface Sample {
+  id: number;
+  notes: string | null;
+  dropped_at: string;
+  user: {
+    id: number;
+    full_name: string | null;
+    email: string;
+  };
+  recipient: {
+    id: number;
+    full_name: string | null;
+    email: string;
+  };
+  company: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+  items: SampleItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateSampleParams {
+  company_id: number;
+  recipient_id: number;
+  notes?: string;
+  dropped_at?: string;
+  items: { product_id: number; weight: number; count: number }[];
+}
+
 // ---- Dashboard ----
 
 export interface DashboardRecentCompany {
@@ -1779,6 +1825,37 @@ export class ApiClient {
     });
     if (!res.ok) throw new Error("Failed to generate invoice");
     return res.blob();
+  }
+
+  // Samples
+
+  async getSamples(): Promise<Sample[]> {
+    const res = await this.request<JsonApiCollectionResponse<Sample>>(
+      "/api/v1/samples"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getSample(id: number): Promise<Sample> {
+    const res = await this.request<JsonApiResponse<Sample>>(
+      `/api/v1/samples/${id}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createSample(params: CreateSampleParams): Promise<Sample> {
+    const res = await this.request<JsonApiResponse<Sample>>(
+      "/api/v1/samples",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteSample(id: number): Promise<void> {
+    await this.request(`/api/v1/samples/${id}`, { method: "DELETE" });
   }
 
   // Notifications (Admin)
