@@ -10,6 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 function formatPrice(amount: string | number | null) {
@@ -37,6 +47,7 @@ export default function AdminOrderDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [internalNotes, setInternalNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -125,7 +136,11 @@ export default function AdminOrderDetailPage({
         <div className="flex items-center gap-2">
           <select
             value={order.status}
-            onChange={(e) => updateStatus(e.target.value)}
+            onChange={(e) => {
+              if (e.target.value !== order.status) {
+                setPendingStatus(e.target.value);
+              }
+            }}
             className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             {STATUSES.map(([value, label]) => (
@@ -320,6 +335,32 @@ export default function AdminOrderDetailPage({
           </div>
         </div>
       </div>
+
+      <AlertDialog open={!!pendingStatus} onOpenChange={(open) => { if (!open) setPendingStatus(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change order status?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will change the status from{" "}
+              <strong>{ORDER_STATUS_LABELS[order.status]}</strong> to{" "}
+              <strong>{ORDER_STATUS_LABELS[pendingStatus as OrderStatus]}</strong>.
+              An email notification will be sent to all members of{" "}
+              <strong>{order.company.name}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingStatus(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (pendingStatus) {
+                await updateStatus(pendingStatus);
+                setPendingStatus(null);
+              }
+            }}>
+              Confirm &amp; Notify
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

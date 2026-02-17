@@ -21,6 +21,7 @@ export function ShopHeader({ slug }: { slug: string }) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [cartCount, setCartCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     async function fetchCartCount() {
@@ -37,6 +38,27 @@ export function ShopHeader({ slug }: { slug: string }) {
     const handler = () => fetchCartCount();
     window.addEventListener("cart:updated", handler);
     return () => window.removeEventListener("cart:updated", handler);
+  }, [slug]);
+
+  useEffect(() => {
+    async function fetchUnreadCount() {
+      try {
+        const count = await apiClient.getUnreadNotificationCount();
+        setUnreadCount(count);
+      } catch {
+        // ignore
+      }
+    }
+    fetchUnreadCount();
+
+    const handler = () => fetchUnreadCount();
+    window.addEventListener("notifications:updated", handler);
+    const interval = setInterval(fetchUnreadCount, 60000);
+
+    return () => {
+      window.removeEventListener("notifications:updated", handler);
+      clearInterval(interval);
+    };
   }, [slug]);
 
   return (
@@ -61,9 +83,14 @@ export function ShopHeader({ slug }: { slug: string }) {
             )}
           </Button>
 
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="icon" asChild className="relative">
             <Link href={`/${slug}/notifications`}>
               <BellIcon className="size-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
           </Button>
 

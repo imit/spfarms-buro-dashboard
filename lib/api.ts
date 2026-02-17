@@ -657,6 +657,69 @@ export interface Order {
   updated_at: string;
 }
 
+// ---- Notifications ----
+
+export type NotificationType =
+  | "order_status"
+  | "payment_reminder"
+  | "feedback_request"
+  | "info_request"
+  | "product_update"
+  | "announcement";
+
+export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
+  order_status: "Order Status",
+  payment_reminder: "Payment Reminder",
+  feedback_request: "Feedback Request",
+  info_request: "Information Request",
+  product_update: "Product Update",
+  announcement: "Announcement",
+};
+
+export type NotificationChannel = "email_and_in_app" | "email_only" | "in_app_only";
+export type NotificationTargetType = "company" | "user" | "broadcast";
+
+export interface Notification {
+  id: number;
+  notification_type: NotificationType;
+  subject: string;
+  body: string | null;
+  channel: NotificationChannel;
+  target_type: NotificationTargetType;
+  metadata: Record<string, unknown>;
+  sent_at: string | null;
+  created_at: string;
+  sender: { id: number; full_name: string | null; email: string };
+  target_company: { id: number; name: string; slug: string } | null;
+  target_user: { id: number; full_name: string | null; email: string } | null;
+  order: { id: number; order_number: string; status: OrderStatus } | null;
+  recipient_count: number;
+}
+
+export interface NotificationRecipient {
+  id: number;
+  notification_type: NotificationType;
+  subject: string;
+  body: string | null;
+  metadata: Record<string, unknown>;
+  order: { id: number; order_number: string; status: OrderStatus } | null;
+  read_at: string | null;
+  sent_at: string | null;
+  created_at: string;
+}
+
+export interface CreateNotificationParams {
+  notification_type: NotificationType;
+  subject: string;
+  body?: string;
+  channel?: NotificationChannel;
+  target_type: NotificationTargetType;
+  target_company_id?: number;
+  target_user_id?: number;
+  order_id?: number;
+  metadata?: Record<string, unknown>;
+}
+
 export interface CreateOrderParams {
   company_id: number;
   shipping_location_id?: number;
@@ -1642,6 +1705,63 @@ export class ApiClient {
     });
     if (!res.ok) throw new Error("Failed to generate invoice");
     return res.blob();
+  }
+
+  // Notifications (Admin)
+
+  async getNotifications(): Promise<Notification[]> {
+    const res = await this.request<JsonApiCollectionResponse<Notification>>(
+      "/api/v1/notifications"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getNotification(id: number): Promise<Notification> {
+    const res = await this.request<JsonApiResponse<Notification>>(
+      `/api/v1/notifications/${id}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createNotification(params: CreateNotificationParams): Promise<Notification> {
+    const res = await this.request<JsonApiResponse<Notification>>(
+      "/api/v1/notifications",
+      {
+        method: "POST",
+        body: JSON.stringify({ notification: params }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  // Notifications (Storefront)
+
+  async getMyNotifications(): Promise<NotificationRecipient[]> {
+    const res = await this.request<JsonApiCollectionResponse<NotificationRecipient>>(
+      "/api/v1/notifications/mine"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getUnreadNotificationCount(): Promise<number> {
+    const res = await this.request<{ data: { unread_count: number } }>(
+      "/api/v1/notifications/unread_count"
+    );
+    return res.data.unread_count;
+  }
+
+  async markNotificationRead(id: number): Promise<NotificationRecipient> {
+    const res = await this.request<JsonApiResponse<NotificationRecipient>>(
+      `/api/v1/notifications/${id}/read`,
+      { method: "PATCH" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async markAllNotificationsRead(): Promise<void> {
+    await this.request("/api/v1/notifications/read_all", {
+      method: "POST",
+    });
   }
 }
 
