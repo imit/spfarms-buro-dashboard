@@ -10,10 +10,15 @@ interface LoginCredentials {
   password: string;
 }
 
-export type UserRole = "admin" | "editor" | "account";
+export interface MagicLinkError extends Error {
+  expired?: boolean;
+}
+
+export type UserRole = "admin" | "editor" | "account" | "sales";
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Admin",
+  sales: "Sales",
   editor: "Editor",
   account: "Account",
 };
@@ -822,20 +827,38 @@ export class ApiClient {
   async verifyMagicLink(
     token: string
   ): Promise<{ user: User; token: string }> {
-    const res = await this.request<ApiResponse<User> & { token: string }>(
-      "/api/v1/magic_links/verify",
+    const response = await fetch(`${this.baseUrl}/api/v1/magic_links/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ token }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const err = new Error(data.status?.message || "Verification failed");
+      (err as MagicLinkError).expired = !!data.expired;
+      throw err;
+    }
+
+    const jwt = data.token;
+    if (typeof window !== "undefined" && jwt) {
+      localStorage.setItem("auth_token", jwt);
+    }
+
+    return { user: data.data!, token: jwt };
+  }
+
+  async refreshMagicLink(token: string): Promise<{ message: string }> {
+    const res = await this.request<ApiResponse<never>>(
+      "/api/v1/magic_links/refresh",
       {
         method: "POST",
         body: JSON.stringify({ token }),
       }
     );
-
-    const jwt = res.token;
-    if (typeof window !== "undefined" && jwt) {
-      localStorage.setItem("auth_token", jwt);
-    }
-
-    return { user: res.data!, token: jwt };
+    return { message: res.status.message };
   }
 
   // Invitations
@@ -1380,6 +1403,35 @@ export class ApiClient {
       }
     );
     return res.data;
+  }
+
+  // Profile
+
+  async updateProfile(data: { full_name?: string; phone_number?: string }): Promise<User> {
+    const res = await this.request<JsonApiResponse<User>>(
+      "/api/v1/profile",
+      {
+        method: "PATCH",
+        body: JSON.stringify({ user: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  // Company Members
+
+  async inviteCompanyMember(
+    slug: string,
+    data: { email: string; full_name?: string; phone_number?: string; company_title?: string }
+  ): Promise<User> {
+    const res = await this.request<JsonApiResponse<User>>(
+      `/api/v1/companies/${slug}/members`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
   async sendWelcomeEmail(userId: number): Promise<User> {

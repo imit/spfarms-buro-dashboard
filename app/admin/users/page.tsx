@@ -33,7 +33,7 @@ type RoleFilter = "all" | UserRole;
 const ROLES = Object.entries(ROLE_LABELS) as [UserRole, string][];
 
 export default function UsersPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user: currentUser } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,6 +116,7 @@ export default function UsersPage() {
             Manage user accounts and roles
           </p>
         </div>
+        {currentUser?.role === "admin" && (
         <div className="flex gap-2">
           <Dialog open={inviteOpen} onOpenChange={handleInviteOpenChange}>
             <DialogTrigger asChild>
@@ -191,6 +192,7 @@ export default function UsersPage() {
             </Link>
           </Button>
         </div>
+        )}
       </div>
 
       {error && (

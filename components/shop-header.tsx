@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShoppingCartIcon, BellIcon, UserIcon, LogOutIcon, PackageIcon } from "lucide-react";
+import Avatar from "boring-avatars";
+import { ShoppingCartIcon, BellIcon, LogOutIcon, PackageIcon, SettingsIcon } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { useAuth } from "@/contexts/auth-context";
 import { apiClient } from "@/lib/api";
@@ -68,8 +69,13 @@ export function ShopHeader({ slug }: { slug: string }) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <UserIcon className="size-5" />
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Avatar
+                  name={user?.full_name || user?.email || "User"}
+                  variant="beam"
+                  size={28}
+                  colors={["#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51"]}
+                />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -80,6 +86,10 @@ export function ShopHeader({ slug }: { slug: string }) {
                 )}
               </div>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push(`/${slug}/settings`)}>
+                <SettingsIcon className="mr-2 size-4" />
+                Settings
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push(`/${slug}/orders`)}>
                 <PackageIcon className="mr-2 size-4" />
                 My Orders

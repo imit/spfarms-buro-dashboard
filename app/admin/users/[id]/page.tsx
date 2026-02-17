@@ -45,7 +45,7 @@ export default function UserDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user: currentUser } = useAuth();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -146,6 +146,7 @@ export default function UserDetailPage({
               {isSendingEmail ? "Sending..." : "Send Email"}
             </Button>
           )}
+          {currentUser?.role === "admin" && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm" disabled={isDeleting}>
@@ -168,6 +169,7 @@ export default function UserDetailPage({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+          )}
         </div>
       </div>
 

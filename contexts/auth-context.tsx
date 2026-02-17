@@ -6,13 +6,14 @@ import { apiClient, type User } from "@/lib/api";
 
 const PUBLIC_ROUTES = ["/", "/auth/invitation", "/auth/verify"];
 
-export type UserRole = "admin" | "editor" | "account";
+export type UserRole = "admin" | "editor" | "account" | "sales";
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithToken: (user: User) => void;
+  updateUser: (user: User) => void;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -88,6 +89,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push(getRedirectPath(authenticatedUser));
   }, [router]);
 
+  const updateUser = useCallback((updatedUser: User) => {
+    setUser(updatedUser);
+    localStorage.setItem("auth_user", JSON.stringify(updatedUser));
+  }, []);
+
   const logout = async () => {
     try {
       await apiClient.logout();
@@ -109,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         loginWithToken,
+        updateUser,
         logout,
         isAuthenticated: !!user || hasToken,
       }}

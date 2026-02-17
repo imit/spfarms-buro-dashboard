@@ -24,8 +24,8 @@ export default function DashboardLayout({
       router.push("/");
       return;
     }
-    // Account users cannot access admin
-    if (user && user.role === "account") {
+    // Only admin, editor, and sales can access the dashboard
+    if (user && !["admin", "editor", "sales"].includes(user.role)) {
       const redirectTo = user.company_slug ? `/${user.company_slug}` : "/";
       router.push(redirectTo);
     }
@@ -33,7 +33,7 @@ export default function DashboardLayout({
 
   if (isLoading) return null;
   if (!isAuthenticated) return null;
-  if (user && user.role === "account") return null;
+  if (user && !["admin", "editor", "sales"].includes(user.role)) return null;
 
   return (
     <SidebarProvider
