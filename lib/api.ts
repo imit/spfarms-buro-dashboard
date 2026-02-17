@@ -63,6 +63,7 @@ export interface User {
   current_sign_in_ip: string | null;
   last_sign_in_ip: string | null;
   last_active_at: string | null;
+  deleted_at: string | null;
 }
 
 export type Region =
@@ -166,6 +167,7 @@ export interface Company {
   locations: Location[];
   members: CompanyMember[];
   referred_by: CompanyReferrer | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -657,6 +659,52 @@ export interface Order {
   updated_at: string;
 }
 
+// ---- Dashboard ----
+
+export interface DashboardRecentCompany {
+  id: number;
+  name: string;
+  slug: string;
+  lead_status: LeadStatus;
+  company_type: CompanyType;
+  created_at: string;
+}
+
+export interface DashboardRecentUser {
+  id: number;
+  full_name: string | null;
+  email: string;
+  role: UserRole;
+  invitation_sent_at: string;
+}
+
+export interface DashboardEmployeeOfMonth {
+  id: number;
+  full_name: string | null;
+  email: string;
+  role: UserRole;
+  referral_count: number;
+}
+
+export interface DashboardTopDispensary {
+  id: number;
+  name: string;
+  slug: string;
+  order_count: number;
+}
+
+export interface DashboardStats {
+  total_orders: number;
+  total_revenue: number;
+  contacted_dispensaries: number;
+  samples_dropped: number;
+  employee_of_the_month: DashboardEmployeeOfMonth | null;
+  dispensary_of_the_month: DashboardTopDispensary | null;
+  best_dispensary_ever: DashboardTopDispensary | null;
+  recent_companies: DashboardRecentCompany[];
+  recent_users: DashboardRecentUser[];
+}
+
 // ---- Notifications ----
 
 export type NotificationType =
@@ -961,9 +1009,10 @@ export class ApiClient {
 
   // Users
 
-  async getUsers(): Promise<User[]> {
+  async getUsers(opts?: { include_deleted?: boolean }): Promise<User[]> {
+    const query = opts?.include_deleted ? "?include_deleted=true" : "";
     const res = await this.request<JsonApiCollectionResponse<User>>(
-      "/api/v1/users"
+      `/api/v1/users${query}`
     );
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
@@ -1008,9 +1057,10 @@ export class ApiClient {
 
   // Companies
 
-  async getCompanies(): Promise<Company[]> {
+  async getCompanies(opts?: { include_deleted?: boolean }): Promise<Company[]> {
+    const query = opts?.include_deleted ? "?include_deleted=true" : "";
     const res = await this.request<JsonApiCollectionResponse<Company>>(
-      "/api/v1/companies"
+      `/api/v1/companies${query}`
     );
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
@@ -1650,6 +1700,15 @@ export class ApiClient {
 
   async deleteDiscount(id: number): Promise<void> {
     await this.request(`/api/v1/discounts/${id}`, { method: "DELETE" });
+  }
+
+  // Dashboard
+
+  async getDashboardStats(): Promise<DashboardStats> {
+    const res = await this.request<{ data: DashboardStats }>(
+      "/api/v1/dashboard"
+    );
+    return res.data;
   }
 
   // Settings

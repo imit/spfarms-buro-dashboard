@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PlusIcon, SendIcon } from "lucide-react";
 
 type RoleFilter = "all" | UserRole;
@@ -39,6 +40,7 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -56,19 +58,15 @@ export default function UsersPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    async function fetchUsers() {
-      try {
-        const data = await apiClient.getUsers();
-        setUsers(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load users");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchUsers();
-  }, [isAuthenticated]);
+    setIsLoading(true);
+    apiClient
+      .getUsers(showDeleted ? { include_deleted: true } : undefined)
+      .then(setUsers)
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : "Failed to load users")
+      )
+      .finally(() => setIsLoading(false));
+  }, [isAuthenticated, showDeleted]);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -202,7 +200,7 @@ export default function UsersPage() {
       )}
 
       {!isLoading && users.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-1 rounded-lg border p-1">
             <Button
               variant={roleFilter === "all" ? "secondary" : "ghost"}
@@ -222,6 +220,15 @@ export default function UsersPage() {
               </Button>
             ))}
           </div>
+          {currentUser?.role === "admin" && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <Checkbox
+                checked={showDeleted}
+                onCheckedChange={(checked) => setShowDeleted(checked === true)}
+              />
+              Show deleted
+            </label>
+          )}
         </div>
       )}
 
@@ -251,7 +258,7 @@ export default function UsersPage() {
               {filteredUsers.map((u) => (
                 <tr
                   key={u.id}
-                  className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
+                  className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer ${u.deleted_at ? "opacity-50" : ""}`}
                   onClick={() => router.push(`/admin/users/${u.id}`)}
                 >
                   <td className="px-4 py-3">
@@ -287,7 +294,9 @@ export default function UsersPage() {
                       : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {u.sign_in_count > 0 ? (
+                    {u.deleted_at ? (
+                      <Badge variant="destructive">Deleted</Badge>
+                    ) : u.sign_in_count > 0 ? (
                       <Badge variant="default">Active</Badge>
                     ) : u.invitation_sent_at ? (
                       <Badge variant="secondary">Invited</Badge>

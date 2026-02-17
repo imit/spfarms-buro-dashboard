@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   apiClient,
   type Company,
@@ -31,12 +33,13 @@ const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
 const LEAD_STATUSES = Object.entries(LEAD_STATUS_LABELS) as [LeadStatus, string][];
 
 export default function CompaniesPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user: currentUser } = useAuth();
   const router = useRouter();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [leadFilter, setLeadFilter] = useState<LeadStatus | "all">("all");
+  const [showDeleted, setShowDeleted] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -47,19 +50,15 @@ export default function CompaniesPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    async function fetchCompanies() {
-      try {
-        const data = await apiClient.getCompanies();
-        setCompanies(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load companies");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchCompanies();
-  }, [isAuthenticated]);
+    setIsLoading(true);
+    apiClient
+      .getCompanies(showDeleted ? { include_deleted: true } : undefined)
+      .then(setCompanies)
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : "Failed to load companies")
+      )
+      .finally(() => setIsLoading(false));
+  }, [isAuthenticated, showDeleted]);
 
   const filtered = companies.filter((c) => {
     if (leadFilter !== "all" && c.lead_status !== leadFilter) return false;
@@ -85,38 +84,49 @@ export default function CompaniesPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => setLeadFilter("all")}
-          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all ${
-            leadFilter === "all"
-              ? "bg-foreground text-background ring-2 ring-foreground/20"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
-          }`}
-        >
-          All
-          <span className="ml-1.5 opacity-70">{companies.length}</span>
-        </button>
-        {LEAD_STATUSES.map(([value, label]) => {
-          const count = companies.filter((c) => c.lead_status === value).length;
-          const isActive = leadFilter === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setLeadFilter(isActive ? "all" : value)}
-              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all ${
-                isActive
-                  ? `${LEAD_STATUS_COLORS[value]} ring-2 ring-current/20`
-                  : `${LEAD_STATUS_COLORS[value]} opacity-50 hover:opacity-80`
-              }`}
-            >
-              {label}
-              {count > 0 && <span className="ml-1.5 opacity-70">{count}</span>}
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setLeadFilter("all")}
+            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all ${
+              leadFilter === "all"
+                ? "bg-foreground text-background ring-2 ring-foreground/20"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            All
+            <span className="ml-1.5 opacity-70">{companies.length}</span>
+          </button>
+          {LEAD_STATUSES.map(([value, label]) => {
+            const count = companies.filter((c) => c.lead_status === value).length;
+            const isActive = leadFilter === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setLeadFilter(isActive ? "all" : value)}
+                className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all ${
+                  isActive
+                    ? `${LEAD_STATUS_COLORS[value]} ring-2 ring-current/20`
+                    : `${LEAD_STATUS_COLORS[value]} opacity-50 hover:opacity-80`
+                }`}
+              >
+                {label}
+                {count > 0 && <span className="ml-1.5 opacity-70">{count}</span>}
+              </button>
+            );
+          })}
+        </div>
+        {currentUser?.role === "admin" && (
+          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <Checkbox
+              checked={showDeleted}
+              onCheckedChange={(checked) => setShowDeleted(checked === true)}
+            />
+            Show deleted
+          </label>
+        )}
       </div>
 
       {error && (
@@ -162,7 +172,7 @@ export default function CompaniesPage() {
                 return (
                   <tr
                     key={c.id}
-                    className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
+                    className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer ${c.deleted_at ? "opacity-50" : ""}`}
                     onClick={() => router.push(`/admin/companies/${c.slug}`)}
                   >
                     <td className="px-4 py-3 font-medium">{c.name}</td>
@@ -170,11 +180,15 @@ export default function CompaniesPage() {
                       {COMPANY_TYPE_LABELS[c.company_type]}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_STATUS_COLORS[c.lead_status] || ""}`}
-                      >
-                        {LEAD_STATUS_LABELS[c.lead_status] || c.lead_status}
-                      </span>
+                      {c.deleted_at ? (
+                        <Badge variant="destructive">Deleted</Badge>
+                      ) : (
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_STATUS_COLORS[c.lead_status] || ""}`}
+                        >
+                          {LEAD_STATUS_LABELS[c.lead_status] || c.lead_status}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {locationLabel}

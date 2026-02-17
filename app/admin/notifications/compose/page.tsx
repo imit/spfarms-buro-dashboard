@@ -6,13 +6,13 @@ import { ArrowLeftIcon, SendIcon } from "lucide-react";
 import {
   apiClient,
   type Company,
-  type User,
   type NotificationType,
   type NotificationTargetType,
   type CreateNotificationParams,
   NOTIFICATION_TYPE_LABELS,
 } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
+import { UserCombobox } from "@/components/user-combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,14 +43,12 @@ export default function ComposeNotificationPage() {
   const [targetUserId, setTargetUserId] = useState<string>("");
 
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
     apiClient.getCompanies().then(setCompanies).catch(() => {});
-    apiClient.getUsers().then(setUsers).catch(() => {});
   }, [isAuthenticated]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -156,18 +154,12 @@ export default function ComposeNotificationPage() {
         {targetType === "user" && (
           <div className="space-y-2">
             <Label>User</Label>
-            <Select value={targetUserId} onValueChange={setTargetUserId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a user" />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map((u) => (
-                  <SelectItem key={u.id} value={String(u.id)}>
-                    {u.full_name || u.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <UserCombobox
+              value={targetUserId}
+              onValueChange={setTargetUserId}
+              placeholder="Select a user..."
+              disabled={sending}
+            />
           </div>
         )}
 

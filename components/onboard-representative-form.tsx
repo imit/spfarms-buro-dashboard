@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef, type FormEvent } from "react";
+import { useState, useRef, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { apiClient, type User } from "@/lib/api";
+import { apiClient } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
+import { UserCombobox } from "@/components/user-combobox";
 import {
   useGooglePlacesAutocomplete,
   type PlaceResult,
@@ -46,17 +47,7 @@ export function OnboardRepresentativeForm() {
     emailSent: boolean;
   } | null>(null);
 
-  // Staff users for "Referred by" dropdown (admin only)
-  const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [referredById, setReferredById] = useState<string>("");
-
-  useEffect(() => {
-    if (currentUser?.role === "admin") {
-      apiClient.getUsers().then((users) => {
-        setStaffUsers(users.filter((u) => u.role !== "account"));
-      }).catch(() => {});
-    }
-  }, [currentUser]);
 
   // Dispensary mode: "search" (Google Places) or "manual" (type name)
   const [dispensaryMode, setDispensaryMode] = useState<"search" | "manual">(
@@ -364,22 +355,16 @@ export function OnboardRepresentativeForm() {
       </section>
 
       {/* Referred by (admin only) */}
-      {currentUser?.role === "admin" && staffUsers.length > 0 && (
+      {currentUser?.role === "admin" && (
         <section className="space-y-4">
           <Field>
-            <FieldLabel htmlFor="referred-by">Referred by</FieldLabel>
-            <Select value={referredById} onValueChange={setReferredById}>
-              <SelectTrigger id="referred-by" className="w-full">
-                <SelectValue placeholder="Myself (default)" />
-              </SelectTrigger>
-              <SelectContent>
-                {staffUsers.map((u) => (
-                  <SelectItem key={u.id} value={String(u.id)}>
-                    {u.full_name || u.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FieldLabel>Referred by</FieldLabel>
+            <UserCombobox
+              value={referredById}
+              onValueChange={setReferredById}
+              placeholder="Myself (default)"
+              disabled={isSubmitting}
+            />
           </Field>
         </section>
       )}
