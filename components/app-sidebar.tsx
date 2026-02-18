@@ -13,7 +13,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon, SproutIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -45,6 +45,12 @@ const navMain: NavItem[] = [
     title: "Products",
     url: "/admin/products",
     icon: <BoxIcon />,
+    roles: ["admin", "editor"],
+  },
+  {
+    title: "Grow",
+    url: "/admin/grow",
+    icon: <SproutIcon />,
     roles: ["admin", "editor"],
   },
   {
