@@ -659,30 +659,77 @@ export interface Order {
   updated_at: string;
 }
 
-// ---- Samples ----
+// ---- Sample Batches ----
 
-export interface SampleItem {
+export type SampleItemStatus = "prepared" | "assigned" | "dropped";
+
+export const SAMPLE_ITEM_STATUS_LABELS: Record<SampleItemStatus, string> = {
+  prepared: "Prepared",
+  assigned: "Assigned",
+  dropped: "Dropped",
+};
+
+export interface SampleItemData {
   id: number;
   sample_uid: string;
-  product_id: number;
-  product_name: string;
-  product_slug: string;
-  product_type: ProductType;
   weight: number;
-  thumbnail_url: string | null;
-  strain_name: string | null;
+  status: SampleItemStatus;
+  strain_name: string;
 }
 
-export interface Sample {
+export interface SampleBatch {
   id: number;
+  weight: number;
+  unit_count: number;
   notes: string | null;
-  dropped_at: string;
-  user: {
+  strain: {
+    id: number;
+    name: string;
+    category: StrainCategory | null;
+  };
+  prepared_by: {
     id: number;
     full_name: string | null;
     email: string;
   };
-  recipient: {
+  items: SampleItemData[];
+  item_counts: {
+    total: number;
+    prepared: number;
+    assigned: number;
+    dropped: number;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateSampleBatchParams {
+  strain_id: number;
+  weight: number;
+  unit_count: number;
+  notes?: string;
+}
+
+// ---- Sample Handoffs ----
+
+export type SampleHandoffStatus = "assigned" | "dropped";
+
+export const SAMPLE_HANDOFF_STATUS_LABELS: Record<SampleHandoffStatus, string> = {
+  assigned: "Assigned",
+  dropped: "Dropped",
+};
+
+export interface SampleHandoff {
+  id: number;
+  status: SampleHandoffStatus;
+  dropped_at: string | null;
+  notes: string | null;
+  given_by: {
+    id: number;
+    full_name: string | null;
+    email: string;
+  };
+  receiver: {
     id: number;
     full_name: string | null;
     email: string;
@@ -691,18 +738,34 @@ export interface Sample {
     id: number;
     name: string;
     slug: string;
-  };
-  items: SampleItem[];
+  } | null;
+  items: SampleItemData[];
   created_at: string;
   updated_at: string;
 }
 
-export interface CreateSampleParams {
-  company_id: number;
-  recipient_id: number;
+export interface HandoffSelection {
+  strain_id: number;
+  weight: number;
+  quantity: number;
+}
+
+export interface CreateSampleHandoffParams {
+  receiver_id: number;
+  company_id?: number;
+  mark_as_dropped?: boolean;
   notes?: string;
-  dropped_at?: string;
-  items: { product_id: number; weight: number; count: number }[];
+  selections: HandoffSelection[];
+}
+
+// ---- Sample Inventory ----
+
+export interface SampleInventoryRow {
+  strain_id: number;
+  strain_name: string;
+  strain_category: StrainCategory | null;
+  weight: number;
+  available_count: number;
 }
 
 // ---- Dashboard ----
@@ -1828,25 +1891,27 @@ export class ApiClient {
     return res.blob();
   }
 
-  // Samples
+  // Sample Batches
 
-  async getSamples(): Promise<Sample[]> {
-    const res = await this.request<JsonApiCollectionResponse<Sample>>(
-      "/api/v1/samples"
+  async getSampleBatches(): Promise<SampleBatch[]> {
+    const res = await this.request<JsonApiCollectionResponse<SampleBatch>>(
+      "/api/v1/sample_batches"
     );
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
 
-  async getSample(id: number): Promise<Sample> {
-    const res = await this.request<JsonApiResponse<Sample>>(
-      `/api/v1/samples/${id}`
+  async getSampleBatch(id: number): Promise<SampleBatch> {
+    const res = await this.request<JsonApiResponse<SampleBatch>>(
+      `/api/v1/sample_batches/${id}`
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
-  async createSample(params: CreateSampleParams): Promise<Sample> {
-    const res = await this.request<JsonApiResponse<Sample>>(
-      "/api/v1/samples",
+  async createSampleBatch(
+    params: CreateSampleBatchParams
+  ): Promise<SampleBatch> {
+    const res = await this.request<JsonApiResponse<SampleBatch>>(
+      "/api/v1/sample_batches",
       {
         method: "POST",
         body: JSON.stringify(params),
@@ -1855,8 +1920,87 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
-  async deleteSample(id: number): Promise<void> {
-    await this.request(`/api/v1/samples/${id}`, { method: "DELETE" });
+  async deleteSampleBatch(id: number): Promise<void> {
+    await this.request(`/api/v1/sample_batches/${id}`, { method: "DELETE" });
+  }
+
+  async printSampleBatchLabels(
+    batchId: number,
+    sheetLayoutId: string
+  ): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/sample_batches/${batchId}/print_labels`;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ sheet_layout_id: sheetLayoutId }),
+    });
+    if (!res.ok) throw new Error("Failed to generate sample labels PDF");
+    return res.blob();
+  }
+
+  // Sample Inventory
+
+  async getSampleInventory(): Promise<SampleInventoryRow[]> {
+    const res = await this.request<{ data: SampleInventoryRow[] }>(
+      "/api/v1/sample_inventory"
+    );
+    return res.data;
+  }
+
+  // Sample Handoffs
+
+  async getSampleHandoffs(opts?: {
+    receiver_id?: number;
+    status?: string;
+  }): Promise<SampleHandoff[]> {
+    const params = new URLSearchParams();
+    if (opts?.receiver_id) params.set("receiver_id", String(opts.receiver_id));
+    if (opts?.status) params.set("status", opts.status);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const res = await this.request<JsonApiCollectionResponse<SampleHandoff>>(
+      `/api/v1/sample_handoffs${query}`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getSampleHandoff(id: number): Promise<SampleHandoff> {
+    const res = await this.request<JsonApiResponse<SampleHandoff>>(
+      `/api/v1/sample_handoffs/${id}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createSampleHandoff(
+    params: CreateSampleHandoffParams
+  ): Promise<SampleHandoff> {
+    const res = await this.request<JsonApiResponse<SampleHandoff>>(
+      "/api/v1/sample_handoffs",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async confirmSampleDrop(handoffId: number): Promise<SampleHandoff> {
+    const res = await this.request<JsonApiResponse<SampleHandoff>>(
+      `/api/v1/sample_handoffs/${handoffId}/confirm_drop`,
+      { method: "POST" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteSampleHandoff(id: number): Promise<void> {
+    await this.request(`/api/v1/sample_handoffs/${id}`, { method: "DELETE" });
   }
 
   // Notifications (Admin)
