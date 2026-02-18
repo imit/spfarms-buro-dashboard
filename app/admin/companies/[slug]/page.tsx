@@ -35,12 +35,24 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
   ArrowLeftIcon,
   GlobeIcon,
   MailIcon,
   MapPinIcon,
   PencilIcon,
   PhoneIcon,
+  PlusIcon,
+  SendIcon,
   Trash2Icon,
   UserIcon,
 } from "lucide-react";
@@ -88,6 +100,11 @@ export default function CompanyDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+  const [memberForm, setMemberForm] = useState({ email: "", full_name: "", phone_number: "", company_title: "" });
+  const [memberSubmitting, setMemberSubmitting] = useState(false);
+  const [memberError, setMemberError] = useState("");
+  const [sendingInviteId, setSendingInviteId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -137,6 +154,42 @@ export default function CompanyDetailPage({
       setError(
         err instanceof Error ? err.message : "Failed to update status"
       );
+    }
+  }
+
+  async function handleAddMember(e: React.FormEvent) {
+    e.preventDefault();
+    if (!company) return;
+    setMemberSubmitting(true);
+    setMemberError("");
+    try {
+      await apiClient.inviteCompanyMember(company.slug, {
+        email: memberForm.email,
+        full_name: memberForm.full_name || undefined,
+        phone_number: memberForm.phone_number || undefined,
+        company_title: memberForm.company_title || undefined,
+      });
+      const updated = await apiClient.getCompany(slug);
+      setCompany(updated);
+      setMemberForm({ email: "", full_name: "", phone_number: "", company_title: "" });
+      setMemberDialogOpen(false);
+    } catch (err) {
+      setMemberError(err instanceof Error ? err.message : "Failed to add member");
+    } finally {
+      setMemberSubmitting(false);
+    }
+  }
+
+  async function handleSendInvite(memberId: number) {
+    setSendingInviteId(memberId);
+    try {
+      await apiClient.sendWelcomeEmail(memberId);
+      const updated = await apiClient.getCompany(slug);
+      setCompany(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send invite");
+    } finally {
+      setSendingInviteId(null);
     }
   }
 
@@ -352,7 +405,67 @@ export default function CompanyDetailPage({
 
       {/* Members */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium">Members</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium">Members</h3>
+          <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <PlusIcon className="mr-2 size-4" />
+                Add Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Member</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleAddMember} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="member-email">Email *</Label>
+                  <Input
+                    id="member-email"
+                    type="email"
+                    required
+                    value={memberForm.email}
+                    onChange={(e) => setMemberForm((f) => ({ ...f, email: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="member-name">Full Name</Label>
+                  <Input
+                    id="member-name"
+                    value={memberForm.full_name}
+                    onChange={(e) => setMemberForm((f) => ({ ...f, full_name: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="member-phone">Phone Number</Label>
+                  <Input
+                    id="member-phone"
+                    value={memberForm.phone_number}
+                    onChange={(e) => setMemberForm((f) => ({ ...f, phone_number: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="member-title">Title</Label>
+                  <Input
+                    id="member-title"
+                    placeholder="e.g. Manager, Buyer"
+                    value={memberForm.company_title}
+                    onChange={(e) => setMemberForm((f) => ({ ...f, company_title: e.target.value }))}
+                  />
+                </div>
+                {memberError && (
+                  <p className="text-sm text-destructive">{memberError}</p>
+                )}
+                <DialogFooter>
+                  <Button type="submit" disabled={memberSubmitting}>
+                    {memberSubmitting ? "Adding..." : "Add Member"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
         {!company.members || company.members.length === 0 ? (
           <div className="rounded-lg border bg-card p-6 text-center">
             <p className="text-sm text-muted-foreground">
@@ -367,16 +480,19 @@ export default function CompanyDetailPage({
                   <th className="px-4 py-3 text-left font-medium">Name</th>
                   <th className="px-4 py-3 text-left font-medium">Title</th>
                   <th className="px-4 py-3 text-left font-medium">Role</th>
+                  <th className="px-4 py-3 text-left font-medium">Invite</th>
                 </tr>
               </thead>
               <tbody>
                 {company.members.map((member) => (
                   <tr
                     key={member.id}
-                    className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
-                    onClick={() => router.push(`/admin/users/${member.id}`)}
+                    className="border-b last:border-0 hover:bg-muted/30"
                   >
-                    <td className="px-4 py-3">
+                    <td
+                      className="px-4 py-3 cursor-pointer"
+                      onClick={() => router.push(`/admin/users/${member.id}`)}
+                    >
                       <div className="flex items-center gap-2">
                         <UserIcon className="size-4 text-muted-foreground shrink-0" />
                         <div>
@@ -398,6 +514,23 @@ export default function CompanyDetailPage({
                       <Badge variant="outline">
                         {ROLE_LABELS[member.role]}
                       </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      {member.invitation_sent_at ? (
+                        <Badge variant="secondary" className="text-xs">
+                          Sent {new Date(member.invitation_sent_at).toLocaleDateString()}
+                        </Badge>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={sendingInviteId === member.id}
+                          onClick={() => handleSendInvite(member.id)}
+                        >
+                          <SendIcon className="mr-1.5 size-3.5" />
+                          {sendingInviteId === member.id ? "Sending..." : "Send Invite"}
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}

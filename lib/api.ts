@@ -142,6 +142,7 @@ export interface CompanyMember {
   email: string;
   role: UserRole;
   company_title: string | null;
+  invitation_sent_at: string | null;
 }
 
 export interface CompanyReferrer {
