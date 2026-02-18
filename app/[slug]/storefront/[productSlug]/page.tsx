@@ -90,11 +90,7 @@ export default function ProductDetailPage({
     return <p className="text-muted-foreground">Product not found.</p>;
   }
 
-  // Packaging calculations
   const unitWeight = product.unit_weight ? parseFloat(product.unit_weight) : null;
-  const unitCount = product.unit_count && product.unit_count > 0 ? product.unit_count : 1;
-  const totalG = unitWeight ? unitWeight * unitCount : null;
-  const totalOz = totalG ? totalG / 28 : null;
 
   // Cannabinoid values — prefer strain, fall back to product; hide zeros
   const nonZero = (v: string | null | undefined) => v && parseFloat(v) > 0 ? v : null;
@@ -198,20 +194,16 @@ export default function ProductDetailPage({
                 </span>
               </div>
             )}
-            {unitCount > 1 && (
+            {product.box_capacity && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Pack Count</span>
-                <span>{unitCount} units</span>
+                <span className="text-muted-foreground">Box Size</span>
+                <span>{product.box_capacity} pouches</span>
               </div>
             )}
-            {totalG && (
+            {product.minimum_order_quantity && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Package Weight</span>
-                <span className="font-medium">
-                  {totalG % 1 === 0 ? totalG.toFixed(0) : totalG.toFixed(1)}g
-                  {" / "}
-                  {totalOz! % 1 === 0 ? totalOz!.toFixed(0) : totalOz!.toFixed(2)}oz
-                </span>
+                <span className="text-muted-foreground">Minimum Order</span>
+                <span>{product.minimum_order_quantity} pouches</span>
               </div>
             )}
             {product.brand && (

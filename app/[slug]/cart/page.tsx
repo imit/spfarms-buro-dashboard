@@ -8,6 +8,7 @@ import {
 import { apiClient, type Cart, type Company } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
+import { BoxProgress, useMinimumOrderMet } from "@/components/storefront/box-progress";
 import { toast } from "sonner";
 
 function formatPrice(amount: string | number | null) {
@@ -68,6 +69,8 @@ export default function CartPage({
     }
   };
 
+  const meetsMinimum = useMinimumOrderMet(cart?.items ?? []);
+
   if (isLoading) {
     return <p className="text-muted-foreground">Loading cart...</p>;
   }
@@ -96,6 +99,11 @@ export default function CartPage({
       </Button>
 
       <h1 className="text-2xl font-bold mb-6">Cart</h1>
+
+      {/* Box progress */}
+      <div className="rounded-lg border p-4 mb-4">
+        <BoxProgress items={cart.items} />
+      </div>
 
       <div className="space-y-3">
         {cart.items.map((item) => (
@@ -157,9 +165,10 @@ export default function CartPage({
         </div>
         <Button
           size="lg"
+          disabled={!meetsMinimum}
           onClick={() => router.push(`/${slug}/checkout`)}
         >
-          Proceed to Checkout
+          {meetsMinimum ? "Proceed to Checkout" : "Minimum order not met"}
         </Button>
       </div>
     </div>

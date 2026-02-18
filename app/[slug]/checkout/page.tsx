@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { BoxProgress, useMinimumOrderMet } from "@/components/storefront/box-progress";
 import { toast } from "sonner";
 
 function formatPrice(amount: string | number | null) {
@@ -179,6 +180,10 @@ export default function CheckoutPage({
     }
   };
 
+  const meetsMinimum = useMinimumOrderMet(
+    preview?.items ?? cart?.items ?? []
+  );
+
   if (isLoading) {
     return <p className="text-muted-foreground">Loading checkout...</p>;
   }
@@ -258,6 +263,10 @@ export default function CheckoutPage({
                   </div>
                 </div>
               ))}
+            </div>
+            {/* Box progress */}
+            <div className="px-4 py-3 border-t">
+              <BoxProgress items={preview?.items ?? cart.items} compact />
             </div>
           </div>
 
@@ -485,11 +494,13 @@ export default function CheckoutPage({
             className="w-full"
             size="lg"
             onClick={handleConfirmOrder}
-            disabled={submitting || !cart || cart.items.length === 0}
+            disabled={submitting || !cart || cart.items.length === 0 || !meetsMinimum}
           >
             {submitting
               ? "Placing Order..."
-              : `Confirm Order — ${formatPrice(preview?.total || cart.subtotal)}`}
+              : !meetsMinimum
+                ? "Minimum order not met"
+                : `Confirm Order — ${formatPrice(preview?.total || cart.subtotal)}`}
           </Button>
         </div>
       </div>

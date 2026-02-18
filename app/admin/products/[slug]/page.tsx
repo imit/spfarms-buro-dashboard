@@ -246,9 +246,9 @@ export default function ProductDetailPage({
           </dl>
         </div>
 
-        {/* Weight & Packaging */}
+        {/* Weight & Box Configuration */}
         <div className="rounded-lg border bg-card p-5">
-          <h3 className="font-medium mb-3">Weight & Packaging</h3>
+          <h3 className="font-medium mb-3">Weight & Box Configuration</h3>
           <Separator className="mb-1" />
           <dl>
             <DetailRow
@@ -260,8 +260,12 @@ export default function ProductDetailPage({
               }
             />
             <DetailRow
-              label="Unit Count"
-              value={product.unit_count?.toString()}
+              label="Box Capacity"
+              value={product.box_capacity?.toString()}
+            />
+            <DetailRow
+              label="Min Order Qty"
+              value={product.minimum_order_quantity?.toString()}
             />
             <DetailRow
               label="Shipping"

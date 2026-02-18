@@ -56,7 +56,8 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
     sku: product?.sku ?? "",
     barcode: product?.barcode ?? "",
     unit_weight: product?.unit_weight ?? "",
-    unit_count: product?.unit_count?.toString() ?? "",
+    box_capacity: product?.box_capacity?.toString() ?? "32",
+    minimum_order_quantity: product?.minimum_order_quantity?.toString() ?? "16",
     default_price: product?.default_price ?? "",
     meta_title: product?.meta_title ?? "",
     meta_description: product?.meta_description ?? "",
@@ -153,7 +154,8 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
         formData.append("product[unit_weight]", form.unit_weight);
         formData.append("product[unit_weight_uom]", "g");
       }
-      if (form.unit_count) formData.append("product[unit_count]", form.unit_count);
+      if (form.box_capacity) formData.append("product[box_capacity]", form.box_capacity);
+      if (form.minimum_order_quantity) formData.append("product[minimum_order_quantity]", form.minimum_order_quantity);
       if (form.default_price) formData.append("product[default_price]", form.default_price);
       if (form.meta_title) formData.append("product[meta_title]", form.meta_title);
       if (form.meta_description) formData.append("product[meta_description]", form.meta_description);
@@ -378,73 +380,61 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
         </FieldGroup>
       </section>
 
-      {/* Weight & Packaging */}
+      {/* Weight & Box Configuration */}
       <section className="space-y-4">
-        <h3 className="text-lg font-medium">Weight & Packaging</h3>
+        <h3 className="text-lg font-medium">Weight & Box Configuration</h3>
         <FieldGroup>
-          <div>
-            <p className="text-xs text-muted-foreground mb-2">Quick templates</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { label: "QP — 32 × 3.5g", weight: "3.5", count: "32" },
-                { label: "HP — 16 × 3.5g", weight: "3.5", count: "16" },
-                { label: "Eighth", weight: "3.5", count: "1" },
-                { label: "Quarter", weight: "7", count: "1" },
-                { label: "Half", weight: "14", count: "1" },
-                { label: "Ounce", weight: "28", count: "1" },
-              ].map((tpl) => (
-                <button
-                  key={tpl.label}
-                  type="button"
-                  className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent ${
-                    form.unit_weight === tpl.weight && form.unit_count === tpl.count
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-input text-muted-foreground"
-                  }`}
-                  onClick={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      unit_weight: tpl.weight,
-                      unit_count: tpl.count,
-                    }))
-                  }
-                  disabled={isSubmitting}
-                >
-                  {tpl.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <Field>
+            <FieldLabel htmlFor="unit_weight">Pouch Weight</FieldLabel>
+            <Select
+              value={form.unit_weight}
+              onValueChange={(v) => updateField("unit_weight", v)}
+            >
+              <SelectTrigger id="unit_weight" className="w-full">
+                <SelectValue placeholder="Select weight" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3.5">Eighth (3.5g)</SelectItem>
+                <SelectItem value="7">Quarter (7g)</SelectItem>
+                <SelectItem value="14">Half (14g)</SelectItem>
+                <SelectItem value="28">Ounce (28g)</SelectItem>
+              </SelectContent>
+            </Select>
+            {ozConversion && (
+              <p className="text-xs text-muted-foreground mt-1">
+                = {ozConversion}
+              </p>
+            )}
+          </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
-              <FieldLabel htmlFor="unit_weight">Weight (grams)</FieldLabel>
+              <FieldLabel htmlFor="box_capacity">Box Capacity (pouches)</FieldLabel>
               <Input
-                id="unit_weight"
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.unit_weight}
-                onChange={(e) => updateField("unit_weight", e.target.value)}
-                placeholder="3.5"
-                disabled={isSubmitting}
-              />
-              {ozConversion && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  = {ozConversion}
-                </p>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="unit_count">Pack Count</FieldLabel>
-              <Input
-                id="unit_count"
+                id="box_capacity"
                 type="number"
                 min="1"
-                value={form.unit_count}
-                onChange={(e) => updateField("unit_count", e.target.value)}
-                placeholder="1"
+                value={form.box_capacity}
+                onChange={(e) => updateField("box_capacity", e.target.value)}
+                placeholder="32"
                 disabled={isSubmitting}
               />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="minimum_order_quantity">Minimum Order (pouches)</FieldLabel>
+              <Input
+                id="minimum_order_quantity"
+                type="number"
+                min="1"
+                value={form.minimum_order_quantity}
+                onChange={(e) => updateField("minimum_order_quantity", e.target.value)}
+                placeholder="16"
+                disabled={isSubmitting}
+              />
+              {form.box_capacity && form.minimum_order_quantity && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  = {((parseInt(form.minimum_order_quantity) / parseInt(form.box_capacity)) * 100).toFixed(0)}% of a box
+                </p>
+              )}
             </Field>
           </div>
         </FieldGroup>

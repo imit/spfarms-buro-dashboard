@@ -19,24 +19,12 @@ const WEIGHT_NAMES: Record<number, string> = {
   28: "Ounce",
 };
 
-function formatPackaging(weight: string | null, count: number | null) {
+function formatWeight(weight: string | null) {
   if (!weight) return null;
   const w = parseFloat(weight);
   if (isNaN(w)) return null;
   const commonName = WEIGHT_NAMES[w];
-  const weightLabel = commonName ? `${commonName} (${w}g)` : `${w}g`;
-  if (count && count > 1) return `${count} × ${weightLabel}`;
-  return weightLabel;
-}
-
-function totalPackageWeight(weight: string | null, count: number | null) {
-  if (!weight) return null;
-  const w = parseFloat(weight);
-  if (isNaN(w) || w <= 0) return null;
-  const c = count && count > 0 ? count : 1;
-  const totalG = w * c;
-  const totalOz = totalG / 28;
-  return `${totalG % 1 === 0 ? totalG.toFixed(0) : totalG.toFixed(1)}g / ${totalOz % 1 === 0 ? totalOz.toFixed(0) : totalOz.toFixed(2)}oz`;
+  return commonName ? `${commonName} (${w}g)` : `${w}g`;
 }
 
 export function ProductCard({
@@ -63,8 +51,7 @@ export function ProductCard({
     }
   };
 
-  const packaging = formatPackaging(product.unit_weight, product.unit_count);
-  const totalWeight = totalPackageWeight(product.unit_weight, product.unit_count);
+  const weightLabel = formatWeight(product.unit_weight);
   const coaPdfUrl = strain?.current_coa?.pdf_url;
 
   // Cannabinoid values — prefer strain data, fall back to product fields; hide zeros
@@ -92,9 +79,9 @@ export function ProductCard({
               No image
             </div>
           )}
-          {packaging && (
+          {weightLabel && (
             <span className="absolute bottom-2 left-2 rounded bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white">
-              {packaging}
+              {weightLabel}
             </span>
           )}
         </div>
@@ -122,13 +109,6 @@ export function ProductCard({
         )}
 
         
-
-        {/* Total package weight */}
-        {totalWeight && (
-          <p className="text-xs text-muted-foreground">
-            Total: {totalWeight}
-          </p>
-        )}
 
         <div className="flex items-center justify-between">
           <div className="text-lg font-semibold">
