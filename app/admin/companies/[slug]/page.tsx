@@ -7,10 +7,12 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import {
   apiClient,
+  type Cart,
   type Company,
   type LeadStatus,
   COMPANY_TYPE_LABELS,
   LEAD_STATUS_LABELS,
+  PRODUCT_TYPE_LABELS,
   REGION_LABELS,
   ROLE_LABELS,
 } from "@/lib/api";
@@ -49,10 +51,12 @@ import {
   GlobeIcon,
   MailIcon,
   MapPinIcon,
+  PackageIcon,
   PencilIcon,
   PhoneIcon,
   PlusIcon,
   SendIcon,
+  ShoppingCartIcon,
   Trash2Icon,
   UserIcon,
 } from "lucide-react";
@@ -105,6 +109,7 @@ export default function CompanyDetailPage({
   const [memberSubmitting, setMemberSubmitting] = useState(false);
   const [memberError, setMemberError] = useState("");
   const [sendingInviteId, setSendingInviteId] = useState<number | null>(null);
+  const [cart, setCart] = useState<Cart | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -119,6 +124,12 @@ export default function CompanyDetailPage({
       try {
         const data = await apiClient.getCompany(slug);
         setCompany(data);
+        try {
+          const cartData = await apiClient.getCart(data.id);
+          setCart(cartData);
+        } catch {
+          // Cart may not exist yet — that's fine
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load company"
@@ -535,6 +546,80 @@ export default function CompanyDetailPage({
                   </tr>
                 ))}
               </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Cart */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <ShoppingCartIcon className="size-5 text-muted-foreground" />
+          <h3 className="text-lg font-medium">Cart</h3>
+          {cart && cart.items.length > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {cart.item_count} item{cart.item_count !== 1 ? "s" : ""}
+            </Badge>
+          )}
+        </div>
+        {!cart || cart.items.length === 0 ? (
+          <div className="rounded-lg border bg-card p-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Cart is empty.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-3 text-left font-medium">Product</th>
+                  <th className="px-4 py-3 text-left font-medium">Type</th>
+                  <th className="px-4 py-3 text-right font-medium">Qty</th>
+                  <th className="px-4 py-3 text-right font-medium">Unit Price</th>
+                  <th className="px-4 py-3 text-right font-medium">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cart.items.map((item) => (
+                  <tr key={item.id} className="border-b last:border-0">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <PackageIcon className="size-4 text-muted-foreground shrink-0" />
+                        <div>
+                          <div className="font-medium">{item.product_name}</div>
+                          {item.strain_name && (
+                            <div className="text-xs text-muted-foreground">{item.strain_name}</div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {PRODUCT_TYPE_LABELS[item.product_type]}
+                      {item.unit_weight && <span className="ml-1 text-xs">({item.unit_weight}g)</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right">{item.quantity}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">
+                      {item.unit_price ? `$${parseFloat(item.unit_price).toFixed(2)}` : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium">
+                      {item.unit_price
+                        ? `$${(parseFloat(item.unit_price) * item.quantity).toFixed(2)}`
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-muted/30">
+                  <td colSpan={4} className="px-4 py-3 text-right font-medium">
+                    Total
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold">
+                    ${parseFloat(String(cart.subtotal)).toFixed(2)}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
