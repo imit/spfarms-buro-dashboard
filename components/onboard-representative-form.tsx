@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useRef, type FormEvent } from "react";
+import { useState, useRef, useEffect, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { apiClient } from "@/lib/api";
+import { apiClient, type Company } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { UserCombobox } from "@/components/user-combobox";
 import {
   useGooglePlacesAutocomplete,
-  type PlaceResult,
 } from "@/hooks/use-google-places-autocomplete";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +19,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckCircle2Icon, XIcon } from "lucide-react";
+import { CheckCircle2Icon, ChevronsUpDownIcon, CheckIcon, XIcon, SearchIcon, PlusIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const TITLE_SUGGESTIONS = [
   "Owner",
@@ -31,6 +44,8 @@ const TITLE_SUGGESTIONS = [
   "Sales Rep",
   "General Manager",
 ];
+
+type DispensaryMode = "existing" | "google" | "manual";
 
 export function OnboardRepresentativeForm() {
   const router = useRouter();
@@ -43,16 +58,19 @@ export function OnboardRepresentativeForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<{
     companyName: string;
+    companySlug: string;
     email: string;
     emailSent: boolean;
+    isExisting: boolean;
   } | null>(null);
 
   const [referredById, setReferredById] = useState<string>("");
 
-  // Dispensary mode: "search" (Google Places) or "manual" (type name)
-  const [dispensaryMode, setDispensaryMode] = useState<"search" | "manual">(
-    "search"
-  );
+  // Dispensary mode: "existing" (pick from DB), "google" (Google Places), or "manual"
+  const [dispensaryMode, setDispensaryMode] = useState<DispensaryMode>("existing");
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
+  const [companyOpen, setCompanyOpen] = useState(false);
   const [manualName, setManualName] = useState("");
   const [ocmLicense, setOcmLicense] = useState("");
 
@@ -66,6 +84,12 @@ export function OnboardRepresentativeForm() {
   const [notes, setNotes] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
 
+  useEffect(() => {
+    apiClient.getCompanies().then(setCompanies).catch(() => {});
+  }, []);
+
+  const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
+
   function updateRep(field: string, value: string) {
     setRep((prev) => ({ ...prev, [field]: value }));
   }
@@ -77,7 +101,15 @@ export function OnboardRepresentativeForm() {
     }
   }
 
+  function switchMode(mode: DispensaryMode) {
+    setDispensaryMode(mode);
+    setSelectedCompanyId(null);
+    handleClearPlace();
+    setManualName("");
+  }
+
   function getCompanyName(): string {
+    if (dispensaryMode === "existing") return selectedCompany?.name || "";
     if (dispensaryMode === "manual") return manualName;
     return selectedPlace?.name || "";
   }
@@ -88,7 +120,11 @@ export function OnboardRepresentativeForm() {
     setSuccess(null);
 
     const companyName = getCompanyName();
-    if (!companyName) {
+    if (dispensaryMode === "existing" && !selectedCompanyId) {
+      setError("Please select a company.");
+      return;
+    }
+    if (dispensaryMode !== "existing" && !companyName) {
       setError("Please select or enter a dispensary name.");
       return;
     }
@@ -101,12 +137,6 @@ export function OnboardRepresentativeForm() {
 
     try {
       const payload: Parameters<typeof apiClient.onboardRepresentative>[0] = {
-        company: {
-          name: companyName,
-          license_number: ocmLicense || undefined,
-          website: selectedPlace?.website || undefined,
-          phone_number: selectedPlace?.phone_number || undefined,
-        },
         representative: {
           full_name: rep.full_name,
           email: rep.email,
@@ -114,37 +144,51 @@ export function OnboardRepresentativeForm() {
           company_title: rep.company_title || undefined,
         },
         send_email: sendEmail,
-        referred_by_id: referredById ? Number(referredById) : undefined,
       };
 
-      // Add location data from Google Places
-      if (selectedPlace?.address) {
-        payload.location = {
-          address: selectedPlace.address,
-          city: selectedPlace.city,
-          state: selectedPlace.state,
-          zip_code: selectedPlace.zip_code,
-          latitude: selectedPlace.latitude,
-          longitude: selectedPlace.longitude,
+      if (dispensaryMode === "existing" && selectedCompanyId) {
+        payload.company_id = selectedCompanyId;
+      } else {
+        payload.company = {
+          name: companyName,
+          license_number: ocmLicense || undefined,
+          website: selectedPlace?.website || undefined,
+          phone_number: selectedPlace?.phone_number || undefined,
         };
+        payload.referred_by_id = referredById ? Number(referredById) : undefined;
+
+        if (selectedPlace?.address) {
+          payload.location = {
+            address: selectedPlace.address,
+            city: selectedPlace.city,
+            state: selectedPlace.state,
+            zip_code: selectedPlace.zip_code,
+            latitude: selectedPlace.latitude,
+            longitude: selectedPlace.longitude,
+          };
+        }
       }
 
-      await apiClient.onboardRepresentative(payload);
+      const result = await apiClient.onboardRepresentative(payload);
 
       setSuccess({
-        companyName,
+        companyName: companyName || result.company.name,
+        companySlug: result.company.slug,
         email: rep.email,
         emailSent: sendEmail,
+        isExisting: dispensaryMode === "existing",
       });
 
       // Reset form
       handleClearPlace();
+      setSelectedCompanyId(null);
       setManualName("");
       setOcmLicense("");
       setRep({ full_name: "", email: "", phone_number: "", company_title: "" });
       setNotes("");
       setSendEmail(false);
       setReferredById("");
+      setDispensaryMode("existing");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to onboard representative"
@@ -160,7 +204,11 @@ export function OnboardRepresentativeForm() {
         <CheckCircle2Icon className="mx-auto size-12 text-green-600" />
         <h3 className="text-lg font-semibold">Representative Onboarded</h3>
         <p className="text-sm text-muted-foreground">
-          <strong>{success.companyName}</strong> has been created
+          {success.isExisting ? (
+            <>A new representative has been added to <strong>{success.companyName}</strong></>
+          ) : (
+            <><strong>{success.companyName}</strong> has been created</>
+          )}
           {success.emailSent ? (
             <> and a welcome email with a login link has been sent to{" "}
             <strong>{success.email}</strong></>
@@ -173,9 +221,9 @@ export function OnboardRepresentativeForm() {
           <Button onClick={() => setSuccess(null)}>Onboard Another</Button>
           <Button
             variant="outline"
-            onClick={() => router.push("/admin/companies")}
+            onClick={() => router.push(`/admin/companies/${success.companySlug}`)}
           >
-            View Companies
+            View Company
           </Button>
         </div>
       </div>
@@ -183,25 +231,126 @@ export function OnboardRepresentativeForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl space-y-8">
+    <form onSubmit={handleSubmit} className="max-w-3xl space-y-10">
       {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
+        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-base">
           {error}
         </div>
       )}
 
       {/* Section 1: Dispensary */}
       <section className="space-y-4">
-        {dispensaryMode === "search" ? (
+        {dispensaryMode === "existing" && (
+          <>
+            <Field>
+              <FieldLabel>Dispensary</FieldLabel>
+              <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={companyOpen}
+                    className="w-full h-12 text-base justify-between font-normal"
+                    disabled={isSubmitting}
+                  >
+                    {selectedCompany ? (
+                      <span className="truncate">{selectedCompany.name}</span>
+                    ) : (
+                      <span className="text-muted-foreground">Search companies...</span>
+                    )}
+                    <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search companies..." />
+                    <CommandList>
+                      <CommandEmpty>
+                        <p className="text-sm text-muted-foreground">No companies found.</p>
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {companies
+                          .filter((c) => !c.deleted_at)
+                          .map((c) => (
+                            <CommandItem
+                              key={c.id}
+                              value={c.name}
+                              onSelect={() => {
+                                setSelectedCompanyId(c.id === selectedCompanyId ? null : c.id);
+                                setCompanyOpen(false);
+                              }}
+                            >
+                              <CheckIcon
+                                className={cn(
+                                  "mr-2 size-4",
+                                  selectedCompanyId === c.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="truncate">
+                                <span>{c.name}</span>
+                                {c.locations[0]?.city && (
+                                  <span className="text-xs text-muted-foreground ml-2">
+                                    {c.locations[0].city}, {c.locations[0].state}
+                                  </span>
+                                )}
+                              </div>
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </Field>
+            {selectedCompany && (
+              <div className="rounded-md border bg-muted/50 px-4 py-3 flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-medium truncate">{selectedCompany.name}</p>
+                  {selectedCompany.locations[0] && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[
+                        selectedCompany.locations[0].address,
+                        selectedCompany.locations[0].city,
+                        selectedCompany.locations[0].state,
+                      ].filter(Boolean).join(", ")}
+                    </p>
+                  )}
+                  {selectedCompany.members.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {selectedCompany.members.length} existing {selectedCompany.members.length === 1 ? "member" : "members"}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCompanyId(null)}
+                  className="rounded-full p-1 hover:bg-muted-foreground/20"
+                >
+                  <XIcon className="size-4 text-muted-foreground" />
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => switchMode("google")}
+              className="inline-flex items-center gap-2 rounded-md border border-dashed border-primary/40 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10 hover:border-primary/60 transition-colors"
+            >
+              <PlusIcon className="size-4" />
+              Not in the system? Add from Google Places
+            </button>
+          </>
+        )}
+
+        {dispensaryMode === "google" && (
           <>
             <Field>
               <FieldLabel htmlFor="dispensary-search">
-                Search for dispensary
+                Search Google Places
               </FieldLabel>
               {selectedPlace ? (
-                <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
+                <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-4 py-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
+                    <p className="text-base font-medium truncate">
                       {selectedPlace.name}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
@@ -227,6 +376,7 @@ export function OnboardRepresentativeForm() {
                 <Input
                   ref={searchInputRef}
                   id="dispensary-search"
+                  className="h-12 text-base"
                   placeholder={
                     isLoaded
                       ? "Start typing a dispensary name..."
@@ -236,20 +386,33 @@ export function OnboardRepresentativeForm() {
                 />
               )}
             </Field>
-            <button
-              type="button"
-              onClick={() => setDispensaryMode("manual")}
-              className="text-sm text-muted-foreground underline hover:text-foreground"
-            >
-              Enter name manually
-            </button>
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => switchMode("existing")}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                <SearchIcon className="size-4" />
+                Search existing companies
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("manual")}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Enter name manually
+              </button>
+            </div>
           </>
-        ) : (
+        )}
+
+        {dispensaryMode === "manual" && (
           <>
             <Field>
               <FieldLabel htmlFor="manual-name">Dispensary name</FieldLabel>
               <Input
                 id="manual-name"
+                className="h-12 text-base"
                 value={manualName}
                 onChange={(e) => setManualName(e.target.value)}
                 placeholder="Green Leaf NYC"
@@ -257,27 +420,36 @@ export function OnboardRepresentativeForm() {
                 disabled={isSubmitting}
               />
             </Field>
-            <button
-              type="button"
-              onClick={() => setDispensaryMode("search")}
-              className="text-sm text-muted-foreground underline hover:text-foreground"
-            >
-              Search with Google Places instead
-            </button>
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => switchMode("existing")}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                <SearchIcon className="size-4" />
+                Search existing companies
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("google")}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Search Google Places
+              </button>
+            </div>
           </>
         )}
-
-        
       </section>
 
       {/* Section 2: Representative */}
       <section className="space-y-4">
-        <h3 className="text-lg font-medium">Representative</h3>
+        <h3 className="text-xl font-medium">Representative</h3>
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="full_name">Full name *</FieldLabel>
             <Input
               id="full_name"
+              className="h-12 text-base"
               value={rep.full_name}
               onChange={(e) => updateRep("full_name", e.target.value)}
               placeholder="John Doe"
@@ -291,6 +463,7 @@ export function OnboardRepresentativeForm() {
             <Input
               id="rep-email"
               type="email"
+              className="h-12 text-base"
               value={rep.email}
               onChange={(e) => updateRep("email", e.target.value)}
               placeholder="john@greenleaf.com"
@@ -304,6 +477,7 @@ export function OnboardRepresentativeForm() {
             <Input
               id="rep-phone"
               type="tel"
+              className="h-12 text-base"
               value={rep.phone_number}
               onChange={(e) => updateRep("phone_number", e.target.value)}
               placeholder="(212) 555-0123"
@@ -317,7 +491,7 @@ export function OnboardRepresentativeForm() {
               value={rep.company_title}
               onValueChange={(v) => updateRep("company_title", v)}
             >
-              <SelectTrigger id="company_title" className="w-full">
+              <SelectTrigger id="company_title" className="w-full h-12 text-base">
                 <SelectValue placeholder="Select a title..." />
               </SelectTrigger>
               <SelectContent>
@@ -337,25 +511,29 @@ export function OnboardRepresentativeForm() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Any notes about this representative..."
+              className="text-base"
               rows={3}
               disabled={isSubmitting}
             />
           </Field>
         </FieldGroup>
-        <Field>
-          <FieldLabel htmlFor="ocm-license">OCM License</FieldLabel>
-          <Input
-            id="ocm-license"
-            value={ocmLicense}
-            onChange={(e) => setOcmLicense(e.target.value)}
-            placeholder="OCM-XXXXX"
-            disabled={isSubmitting}
-          />
-        </Field>
+        {dispensaryMode !== "existing" && (
+          <Field>
+            <FieldLabel htmlFor="ocm-license">OCM License</FieldLabel>
+            <Input
+              id="ocm-license"
+              className="h-12 text-base"
+              value={ocmLicense}
+              onChange={(e) => setOcmLicense(e.target.value)}
+              placeholder="OCM-XXXXX"
+              disabled={isSubmitting}
+            />
+          </Field>
+        )}
       </section>
 
-      {/* Referred by (admin only) */}
-      {currentUser?.role === "admin" && (
+      {/* Referred by (admin only, new companies only) */}
+      {currentUser?.role === "admin" && dispensaryMode !== "existing" && (
         <section className="space-y-4">
           <Field>
             <FieldLabel>Referred by</FieldLabel>
@@ -379,7 +557,7 @@ export function OnboardRepresentativeForm() {
         />
         <label
           htmlFor="send-email"
-          className="text-sm cursor-pointer select-none"
+          className="text-base cursor-pointer select-none"
         >
           Send invitation email with login link
         </label>
@@ -388,7 +566,7 @@ export function OnboardRepresentativeForm() {
       {/* Submit */}
       <Button
         type="submit"
-        className="w-full"
+        className="w-full h-14 text-lg font-semibold"
         size="lg"
         disabled={isSubmitting}
       >

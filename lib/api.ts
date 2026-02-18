@@ -1542,7 +1542,8 @@ export class ApiClient {
   // Onboard Representative
 
   async onboardRepresentative(data: {
-    company: {
+    company_id?: number;
+    company?: {
       name: string;
       website?: string;
       phone_number?: string;
