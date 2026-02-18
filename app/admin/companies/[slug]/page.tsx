@@ -9,6 +9,7 @@ import {
   apiClient,
   type Cart,
   type Company,
+  type DiscountRecord,
   type LeadStatus,
   COMPANY_TYPE_LABELS,
   LEAD_STATUS_LABELS,
@@ -57,8 +58,10 @@ import {
   PlusIcon,
   SendIcon,
   ShoppingCartIcon,
+  TagIcon,
   Trash2Icon,
   UserIcon,
+  XIcon,
 } from "lucide-react";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
@@ -110,6 +113,7 @@ export default function CompanyDetailPage({
   const [memberError, setMemberError] = useState("");
   const [sendingInviteId, setSendingInviteId] = useState<number | null>(null);
   const [cart, setCart] = useState<Cart | null>(null);
+  const [allDiscounts, setAllDiscounts] = useState<DiscountRecord[]>([]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -125,8 +129,12 @@ export default function CompanyDetailPage({
         const data = await apiClient.getCompany(slug);
         setCompany(data);
         try {
-          const cartData = await apiClient.getCart(data.id);
+          const [cartData, discountsData] = await Promise.all([
+            apiClient.getCart(data.id),
+            apiClient.getDiscounts(),
+          ]);
           setCart(cartData);
+          setAllDiscounts(discountsData);
         } catch {
           // Cart may not exist yet — that's fine
         }
@@ -201,6 +209,26 @@ export default function CompanyDetailPage({
       setError(err instanceof Error ? err.message : "Failed to send invite");
     } finally {
       setSendingInviteId(null);
+    }
+  }
+
+  async function handleAddCartDiscount(discountId: number) {
+    if (!company) return;
+    try {
+      const updated = await apiClient.addCartDiscount(company.id, discountId);
+      setCart(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add discount");
+    }
+  }
+
+  async function handleRemoveCartDiscount(discountId: number) {
+    if (!company) return;
+    try {
+      const updated = await apiClient.removeCartDiscount(company.id, discountId);
+      setCart(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove discount");
     }
   }
 
@@ -623,6 +651,81 @@ export default function CompanyDetailPage({
             </table>
           </div>
         )}
+
+        {/* Cart Discounts */}
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TagIcon className="size-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Discounts</span>
+            </div>
+            {allDiscounts.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <PlusIcon className="mr-1.5 size-3.5" />
+                    Add Discount
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {allDiscounts
+                    .filter(
+                      (d) => !cart?.discounts?.some((cd) => cd.id === d.id)
+                    )
+                    .map((discount) => (
+                      <DropdownMenuItem
+                        key={discount.id}
+                        onClick={() => handleAddCartDiscount(discount.id)}
+                      >
+                        {discount.name}
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          {discount.discount_type === "percentage"
+                            ? `${discount.value}%`
+                            : `$${discount.value}`}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  {allDiscounts.filter(
+                    (d) => !cart?.discounts?.some((cd) => cd.id === d.id)
+                  ).length === 0 && (
+                    <DropdownMenuItem disabled>
+                      No available discounts
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+          {cart?.discounts && cart.discounts.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {cart.discounts.map((discount) => (
+                <Badge
+                  key={discount.id}
+                  variant="secondary"
+                  className="gap-1.5 pr-1.5"
+                >
+                  {discount.name}
+                  <span className="text-xs text-muted-foreground">
+                    {discount.discount_type === "percentage"
+                      ? `${discount.value}%`
+                      : `$${discount.value}`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCartDiscount(discount.id)}
+                    className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                  >
+                    <XIcon className="size-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No discounts assigned to this cart.
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Locations */}

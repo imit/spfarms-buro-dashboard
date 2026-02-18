@@ -485,12 +485,20 @@ export interface CartItem {
   minimum_order_quantity: number;
 }
 
+export interface CartDiscount {
+  id: number;
+  name: string;
+  discount_type: DiscountType;
+  value: string;
+}
+
 export interface Cart {
   id: number;
   company_id: number;
   items: CartItem[];
   item_count: number;
   subtotal: number;
+  discounts: CartDiscount[];
 }
 
 // ---- Payment Terms ----
@@ -1937,6 +1945,25 @@ export class ApiClient {
   async clearCart(companyId: number): Promise<Cart> {
     const res = await this.request<JsonApiResponse<Cart>>(
       `/api/v1/cart?company_id=${companyId}`,
+      { method: "DELETE" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async addCartDiscount(companyId: number, discountId: number): Promise<Cart> {
+    const res = await this.request<JsonApiResponse<Cart>>(
+      `/api/v1/cart/discounts?company_id=${companyId}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ discount_id: discountId }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async removeCartDiscount(companyId: number, discountId: number): Promise<Cart> {
+    const res = await this.request<JsonApiResponse<Cart>>(
+      `/api/v1/cart/discounts/${discountId}?company_id=${companyId}`,
       { method: "DELETE" }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
