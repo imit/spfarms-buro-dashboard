@@ -487,7 +487,6 @@ export interface CartItem {
 
 export interface Cart {
   id: number;
-  user_id: number;
   company_id: number;
   items: CartItem[];
   item_count: number;
