@@ -887,6 +887,206 @@ export interface CreateOrderParams {
   payment_term_id?: number;
 }
 
+// ---- Grow / Facility ----
+
+export type RoomType = "veg" | "flower" | "clone" | "dry" | "cure" | "storage" | "other";
+
+export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
+  veg: "Vegetative",
+  flower: "Flower",
+  clone: "Clone",
+  dry: "Dry",
+  cure: "Cure",
+  storage: "Storage",
+  other: "Other",
+};
+
+export interface RoomSummary {
+  id: number;
+  name: string;
+  room_type: RoomType | null;
+  floor_count: number;
+  rows: number;
+  cols: number;
+  default_zone_capacity: number;
+  zone_capacities: Record<string, number>;
+  position: number;
+  total_capacity: number;
+  active_plant_count: number;
+  occupied_zone_count: number;
+  total_zone_count: number;
+}
+
+export interface Facility {
+  id: number;
+  name: string;
+  description: string | null;
+  license_number: string | null;
+  rooms: RoomSummary[];
+  metrc_facility_id: string | null;
+  metrc_license_number: string | null;
+  metrc_last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Room {
+  id: number;
+  name: string;
+  room_type: RoomType | null;
+  floor_count: number;
+  rows: number;
+  cols: number;
+  default_zone_capacity: number;
+  zone_capacities: Record<string, number>;
+  position: number;
+  facility_id: number;
+  total_capacity: number;
+  floor_numbers: number[];
+  plant_counts_by_floor: Record<number, number>;
+  metrc_location_id_prefix: string | null;
+  metrc_last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type GrowthPhase = "immature" | "vegetative" | "flowering";
+export type PlantStatus = "active" | "harvested" | "destroyed";
+export type BatchType = "seed" | "clone" | "mother";
+
+export const GROWTH_PHASE_LABELS: Record<GrowthPhase, string> = {
+  immature: "Immature",
+  vegetative: "Vegetative",
+  flowering: "Flowering",
+};
+
+export const PLANT_STATUS_LABELS: Record<PlantStatus, string> = {
+  active: "Active",
+  harvested: "Harvested",
+  destroyed: "Destroyed",
+};
+
+export const BATCH_TYPE_LABELS: Record<BatchType, string> = {
+  seed: "Seed",
+  clone: "Clone",
+  mother: "Mother",
+};
+
+export type PlantEventType = "placed" | "moved" | "phase_changed" | "tagged" | "noted" | "harvested" | "destroyed";
+
+export interface PlantEventData {
+  id: number;
+  event_type: PlantEventType;
+  metadata: Record<string, unknown>;
+  notes: string | null;
+  user_name: string;
+  created_at: string;
+}
+
+export interface Plant {
+  id: number;
+  plant_uid: string;
+  custom_label: string | null;
+  floor: number;
+  row: number;
+  col: number;
+  growth_phase: GrowthPhase;
+  status: PlantStatus;
+  room: { id: number; name: string };
+  strain: { id: number; name: string; category: string | null };
+  plant_batch: { id: number; name: string; batch_uid: string } | null;
+  placed_by: { id: number; full_name: string | null; email: string } | null;
+  metrc_tag_info: { id: number; tag: string; status: string } | null;
+  metrc_id: string | null;
+  metrc_label: string | null;
+  metrc_last_synced_at: string | null;
+  harvested_at: string | null;
+  destroyed_at: string | null;
+  recent_events: PlantEventData[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlantBatch {
+  id: number;
+  name: string;
+  batch_uid: string;
+  batch_type: BatchType;
+  initial_count: number;
+  notes: string | null;
+  strain: { id: number; name: string; category: string | null };
+  created_by: { id: number; full_name: string | null; email: string } | null;
+  active_plant_count: number;
+  plant_count: number;
+  metrc_id: string | null;
+  metrc_tag: string | null;
+  metrc_name: string | null;
+  metrc_last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GridZonePlant {
+  id: number;
+  plant_uid: string;
+  custom_label: string | null;
+  strain_name: string;
+  strain_id: number;
+  growth_phase: GrowthPhase;
+  metrc_label: string | null;
+  plant_batch_id: number | null;
+  created_at: string;
+}
+
+export interface GridZone {
+  row: number;
+  col: number;
+  capacity: number;
+  plants: GridZonePlant[];
+}
+
+export interface FloorView {
+  room_id: number;
+  room_name: string;
+  room_type: string | null;
+  floor: number;
+  rows: number;
+  cols: number;
+  grid: Record<string, GridZone>;
+  total_plants: number;
+  total_capacity: number;
+}
+
+export type MetrcTagType = "plant_tag" | "package_tag";
+export type MetrcTagStatus = "available" | "assigned" | "used" | "voided";
+
+export const METRC_TAG_STATUS_LABELS: Record<MetrcTagStatus, string> = {
+  available: "Available",
+  assigned: "Assigned",
+  used: "Used",
+  voided: "Voided",
+};
+
+export interface MetrcTag {
+  id: number;
+  tag: string;
+  tag_type: MetrcTagType;
+  status: MetrcTagStatus;
+  assigned_at: string | null;
+  plant: { id: number; plant_uid: string; strain_name: string } | null;
+  assigned_by: { id: number; full_name: string | null; email: string } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MetrcTagStats {
+  available: number;
+  assigned: number;
+  used: number;
+  voided: number;
+  total: number;
+}
+
 export class ApiClient {
   private baseUrl: string;
 
@@ -2058,6 +2258,274 @@ export class ApiClient {
     await this.request("/api/v1/notifications/read_all", {
       method: "POST",
     });
+  }
+
+  // ---- Facility ----
+
+  async getFacility(): Promise<Facility | null> {
+    const res = await this.request<JsonApiResponse<Facility> | { data: null }>("/api/v1/facility");
+    if (!res.data) return null;
+    const d = res.data as JsonApiRecord<Facility>;
+    return { ...d.attributes, id: Number(d.id) };
+  }
+
+  async updateFacility(data: {
+    name?: string;
+    description?: string;
+    license_number?: string;
+  }): Promise<Facility> {
+    const res = await this.request<JsonApiResponse<Facility>>("/api/v1/facility", {
+      method: "PATCH",
+      body: JSON.stringify({ facility: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  // ---- Rooms ----
+
+  async getRooms(): Promise<Room[]> {
+    const res = await this.request<JsonApiCollectionResponse<Room>>("/api/v1/facility/rooms");
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getRoom(id: number): Promise<Room> {
+    const res = await this.request<JsonApiResponse<Room>>(`/api/v1/facility/rooms/${id}`);
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createRoom(data: {
+    name: string;
+    rows: number;
+    cols: number;
+    floor_count?: number;
+    room_type?: string;
+    default_zone_capacity?: number;
+    position?: number;
+    zone_capacities?: Record<string, number>;
+  }): Promise<Room> {
+    const res = await this.request<JsonApiResponse<Room>>("/api/v1/facility/rooms", {
+      method: "POST",
+      body: JSON.stringify({ room: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateRoom(id: number, data: Record<string, unknown>): Promise<Room> {
+    const res = await this.request<JsonApiResponse<Room>>(`/api/v1/facility/rooms/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ room: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteRoom(id: number): Promise<void> {
+    await this.request(`/api/v1/facility/rooms/${id}`, { method: "DELETE" });
+  }
+
+  // ---- Floor View ----
+
+  async getFloorView(roomId: number, floor: number): Promise<FloorView> {
+    const res = await this.request<{ data: FloorView }>(
+      `/api/v1/facility/rooms/${roomId}/floor_view?floor=${floor}`
+    );
+    return res.data;
+  }
+
+  // ---- Plant Batches ----
+
+  async getPlantBatches(): Promise<PlantBatch[]> {
+    const res = await this.request<JsonApiCollectionResponse<PlantBatch>>("/api/v1/facility/plant_batches");
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getPlantBatch(id: number): Promise<PlantBatch> {
+    const res = await this.request<JsonApiResponse<PlantBatch>>(`/api/v1/facility/plant_batches/${id}`);
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createPlantBatch(data: {
+    name: string;
+    strain_id: number;
+    batch_type: string;
+    initial_count: number;
+    notes?: string;
+  }): Promise<PlantBatch> {
+    const res = await this.request<JsonApiResponse<PlantBatch>>("/api/v1/facility/plant_batches", {
+      method: "POST",
+      body: JSON.stringify({ plant_batch: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updatePlantBatch(id: number, data: Record<string, unknown>): Promise<PlantBatch> {
+    const res = await this.request<JsonApiResponse<PlantBatch>>(`/api/v1/facility/plant_batches/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ plant_batch: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deletePlantBatch(id: number): Promise<void> {
+    await this.request(`/api/v1/facility/plant_batches/${id}`, { method: "DELETE" });
+  }
+
+  // ---- Plants ----
+
+  async getPlants(opts?: {
+    room_id?: number;
+    floor?: number;
+    strain_id?: number;
+    growth_phase?: string;
+    plant_batch_id?: number;
+  }): Promise<Plant[]> {
+    const params = new URLSearchParams();
+    if (opts?.room_id) params.set("room_id", String(opts.room_id));
+    if (opts?.floor) params.set("floor", String(opts.floor));
+    if (opts?.strain_id) params.set("strain_id", String(opts.strain_id));
+    if (opts?.growth_phase) params.set("growth_phase", opts.growth_phase);
+    if (opts?.plant_batch_id) params.set("plant_batch_id", String(opts.plant_batch_id));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const res = await this.request<JsonApiCollectionResponse<Plant>>(`/api/v1/plants${query}`);
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getPlant(id: number): Promise<Plant> {
+    const res = await this.request<JsonApiResponse<Plant>>(`/api/v1/plants/${id}`);
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createPlant(data: {
+    room_id: number;
+    strain_id: number;
+    plant_batch_id?: number;
+    floor: number;
+    row: number;
+    col: number;
+    growth_phase?: string;
+    custom_label?: string;
+  }): Promise<Plant> {
+    const res = await this.request<JsonApiResponse<Plant>>("/api/v1/plants", {
+      method: "POST",
+      body: JSON.stringify({ plant: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async bulkCreatePlants(
+    plantBatchId: number,
+    positions: { room_id: number; floor: number; row: number; col: number }[]
+  ): Promise<{
+    created_count: number;
+    error_count: number;
+    errors: { position: string; errors: string[] }[];
+  }> {
+    const res = await this.request<{
+      data: { created_count: number; error_count: number; errors: { position: string; errors: string[] }[] };
+    }>("/api/v1/plants/bulk_create", {
+      method: "POST",
+      body: JSON.stringify({ plant_batch_id: plantBatchId, positions }),
+    });
+    return res.data;
+  }
+
+  async updatePlant(id: number, data: { custom_label?: string }): Promise<Plant> {
+    const res = await this.request<JsonApiResponse<Plant>>(`/api/v1/plants/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ plant: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async movePlant(id: number, data: {
+    room_id: number;
+    floor: number;
+    row: number;
+    col: number;
+  }): Promise<Plant> {
+    const res = await this.request<JsonApiResponse<Plant>>(`/api/v1/plants/${id}/move`, {
+      method: "POST",
+      body: JSON.stringify({ plant: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async changePlantPhase(id: number, growthPhase: string): Promise<Plant> {
+    const res = await this.request<JsonApiResponse<Plant>>(`/api/v1/plants/${id}/change_phase`, {
+      method: "POST",
+      body: JSON.stringify({ growth_phase: growthPhase }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async tagPlant(id: number, tag: string): Promise<Plant> {
+    const res = await this.request<JsonApiResponse<Plant>>(`/api/v1/plants/${id}/tag`, {
+      method: "POST",
+      body: JSON.stringify({ tag }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async destroyPlant(id: number, reason?: string): Promise<Plant> {
+    const res = await this.request<JsonApiResponse<Plant>>(`/api/v1/plants/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify({ reason }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async addPlantNote(plantId: number, notes: string): Promise<void> {
+    await this.request(`/api/v1/plants/${plantId}/events`, {
+      method: "POST",
+      body: JSON.stringify({ notes }),
+    });
+  }
+
+  async getPlantEvents(plantId: number): Promise<PlantEventData[]> {
+    const res = await this.request<{ data: PlantEventData[] }>(`/api/v1/plants/${plantId}/events`);
+    return res.data;
+  }
+
+  // ---- METRC Tags ----
+
+  async getMetrcTags(opts?: { status?: string; tag_type?: string }): Promise<MetrcTag[]> {
+    const params = new URLSearchParams();
+    if (opts?.status) params.set("status", opts.status);
+    if (opts?.tag_type) params.set("tag_type", opts.tag_type);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const res = await this.request<JsonApiCollectionResponse<MetrcTag>>(`/api/v1/metrc_tags${query}`);
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async importMetrcTags(
+    tags: string[],
+    tagType?: string
+  ): Promise<{ created_count: number; error_count: number; errors: { tag: string; errors: string[] }[] }> {
+    const res = await this.request<{
+      data: { created_count: number; error_count: number; errors: { tag: string; errors: string[] }[] };
+    }>("/api/v1/metrc_tags", {
+      method: "POST",
+      body: JSON.stringify({ tags, tag_type: tagType || "plant_tag" }),
+    });
+    return res.data;
+  }
+
+  async voidMetrcTag(id: number): Promise<MetrcTag> {
+    const res = await this.request<JsonApiResponse<MetrcTag>>(`/api/v1/metrc_tags/${id}/void`, {
+      method: "POST",
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async getNextAvailableTag(): Promise<MetrcTag | null> {
+    const res = await this.request<JsonApiResponse<MetrcTag> | { data: null }>("/api/v1/metrc_tags/next_available");
+    if (!res.data) return null;
+    const d = res.data as JsonApiRecord<MetrcTag>;
+    return { ...d.attributes, id: Number(d.id) };
+  }
+
+  async getMetrcTagStats(): Promise<MetrcTagStats> {
+    const res = await this.request<{ data: MetrcTagStats }>("/api/v1/metrc_tags/stats");
+    return res.data;
   }
 }
 
