@@ -135,8 +135,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
 
     try {
       const formData = new FormData();
-      // For cannabis products, send the preview name (backend will regenerate it)
-      const name = form.cannabis ? (cannabisNamePreview || "Untitled") : form.name;
+      const name = form.cannabis ? (form.name || cannabisNamePreview || "Untitled") : form.name;
       formData.append("product[name]", name);
       formData.append("product[description]", form.description);
       formData.append("product[cannabis]", String(form.cannabis));
@@ -267,18 +266,25 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
                   </SelectContent>
                 </Select>
               </Field>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">
-                  Product name (auto-generated)
-                </p>
-                <div className="rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
-                  {cannabisNamePreview || (
-                    <span className="text-muted-foreground italic font-normal">
-                      Select a strain above...
-                    </span>
-                  )}
-                </div>
-              </div>
+              <Field>
+                <FieldLabel htmlFor="name">Product Name</FieldLabel>
+                <Input
+                  id="name"
+                  value={form.name || cannabisNamePreview}
+                  onChange={(e) => updateField("name", e.target.value)}
+                  placeholder={cannabisNamePreview || "Select a strain above..."}
+                  disabled={isSubmitting}
+                />
+                {cannabisNamePreview && form.name && form.name !== cannabisNamePreview && (
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground mt-1"
+                    onClick={() => updateField("name", "")}
+                  >
+                    Reset to auto-generated: {cannabisNamePreview}
+                  </button>
+                )}
+              </Field>
             </>
           ) : (
             <Field>
