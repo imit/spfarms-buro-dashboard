@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { useRouter, usePathname } from "next/navigation";
 import { apiClient, type User } from "@/lib/api";
 
-const PUBLIC_ROUTES = ["/", "/auth/invitation", "/auth/verify"];
+const PUBLIC_ROUTES = ["/", "/auth/invitation", "/auth/verify", "/wholesale"];
 
 export type UserRole = "admin" | "editor" | "account" | "sales";
 
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Redirect unauthenticated users to login, or authenticated users away from login
   useEffect(() => {
     if (isLoading) return;
-    const isPublic = PUBLIC_ROUTES.includes(pathname);
+    const isPublic = PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"));
     if (!isPublic && !hasToken) {
       router.push("/");
     } else if (pathname === "/" && hasToken && user) {

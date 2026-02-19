@@ -50,6 +50,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   ArrowLeftIcon,
+  CheckCircle2Icon,
   GlobeIcon,
   MailIcon,
   MapPinIcon,
@@ -223,6 +224,16 @@ export default function CompanyDetailPage({
     }
   }
 
+  async function handleApprove() {
+    if (!company) return;
+    try {
+      const updated = await apiClient.updateCompany(company.slug, { active: true });
+      setCompany(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to approve company");
+    }
+  }
+
   async function handleAddCartDiscount(discountId: number) {
     if (!company) return;
     try {
@@ -286,9 +297,13 @@ export default function CompanyDetailPage({
             <Badge variant="outline">
               {COMPANY_TYPE_LABELS[company.company_type]}
             </Badge>
-            <Badge variant={company.active ? "default" : "secondary"}>
-              {company.active ? "Active" : "Inactive"}
-            </Badge>
+            {company.active ? (
+              <Badge variant="default">Active</Badge>
+            ) : (
+              <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+                Pending Approval
+              </Badge>
+            )}
           </div>
           <div className="ml-11 mt-2">
             <DropdownMenu>
@@ -329,6 +344,12 @@ export default function CompanyDetailPage({
           )}
         </div>
         <div className="flex gap-2">
+          {!company.active && (
+            <Button size="sm" onClick={handleApprove}>
+              <CheckCircle2Icon className="mr-2 size-4" />
+              Approve
+            </Button>
+          )}
           <Button variant="outline" size="sm" asChild>
             <Link href={`/admin/companies/${company.slug}/edit`}>
               <PencilIcon className="mr-2 size-4" />

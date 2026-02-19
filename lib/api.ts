@@ -904,6 +904,28 @@ export interface CreateNotificationParams {
   metadata?: Record<string, unknown>;
 }
 
+export interface PartnershipRegistrationParams {
+  company: {
+    name: string;
+    website?: string;
+    phone_number?: string;
+    email?: string;
+    license_number?: string;
+  };
+  location?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    zip_code?: string;
+  };
+  contact: {
+    full_name: string;
+    email: string;
+    phone_number?: string;
+    title?: string;
+  };
+}
+
 export interface CreateOrderParams {
   company_id: number;
   order_type?: OrderType;
@@ -2592,6 +2614,25 @@ export class ApiClient {
   async getMetrcTagStats(): Promise<MetrcTagStats> {
     const res = await this.request<{ data: MetrcTagStats }>("/api/v1/metrc_tags/stats");
     return res.data;
+  }
+
+  // ---- Public Wholesale ----
+
+  async getPublicProducts(): Promise<Product[]> {
+    const res = await this.request<JsonApiCollectionResponse<Product>>("/api/v1/public/products");
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getPublicStrains(): Promise<Strain[]> {
+    const res = await this.request<JsonApiCollectionResponse<Strain>>("/api/v1/public/strains");
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async registerPartnership(data: PartnershipRegistrationParams): Promise<{ status: { code: number; message: string } }> {
+    return this.request("/api/v1/public/partnership_registrations", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 }
 

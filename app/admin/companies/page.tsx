@@ -181,15 +181,22 @@ export default function CompaniesPage() {
                       {COMPANY_TYPE_LABELS[c.company_type]}
                     </td>
                     <td className="px-4 py-3">
-                      {c.deleted_at ? (
-                        <Badge variant="destructive">Deleted</Badge>
-                      ) : (
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_STATUS_COLORS[c.lead_status] || ""}`}
-                        >
-                          {LEAD_STATUS_LABELS[c.lead_status] || c.lead_status}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {c.deleted_at ? (
+                          <Badge variant="destructive">Deleted</Badge>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_STATUS_COLORS[c.lead_status] || ""}`}
+                          >
+                            {LEAD_STATUS_LABELS[c.lead_status] || c.lead_status}
+                          </span>
+                        )}
+                        {!c.deleted_at && !c.active && (
+                          <span className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 px-2 py-0.5 text-xs font-medium">
+                            Pending
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       {c.deleted_at ? (
