@@ -124,7 +124,7 @@ export default function WholesalePage() {
                 <Logo />
               </div>
               <p className="text-sm text-muted-foreground">
-                Indoor, live-soil, craft cannabis grown in Southern California for licensed dispensaries.
+                Indoor, live-soil, craft cannabis grown in New York for licensed dispensaries.
               </p>
             </div>
 
@@ -133,11 +133,11 @@ export default function WholesalePage() {
               <div className="space-y-2 text-sm text-muted-foreground">
                 <a href="tel:+18187906988" className="flex items-center gap-2 hover:text-foreground transition-colors">
                   <PhoneIcon className="size-4 shrink-0" />
-                  (818) 790-6988
+                  (917) 254-7061
                 </a>
                 <a href="mailto:wholesale@spfarms.com" className="flex items-center gap-2 hover:text-foreground transition-colors">
                   <MailIcon className="size-4 shrink-0" />
-                  wholesale@spfarms.com
+                  info@spfarms.com
                 </a>
               </div>
             </div>
@@ -146,7 +146,7 @@ export default function WholesalePage() {
               <h3 className="text-sm font-semibold">Location</h3>
               <p className="flex items-start gap-2 text-sm text-muted-foreground">
                 <MapPinIcon className="size-4 shrink-0 mt-0.5" />
-                Southern California
+                New York
               </p>
             </div>
           </div>
