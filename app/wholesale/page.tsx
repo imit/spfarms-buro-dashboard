@@ -8,7 +8,7 @@ import { PublicProductCard } from "@/components/storefront/public-product-card";
 import { PandaSymbol } from "@/components/shared/panda-symbol";
 import { Logo } from "@/components/shared/logo";
 import { Button } from "@/components/ui/button";
-import { UserPlusIcon } from "lucide-react";
+import { UserPlusIcon, PhoneIcon, MailIcon, MapPinIcon } from "lucide-react";
 
 export default function WholesalePage() {
   const { isAuthenticated, user } = useAuth();
@@ -115,6 +115,47 @@ export default function WholesalePage() {
           </div>
         )}
       </main>
+
+      <footer className="border-t mt-12 bg-muted/30">
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-8">
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-3">
+              <div className="w-28">
+                <Logo />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Indoor, live-soil, craft cannabis grown in Southern California for licensed dispensaries.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Contact Us</h3>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <a href="tel:+18187906988" className="flex items-center gap-2 hover:text-foreground transition-colors">
+                  <PhoneIcon className="size-4 shrink-0" />
+                  (818) 790-6988
+                </a>
+                <a href="mailto:wholesale@spfarms.com" className="flex items-center gap-2 hover:text-foreground transition-colors">
+                  <MailIcon className="size-4 shrink-0" />
+                  wholesale@spfarms.com
+                </a>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Location</h3>
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <MapPinIcon className="size-4 shrink-0 mt-0.5" />
+                Southern California
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t mt-8 pt-6 text-center text-xs text-muted-foreground">
+            &copy; {new Date().getFullYear()} SPFarms. All rights reserved.
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

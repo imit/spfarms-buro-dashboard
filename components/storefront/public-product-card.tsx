@@ -47,74 +47,94 @@ export function PublicProductCard({
   const hasCannabinoids = thc || cbd || cbg;
 
   return (
-    <div className="group flex items-center gap-3 sm:gap-4 rounded-lg border bg-card p-2 sm:p-3 hover:bg-muted/30 transition-colors">
-      <div className="shrink-0">
-        <div className="relative size-16 sm:size-20 rounded-md bg-muted overflow-hidden">
-          {product.thumbnail_url ? (
-            <img
-              src={product.thumbnail_url}
-              alt={product.name}
-              className="size-full object-cover transition-transform group-hover:scale-105"
-            />
-          ) : (
-            <div className="size-full flex items-center justify-center text-muted-foreground text-[10px]">
-              No image
-            </div>
-          )}
-          {product.coming_soon && (
-            <span className="absolute top-1 left-1 rounded bg-blue-600 px-1 py-px text-[9px] font-semibold text-white flex items-center gap-0.5">
-              <ClockIcon className="size-2.5" />
-              Coming Soon
-            </span>
-          )}
-          {product.bulk && !product.coming_soon && (
-            <span className="absolute top-1 left-1 rounded bg-amber-600 px-1 py-px text-[9px] font-semibold text-white flex items-center gap-0.5">
-              <WeightIcon className="size-2.5" />
-              Bulk
-            </span>
+    <div className="group rounded-lg border bg-card p-2 sm:p-3 hover:bg-muted/30 transition-colors">
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Thumbnail */}
+        <div className="shrink-0">
+          <div className="relative size-16 sm:size-20 rounded-md bg-muted overflow-hidden">
+            {product.thumbnail_url ? (
+              <img
+                src={product.thumbnail_url}
+                alt={product.name}
+                className="size-full object-cover transition-transform group-hover:scale-105"
+              />
+            ) : (
+              <div className="size-full flex items-center justify-center text-muted-foreground text-[10px]">
+                No image
+              </div>
+            )}
+            {product.coming_soon && (
+              <span className="absolute top-1 left-1 rounded bg-blue-600 px-1 py-px text-[9px] font-semibold text-white flex items-center gap-0.5">
+                <ClockIcon className="size-2.5" />
+                Coming Soon
+              </span>
+            )}
+            {product.bulk && !product.coming_soon && (
+              <span className="absolute top-1 left-1 rounded bg-amber-600 px-1 py-px text-[9px] font-semibold text-white flex items-center gap-0.5">
+                <WeightIcon className="size-2.5" />
+                Bulk
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0 space-y-0.5">
+          <p className="font-medium text-sm leading-tight line-clamp-1">
+            {product.name}
+          </p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+            {weightLabel && <span>{weightLabel}</span>}
+            {hasCannabinoids && (
+              <>
+                {thc && <span>THC {thc}%</span>}
+                {cbd && <span>CBD {cbd}%</span>}
+                {cbg && <span>CBG {cbg}%</span>}
+              </>
+            )}
+          </div>
+          {coaPdfUrl && (
+            <a
+              href={coaPdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <FileTextIcon className="size-3" />
+              COA
+            </a>
           )}
         </div>
-      </div>
 
-      <div className="flex-1 min-w-0 space-y-0.5">
-        <p className="font-medium text-sm leading-tight line-clamp-1">
-          {product.name}
-        </p>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-          {weightLabel && <span>{weightLabel}</span>}
-          {hasCannabinoids && (
-            <>
-              {thc && <span>THC {thc}%</span>}
-              {cbd && <span>CBD {cbd}%</span>}
-              {cbg && <span>CBG {cbg}%</span>}
-            </>
-          )}
-        </div>
-        {coaPdfUrl && (
-          <a
-            href={coaPdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <FileTextIcon className="size-3" />
-            COA
-          </a>
-        )}
-      </div>
-
-      <div className="shrink-0 flex items-center gap-2 sm:gap-3">
-        <div className={`text-sm sm:text-base font-semibold text-right whitespace-nowrap ${!showPrice ? "select-none blur-sm" : ""}`}>
+        {/* Price — visible on desktop row, also shown on mobile */}
+        <div className={`hidden sm:block shrink-0 text-base font-semibold whitespace-nowrap ${!showPrice ? "select-none blur-sm" : ""}`}>
           {showPrice ? formatPrice(product.default_price) : "$XX.XX"}
         </div>
+
+        {/* Desktop CTA */}
         <Button
           size="default"
           variant="outline"
           onClick={onRegister}
-          className="shrink-0 px-4"
+          className="hidden sm:inline-flex shrink-0 px-4"
         >
           <UserPlusIcon className="mr-1.5 size-4" />
+          Register to Order
+        </Button>
+      </div>
+
+      {/* Mobile bottom row */}
+      <div className="flex items-center justify-between mt-2 sm:hidden">
+        <div className={`text-sm font-semibold ${!showPrice ? "select-none blur-sm" : ""}`}>
+          {showPrice ? formatPrice(product.default_price) : "$XX.XX"}
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onRegister}
+        >
+          <UserPlusIcon className="mr-1.5 size-3.5" />
           Register to Order
         </Button>
       </div>
