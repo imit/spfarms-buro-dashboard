@@ -73,17 +73,17 @@ function VerifyMagicLinkContent() {
 
           {error && (
             <>
-              <h2 className="text-xl font-semibold mb-2 text-destructive">
-                Login Link Invalid
+              <h2 className="text-xl font-semibold mb-2">
+                Link Already Used
               </h2>
               <p className="text-muted-foreground mb-5">
-                This link has already been used or is no longer valid. Please
-                request a new one.
+                Looks like this link was already used. No worries — just
+                request a fresh one and you&apos;ll be in!
               </p>
               <Link href="/">
                 <Button>
                   <MailIcon className="mr-2 size-4" />
-                  Go to Login
+                  Get a New Link
                 </Button>
               </Link>
             </>
