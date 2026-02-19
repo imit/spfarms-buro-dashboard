@@ -287,7 +287,7 @@ export default function ProductDetailPage({
 
         {/* Weight & Box Configuration */}
         <div className="rounded-lg border bg-card p-5">
-          <h3 className="font-medium mb-3">Weight & Box Configuration</h3>
+          <h3 className="font-medium mb-3">Weight & Order Configuration</h3>
           <Separator className="mb-1" />
           <dl>
             <DetailRow
@@ -297,10 +297,6 @@ export default function ProductDetailPage({
                   ? `${product.unit_weight} ${product.unit_weight_uom || ""}`
                   : null
               }
-            />
-            <DetailRow
-              label="Box Capacity"
-              value={product.box_capacity?.toString()}
             />
             <DetailRow
               label="Min Order Qty"

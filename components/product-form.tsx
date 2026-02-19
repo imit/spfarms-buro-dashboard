@@ -58,7 +58,6 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
     sku: product?.sku ?? "",
     barcode: product?.barcode ?? "",
     unit_weight: product?.unit_weight ?? "",
-    box_capacity: product?.box_capacity?.toString() ?? "32",
     minimum_order_quantity: product?.minimum_order_quantity?.toString() ?? "16",
     default_price: product?.default_price ?? "",
     inventory_count: product?.inventory_count?.toString() ?? "0",
@@ -160,7 +159,6 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
         formData.append("product[unit_weight]", form.unit_weight);
         formData.append("product[unit_weight_uom]", "g");
       }
-      if (form.box_capacity) formData.append("product[box_capacity]", form.box_capacity);
       if (form.minimum_order_quantity) formData.append("product[minimum_order_quantity]", form.minimum_order_quantity);
       if (form.default_price) formData.append("product[default_price]", form.default_price);
       formData.append("product[inventory_count]", form.inventory_count || "0");
@@ -475,10 +473,10 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
         </FieldGroup>
       </section>
 
-      {/* Weight & Box Configuration (non-bulk only) */}
+      {/* Weight & Order Configuration (non-bulk only) */}
       {!form.bulk && (
         <section className="space-y-4">
-          <h3 className="text-lg font-medium">Weight & Box Configuration</h3>
+          <h3 className="text-lg font-medium">Weight & Order Configuration</h3>
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="unit_weight">Pouch Weight</FieldLabel>
@@ -502,37 +500,21 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
                 </p>
               )}
             </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="box_capacity">Box Capacity (pouches)</FieldLabel>
-                <Input
-                  id="box_capacity"
-                  type="number"
-                  min="1"
-                  value={form.box_capacity}
-                  onChange={(e) => updateField("box_capacity", e.target.value)}
-                  placeholder="32"
-                  disabled={isSubmitting}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="minimum_order_quantity">Minimum Order (pouches)</FieldLabel>
-                <Input
-                  id="minimum_order_quantity"
-                  type="number"
-                  min="1"
-                  value={form.minimum_order_quantity}
-                  onChange={(e) => updateField("minimum_order_quantity", e.target.value)}
-                  placeholder="16"
-                  disabled={isSubmitting}
-                />
-                {form.box_capacity && form.minimum_order_quantity && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    = {((parseInt(form.minimum_order_quantity) / parseInt(form.box_capacity)) * 100).toFixed(0)}% of a box
-                  </p>
-                )}
-              </Field>
-            </div>
+            <Field>
+              <FieldLabel htmlFor="minimum_order_quantity">Minimum Order (units)</FieldLabel>
+              <Input
+                id="minimum_order_quantity"
+                type="number"
+                min="1"
+                value={form.minimum_order_quantity}
+                onChange={(e) => updateField("minimum_order_quantity", e.target.value)}
+                placeholder="16"
+                disabled={isSubmitting}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Minimum number of pouches required per order for this weight
+              </p>
+            </Field>
           </FieldGroup>
         </section>
       )}

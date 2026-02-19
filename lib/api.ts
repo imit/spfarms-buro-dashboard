@@ -298,7 +298,6 @@ export interface Product {
   barcode: string | null;
   unit_weight: string | null;
   unit_weight_uom: string | null;
-  box_capacity: number;
   minimum_order_quantity: number;
   default_price: string | null;
   inventory_count: number;
@@ -491,7 +490,6 @@ export interface CartItem {
   thumbnail_url: string | null;
   strain_name: string | null;
   unit_weight: string | null;
-  box_capacity: number;
   minimum_order_quantity: number;
   bulk: boolean;
   coming_soon: boolean;
@@ -567,7 +565,6 @@ export interface CheckoutPreviewItem {
   thumbnail_url: string | null;
   strain_name: string | null;
   unit_weight: string | null;
-  box_capacity: number;
   minimum_order_quantity: number;
 }
 

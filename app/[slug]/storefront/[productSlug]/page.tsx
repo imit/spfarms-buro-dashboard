@@ -209,16 +209,10 @@ export default function ProductDetailPage({
                     </span>
                   </div>
                 )}
-                {product.box_capacity && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Box Size</span>
-                    <span>{product.box_capacity} pouches</span>
-                  </div>
-                )}
                 {product.minimum_order_quantity && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Minimum Order</span>
-                    <span>{product.minimum_order_quantity} pouches</span>
+                    <span>{product.minimum_order_quantity} units</span>
                   </div>
                 )}
               </>
