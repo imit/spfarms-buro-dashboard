@@ -6,6 +6,7 @@ import { apiClient, type Product, type Strain } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { PublicProductCard } from "@/components/storefront/public-product-card";
 import { PandaSymbol } from "@/components/shared/panda-symbol";
+import { Logo } from "@/components/shared/logo";
 import { Button } from "@/components/ui/button";
 import { UserPlusIcon } from "lucide-react";
 
@@ -66,8 +67,13 @@ export default function WholesalePage() {
     <div className="min-h-screen">
       <header className="border-b">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 py-4 sm:px-8">
-          <div>
-            <h1 className="text-2xl font-bold">SPFarms Wholesale</h1>
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <div className="w-32">
+                <Logo />
+              </div>
+              <span className="text-lg font-semibold text-muted-foreground">Wholesale</span>
+            </div>
             <p className="text-sm text-muted-foreground">
               Indoor, live-soil, craft cannabis products for licensed dispensaries
             </p>

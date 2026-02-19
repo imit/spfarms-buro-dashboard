@@ -1,6 +1,6 @@
 "use client";
 
-import { FileTextIcon, WeightIcon, UserPlusIcon } from "lucide-react";
+import { FileTextIcon, WeightIcon, UserPlusIcon, ClockIcon } from "lucide-react";
 import { type Product, type Strain } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
@@ -61,7 +61,13 @@ export function PublicProductCard({
               No image
             </div>
           )}
-          {product.bulk && (
+          {product.coming_soon && (
+            <span className="absolute top-1 left-1 rounded bg-blue-600 px-1 py-px text-[9px] font-semibold text-white flex items-center gap-0.5">
+              <ClockIcon className="size-2.5" />
+              Coming Soon
+            </span>
+          )}
+          {product.bulk && !product.coming_soon && (
             <span className="absolute top-1 left-1 rounded bg-amber-600 px-1 py-px text-[9px] font-semibold text-white flex items-center gap-0.5">
               <WeightIcon className="size-2.5" />
               Bulk
