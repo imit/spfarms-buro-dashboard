@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ShoppingCartIcon, FileTextIcon, WeightIcon, ClockIcon } from "lucide-react";
-import { type Product, type Strain } from "@/lib/api";
+import { type Product, type Strain, type CartDiscount } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -31,15 +31,25 @@ export function ProductCard({
   product,
   slug,
   strain,
+  discounts,
   onAddToCart,
 }: {
   product: Product;
   slug: string;
   strain?: Strain;
+  discounts?: CartDiscount[];
   onAddToCart: (productId: number, quantity: number) => Promise<void>;
 }) {
   const [quantity, setQuantity] = useState(product.bulk ? 1 : 32);
   const [adding, setAdding] = useState(false);
+
+  // Calculate discounted price from percentage discounts only
+  const percentageDiscount = discounts?.find((d) => d.discount_type === "percentage");
+  const originalPrice = product.default_price ? parseFloat(product.default_price) : null;
+  const discountedPrice =
+    percentageDiscount && originalPrice
+      ? originalPrice * (1 - parseFloat(percentageDiscount.value) / 100)
+      : null;
 
   const handleAdd = async () => {
     setAdding(true);
@@ -134,8 +144,24 @@ export function ProductCard({
           </Badge>
         )}
 
-        <div className="text-sm sm:text-base font-semibold text-right whitespace-nowrap">
-          {formatPrice(product.default_price)}
+        <div className="text-right whitespace-nowrap">
+          {discountedPrice !== null ? (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground line-through">
+                {formatPrice(product.default_price)}
+              </span>
+              <span className="text-sm sm:text-base font-semibold text-green-600">
+                ${discountedPrice.toFixed(2)}
+              </span>
+              <span className="rounded bg-green-100 px-1 py-px text-[10px] font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                {parseFloat(percentageDiscount!.value)}% off
+              </span>
+            </div>
+          ) : (
+            <span className="text-sm sm:text-base font-semibold">
+              {formatPrice(product.default_price)}
+            </span>
+          )}
         </div>
 
         {/* Quantity selector for non-bulk products */}

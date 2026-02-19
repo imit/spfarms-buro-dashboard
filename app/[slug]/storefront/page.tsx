@@ -127,6 +127,18 @@ export default function StorefrontPage({
   const totalPouches = boxItems.reduce((sum, i) => sum + i.quantity, 0);
   const totalItems = (cart?.items.length ?? 0);
 
+  // Calculate discount savings for a given subtotal
+  const calcDiscountLines = (subtotal: number) => {
+    if (!cart?.discounts?.length || subtotal <= 0) return [];
+    return cart.discounts.map((d) => {
+      const amount =
+        d.discount_type === "percentage"
+          ? subtotal * (parseFloat(d.value) / 100)
+          : Math.min(parseFloat(d.value), subtotal);
+      return { name: d.name, type: d.discount_type, value: d.value, amount };
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-full">
@@ -218,6 +230,34 @@ export default function StorefrontPage({
                 </>
               )}
 
+              {/* Discount summary */}
+              {(() => {
+                const sub = regularItems.reduce(
+                  (s, i) => s + parseFloat(i.unit_price || "0") * i.quantity, 0
+                );
+                const lines = calcDiscountLines(sub);
+                const totalDiscount = lines.reduce((s, l) => s + l.amount, 0);
+                if (lines.length === 0) return null;
+                return (
+                  <div className="space-y-1 rounded-lg border border-green-200 bg-green-50/50 p-3 text-sm dark:border-green-900 dark:bg-green-950/20">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Subtotal</span>
+                      <span>${sub.toFixed(2)}</span>
+                    </div>
+                    {lines.map((l, i) => (
+                      <div key={i} className="flex justify-between text-green-600">
+                        <span>{l.name} ({l.type === "percentage" ? `${parseFloat(l.value)}%` : `$${parseFloat(l.value)}`})</span>
+                        <span>-${l.amount.toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between font-semibold border-t border-green-200 pt-1 dark:border-green-900">
+                      <span>Est. Total</span>
+                      <span>${(sub - totalDiscount).toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <Button
                 className="w-full"
                 size="lg"
@@ -247,6 +287,34 @@ export default function StorefrontPage({
               <div className="space-y-2">
                 {preorderItems.map((item) => cartItemRow(item, "preorder"))}
               </div>
+              {/* Pre-order discount summary */}
+              {(() => {
+                const sub = preorderItems.reduce(
+                  (s, i) => s + parseFloat(i.unit_price || "0") * i.quantity, 0
+                );
+                const lines = calcDiscountLines(sub);
+                const totalDiscount = lines.reduce((s, l) => s + l.amount, 0);
+                if (lines.length === 0) return null;
+                return (
+                  <div className="space-y-1 rounded-lg border border-green-200 bg-green-50/50 p-3 text-sm dark:border-green-900 dark:bg-green-950/20">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Pre-order Subtotal</span>
+                      <span>${sub.toFixed(2)}</span>
+                    </div>
+                    {lines.map((l, i) => (
+                      <div key={i} className="flex justify-between text-green-600">
+                        <span>{l.name} ({l.type === "percentage" ? `${parseFloat(l.value)}%` : `$${parseFloat(l.value)}`})</span>
+                        <span>-${l.amount.toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between font-semibold border-t border-green-200 pt-1 dark:border-green-900">
+                      <span>Est. Total</span>
+                      <span>${(sub - totalDiscount).toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <Button
                 className="w-full"
                 size="lg"
@@ -334,6 +402,7 @@ export default function StorefrontPage({
                   product={product}
                   slug={slug}
                   strain={product.strain_id ? strainMap[product.strain_id] : undefined}
+                  discounts={cart?.discounts}
                   onAddToCart={handleAddToCart}
                 />
               ))}

@@ -80,6 +80,22 @@ export default function CartPage({
     (sum, i) => sum + parseFloat(i.unit_price || "0") * i.quantity, 0
   );
 
+  // Calculate discount lines for a given subtotal
+  const calcDiscountLines = (subtotal: number) => {
+    if (!cart?.discounts?.length || subtotal <= 0) return [];
+    return cart.discounts.map((d) => {
+      const amount =
+        d.discount_type === "percentage"
+          ? subtotal * (parseFloat(d.value) / 100)
+          : Math.min(parseFloat(d.value), subtotal);
+      return { name: d.name, type: d.discount_type, value: d.value, amount };
+    });
+  };
+  const regularDiscountLines = calcDiscountLines(regularSubtotal);
+  const regularTotalDiscount = regularDiscountLines.reduce((s, l) => s + l.amount, 0);
+  const preorderDiscountLines = calcDiscountLines(preorderSubtotal);
+  const preorderTotalDiscount = preorderDiscountLines.reduce((s, l) => s + l.amount, 0);
+
   if (isLoading) {
     return <p className="text-muted-foreground">Loading cart...</p>;
   }
@@ -179,17 +195,38 @@ export default function CartPage({
             </>
           )}
 
-          <div className="flex items-center justify-between border-t pt-4 mt-4">
-            <div className="text-lg font-semibold">
-              Subtotal: {formatPrice(regularSubtotal)}
+          <div className="border-t pt-4 mt-4 space-y-3">
+            {regularDiscountLines.length > 0 ? (
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>{formatPrice(regularSubtotal)}</span>
+                </div>
+                {regularDiscountLines.map((l, i) => (
+                  <div key={i} className="flex justify-between text-green-600">
+                    <span>{l.name} ({l.type === "percentage" ? `${parseFloat(l.value)}%` : `$${parseFloat(l.value)}`})</span>
+                    <span>-{formatPrice(l.amount)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-lg font-semibold border-t pt-2">
+                  <span>Est. Total</span>
+                  <span>{formatPrice(regularSubtotal - regularTotalDiscount)}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-lg font-semibold">
+                Subtotal: {formatPrice(regularSubtotal)}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button
+                size="lg"
+                disabled={!meetsMinimum}
+                onClick={() => router.push(`/${slug}/checkout`)}
+              >
+                {meetsMinimum ? "Proceed to Checkout" : "Minimum order not met"}
+              </Button>
             </div>
-            <Button
-              size="lg"
-              disabled={!meetsMinimum}
-              onClick={() => router.push(`/${slug}/checkout`)}
-            >
-              {meetsMinimum ? "Proceed to Checkout" : "Minimum order not met"}
-            </Button>
           </div>
         </>
       )}
@@ -206,18 +243,39 @@ export default function CartPage({
               cartItemRow(item, "border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20")
             )}
           </div>
-          <div className="flex items-center justify-between border-t pt-4 mt-4">
-            <div className="text-lg font-semibold">
-              Pre-order Subtotal: {formatPrice(preorderSubtotal)}
+          <div className="border-t pt-4 mt-4 space-y-3">
+            {preorderDiscountLines.length > 0 ? (
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pre-order Subtotal</span>
+                  <span>{formatPrice(preorderSubtotal)}</span>
+                </div>
+                {preorderDiscountLines.map((l, i) => (
+                  <div key={i} className="flex justify-between text-green-600">
+                    <span>{l.name} ({l.type === "percentage" ? `${parseFloat(l.value)}%` : `$${parseFloat(l.value)}`})</span>
+                    <span>-{formatPrice(l.amount)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-lg font-semibold border-t pt-2">
+                  <span>Est. Total</span>
+                  <span>{formatPrice(preorderSubtotal - preorderTotalDiscount)}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-lg font-semibold">
+                Pre-order Subtotal: {formatPrice(preorderSubtotal)}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => router.push(`/${slug}/checkout?type=preorder`)}
+              >
+                <ClockIcon className="mr-2 size-4" />
+                Checkout Pre-orders
+              </Button>
             </div>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => router.push(`/${slug}/checkout?type=preorder`)}
-            >
-              <ClockIcon className="mr-2 size-4" />
-              Checkout Pre-orders
-            </Button>
           </div>
         </>
       )}
