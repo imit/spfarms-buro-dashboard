@@ -87,13 +87,16 @@ export const REGION_LABELS: Record<Region, string> = {
   other: "Other",
 };
 
-export type CompanyType = "dispensary" | "distributor" | "partner" | "processor";
+export type CompanyType = "dispensary" | "distributor" | "partner" | "processor" | "microgrower" | "retailer" | "other";
 
 export const COMPANY_TYPE_LABELS: Record<CompanyType, string> = {
   dispensary: "Dispensary",
   distributor: "Distributor",
   partner: "Partner",
   processor: "Processor",
+  microgrower: "Microgrower",
+  retailer: "Retailer",
+  other: "Other",
 };
 
 export type LeadStatus =

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   apiClient,
   type Company,
+  type CompanyType,
   type LeadStatus,
   COMPANY_TYPE_LABELS,
   LEAD_STATUS_LABELS,
@@ -30,6 +31,17 @@ const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   lost: "bg-red-100 text-red-700",
 };
 
+const COMPANY_TYPE_COLORS: Record<CompanyType, string> = {
+  dispensary: "bg-green-100 text-green-700",
+  distributor: "bg-blue-100 text-blue-700",
+  partner: "bg-indigo-100 text-indigo-700",
+  processor: "bg-orange-100 text-orange-700",
+  microgrower: "bg-teal-100 text-teal-700",
+  retailer: "bg-pink-100 text-pink-700",
+  other: "bg-gray-100 text-gray-600",
+};
+
+const COMPANY_TYPES = Object.entries(COMPANY_TYPE_LABELS) as [CompanyType, string][];
 const LEAD_STATUSES = Object.entries(LEAD_STATUS_LABELS) as [LeadStatus, string][];
 
 export default function CompaniesPage() {
@@ -38,6 +50,7 @@ export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [typeFilter, setTypeFilter] = useState<CompanyType | "all">("all");
   const [leadFilter, setLeadFilter] = useState<LeadStatus | "all">("all");
   const [showDeleted, setShowDeleted] = useState(false);
 
@@ -61,6 +74,7 @@ export default function CompaniesPage() {
   }, [isAuthenticated, showDeleted]);
 
   const filtered = companies.filter((c) => {
+    if (typeFilter !== "all" && c.company_type !== typeFilter) return false;
     if (leadFilter !== "all" && c.lead_status !== leadFilter) return false;
     return true;
   });
@@ -84,13 +98,13 @@ export default function CompaniesPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setLeadFilter("all")}
+            onClick={() => setTypeFilter("all")}
             className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all ${
-              leadFilter === "all"
+              typeFilter === "all"
                 ? "bg-foreground text-background ring-2 ring-foreground/20"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
@@ -98,35 +112,72 @@ export default function CompaniesPage() {
             All
             <span className="ml-1.5 opacity-70">{companies.length}</span>
           </button>
-          {LEAD_STATUSES.map(([value, label]) => {
-            const count = companies.filter((c) => c.lead_status === value).length;
-            const isActive = leadFilter === value;
+          {COMPANY_TYPES.map(([value, label]) => {
+            const count = companies.filter((c) => c.company_type === value).length;
+            if (count === 0) return null;
+            const isActive = typeFilter === value;
             return (
               <button
                 key={value}
                 type="button"
-                onClick={() => setLeadFilter(isActive ? "all" : value)}
+                onClick={() => setTypeFilter(isActive ? "all" : value)}
                 className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all ${
                   isActive
-                    ? `${LEAD_STATUS_COLORS[value]} ring-2 ring-current/20`
-                    : `${LEAD_STATUS_COLORS[value]} opacity-50 hover:opacity-80`
+                    ? `${COMPANY_TYPE_COLORS[value]} ring-2 ring-current/20`
+                    : `${COMPANY_TYPE_COLORS[value]} opacity-50 hover:opacity-80`
                 }`}
               >
                 {label}
-                {count > 0 && <span className="ml-1.5 opacity-70">{count}</span>}
+                <span className="ml-1.5 opacity-70">{count}</span>
               </button>
             );
           })}
         </div>
-        {currentUser?.role === "admin" && (
-          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-            <Checkbox
-              checked={showDeleted}
-              onCheckedChange={(checked) => setShowDeleted(checked === true)}
-            />
-            Show deleted
-          </label>
-        )}
+
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setLeadFilter("all")}
+              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all ${
+                leadFilter === "all"
+                  ? "bg-foreground text-background ring-2 ring-foreground/20"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              All
+              <span className="ml-1.5 opacity-70">{companies.length}</span>
+            </button>
+            {LEAD_STATUSES.map(([value, label]) => {
+              const count = companies.filter((c) => c.lead_status === value).length;
+              const isActive = leadFilter === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setLeadFilter(isActive ? "all" : value)}
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all ${
+                    isActive
+                      ? `${LEAD_STATUS_COLORS[value]} ring-2 ring-current/20`
+                      : `${LEAD_STATUS_COLORS[value]} opacity-50 hover:opacity-80`
+                  }`}
+                >
+                  {label}
+                  {count > 0 && <span className="ml-1.5 opacity-70">{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {currentUser?.role === "admin" && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <Checkbox
+                checked={showDeleted}
+                onCheckedChange={(checked) => setShowDeleted(checked === true)}
+              />
+              Show deleted
+            </label>
+          )}
+        </div>
       </div>
 
       {error && (
