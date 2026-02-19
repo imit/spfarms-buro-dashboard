@@ -11,12 +11,16 @@ import {
   type Company,
   type DiscountRecord,
   type LeadStatus,
+  type Order,
+  type OrderStatus,
   COMPANY_TYPE_LABELS,
   LEAD_STATUS_LABELS,
+  ORDER_STATUS_LABELS,
   PRODUCT_TYPE_LABELS,
   REGION_LABELS,
   ROLE_LABELS,
 } from "@/lib/api";
+import { statusBadgeClasses } from "@/lib/order-utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -51,6 +55,8 @@ import { Label } from "@/components/ui/label";
 import {
   ArrowLeftIcon,
   CheckCircle2Icon,
+  ClipboardListIcon,
+  DollarSignIcon,
   GlobeIcon,
   MailIcon,
   MapPinIcon,
@@ -128,6 +134,7 @@ export default function CompanyDetailPage({
   const [inviteCustomMessage, setInviteCustomMessage] = useState("");
   const [cart, setCart] = useState<Cart | null>(null);
   const [allDiscounts, setAllDiscounts] = useState<DiscountRecord[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -143,12 +150,14 @@ export default function CompanyDetailPage({
         const data = await apiClient.getCompany(slug);
         setCompany(data);
         try {
-          const [cartData, discountsData] = await Promise.all([
+          const [cartData, discountsData, ordersData] = await Promise.all([
             apiClient.getCart(data.id),
             apiClient.getDiscounts(),
+            apiClient.getOrders({ company_id: data.id }),
           ]);
           setCart(cartData);
           setAllDiscounts(discountsData);
+          setOrders(ordersData);
         } catch {
           // Cart may not exist yet — that's fine
         }
@@ -816,6 +825,93 @@ export default function CompanyDetailPage({
             </p>
           )}
         </div>
+      </div>
+
+      {/* Orders & Revenue */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <ClipboardListIcon className="size-5 text-muted-foreground" />
+          <h3 className="text-lg font-medium">Orders</h3>
+          {orders.length > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {orders.length} order{orders.length !== 1 ? "s" : ""}
+            </Badge>
+          )}
+        </div>
+
+        {orders.length > 0 && (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-lg border bg-card p-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <DollarSignIcon className="size-4" />
+                Total Revenue
+              </div>
+              <p className="text-2xl font-semibold">
+                ${orders
+                  .filter((o) => o.status !== "cancelled")
+                  .reduce((sum, o) => sum + parseFloat(o.total || "0"), 0)
+                  .toFixed(2)}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-card p-4">
+              <div className="text-sm text-muted-foreground mb-1">Confirmed Orders</div>
+              <p className="text-2xl font-semibold">
+                {orders.filter((o) => o.status !== "pending" && o.status !== "cancelled").length}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-card p-4">
+              <div className="text-sm text-muted-foreground mb-1">Pending</div>
+              <p className="text-2xl font-semibold">
+                {orders.filter((o) => o.status === "pending").length}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {orders.length === 0 ? (
+          <div className="rounded-lg border bg-card p-6 text-center">
+            <p className="text-sm text-muted-foreground">No orders yet.</p>
+          </div>
+        ) : (
+          <div className="rounded-lg border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-3 text-left font-medium">Order #</th>
+                  <th className="px-4 py-3 text-left font-medium">Date</th>
+                  <th className="px-4 py-3 text-left font-medium">Status</th>
+                  <th className="px-4 py-3 text-left font-medium">Placed by</th>
+                  <th className="px-4 py-3 text-right font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => (
+                  <tr
+                    key={order.id}
+                    className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
+                    onClick={() => router.push(`/admin/orders/${order.id}`)}
+                  >
+                    <td className="px-4 py-3 font-medium">{order.order_number}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
+                        {ORDER_STATUS_LABELS[order.status]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {order.user?.full_name || order.user?.email || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium">
+                      ${parseFloat(order.total || "0").toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Locations */}

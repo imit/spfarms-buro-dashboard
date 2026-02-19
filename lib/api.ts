@@ -2172,9 +2172,10 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
-  async getOrders(): Promise<Order[]> {
+  async getOrders(params?: { company_id?: number }): Promise<Order[]> {
+    const query = params?.company_id ? `?company_id=${params.company_id}` : "";
     const res = await this.request<JsonApiCollectionResponse<Order>>(
-      "/api/v1/orders"
+      `/api/v1/orders${query}`
     );
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
