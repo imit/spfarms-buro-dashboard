@@ -135,9 +135,9 @@ export default function WholesalePage() {
                   <PhoneIcon className="size-4 shrink-0" />
                   (917) 254-7061
                 </a>
-                <a href="mailto:wholesale@spfarms.com" className="flex items-center gap-2 hover:text-foreground transition-colors">
+                <a href="mailto:info@spfarmsny.com" className="flex items-center gap-2 hover:text-foreground transition-colors">
                   <MailIcon className="size-4 shrink-0" />
-                  info@spfarms.com
+                  info@spfarmsny.com
                 </a>
               </div>
             </div>
