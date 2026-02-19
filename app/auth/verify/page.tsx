@@ -33,6 +33,12 @@ export default function VerifyMagicLinkPage() {
   );
 }
 
+function getSavedEmail(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/(?:^|; )spf_email=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 function VerifyMagicLinkContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -41,7 +47,7 @@ function VerifyMagicLinkContent() {
     token ? null : "No token provided."
   );
   const [isVerifying, setIsVerifying] = useState(!!token);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(getSavedEmail);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -53,11 +59,27 @@ function VerifyMagicLinkContent() {
         const { user } = await apiClient.verifyMagicLink(token);
         loginWithToken(user);
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "This link is no longer valid."
-        );
+        // If we have their email from a previous login, auto-send a new link
+        const saved = getSavedEmail();
+        if (saved) {
+          setEmail(saved);
+          setSending(true);
+          try {
+            await apiClient.requestMagicLink(saved);
+            setSent(true);
+          } catch {
+            // Fall back to showing the form
+            setError("This link is no longer valid.");
+          } finally {
+            setSending(false);
+          }
+        } else {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "This link is no longer valid."
+          );
+        }
         setIsVerifying(false);
       }
     };
@@ -143,10 +165,16 @@ function VerifyMagicLinkContent() {
             {sent && (
               <>
                 <CheckCircleIcon className="mx-auto mb-3 size-10 text-green-600" />
-                <h2 className="text-xl font-semibold mb-2">Check your email!</h2>
+                <h2 className="text-xl font-semibold mb-2">New link sent!</h2>
                 <p className="text-muted-foreground">
-                  We sent a login link to <strong>{email}</strong>. Click the
-                  link in the email and you&apos;ll be logged in instantly.
+                  We just sent a fresh login link to <strong>{email}</strong>.
+                  Check your inbox — you&apos;ll be logged in with one tap.
+                </p>
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Need help?{" "}
+                  <a href="mailto:info@spfarmsny.com" className="underline hover:text-foreground">
+                    info@spfarmsny.com
+                  </a>
                 </p>
               </>
             )}

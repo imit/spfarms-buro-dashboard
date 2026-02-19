@@ -8,8 +8,14 @@ import { apiClient } from "@/lib/api"
 
 type LoginMode = "password" | "magic_link"
 
+function getSavedEmail(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/(?:^|; )spf_email=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 export function LoginForm() {
-  const [email, setEmail] = useState("")
+  const [email, setEmail] = useState(getSavedEmail)
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")

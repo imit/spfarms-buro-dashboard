@@ -78,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(user);
       setHasToken(true);
       localStorage.setItem("auth_user", JSON.stringify(user));
+      document.cookie = `spf_email=${encodeURIComponent(user.email)};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
       router.push(getRedirectPath(user));
     } catch (error) {
       throw error;
@@ -88,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(authenticatedUser);
     setHasToken(true);
     localStorage.setItem("auth_user", JSON.stringify(authenticatedUser));
+    document.cookie = `spf_email=${encodeURIComponent(authenticatedUser.email)};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
     router.push(getRedirectPath(authenticatedUser));
   }, [router]);
 
