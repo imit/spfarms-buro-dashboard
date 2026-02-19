@@ -301,6 +301,11 @@ export interface Product {
   box_capacity: number;
   minimum_order_quantity: number;
   default_price: string | null;
+  inventory_count: number;
+  track_inventory: boolean;
+  low_stock_threshold: number;
+  in_stock: boolean;
+  low_stock: boolean;
   status: ProductStatus;
   tags: string[];
   meta_title: string | null;
@@ -1177,7 +1182,10 @@ export class ApiClient {
       const error = await response.json().catch(() => ({
         message: "An error occurred",
       }));
-      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+      const message = error.message
+        || (Array.isArray(error.errors) ? error.errors.join(", ") : null)
+        || `HTTP error! status: ${response.status}`;
+      throw new Error(message);
     }
 
     // Check if response has a body
@@ -1217,7 +1225,10 @@ export class ApiClient {
       const error = await response.json().catch(() => ({
         message: "An error occurred",
       }));
-      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+      const message = error.message
+        || (Array.isArray(error.errors) ? error.errors.join(", ") : null)
+        || `HTTP error! status: ${response.status}`;
+      throw new Error(message);
     }
 
     const contentType = response.headers.get("content-type");

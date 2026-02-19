@@ -61,6 +61,9 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
     box_capacity: product?.box_capacity?.toString() ?? "32",
     minimum_order_quantity: product?.minimum_order_quantity?.toString() ?? "16",
     default_price: product?.default_price ?? "",
+    inventory_count: product?.inventory_count?.toString() ?? "0",
+    track_inventory: product?.track_inventory ?? true,
+    low_stock_threshold: product?.low_stock_threshold?.toString() ?? "0",
     meta_title: product?.meta_title ?? "",
     meta_description: product?.meta_description ?? "",
     brand: product?.brand ?? "SPFARMS",
@@ -160,6 +163,9 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       if (form.box_capacity) formData.append("product[box_capacity]", form.box_capacity);
       if (form.minimum_order_quantity) formData.append("product[minimum_order_quantity]", form.minimum_order_quantity);
       if (form.default_price) formData.append("product[default_price]", form.default_price);
+      formData.append("product[inventory_count]", form.inventory_count || "0");
+      formData.append("product[track_inventory]", String(form.track_inventory));
+      formData.append("product[low_stock_threshold]", form.low_stock_threshold || "0");
       if (form.meta_title) formData.append("product[meta_title]", form.meta_title);
       if (form.meta_description) formData.append("product[meta_description]", form.meta_description);
       if (form.brand) formData.append("product[brand]", form.brand);
@@ -415,6 +421,57 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
               disabled={isSubmitting}
             />
           </Field>
+        </FieldGroup>
+      </section>
+
+      {/* Inventory */}
+      <section className="space-y-4">
+        <h3 className="text-lg font-medium">Inventory</h3>
+        <FieldGroup>
+          <div className="flex items-center gap-2 mb-2">
+            <Checkbox
+              id="track_inventory"
+              checked={form.track_inventory}
+              onCheckedChange={(checked) =>
+                updateField("track_inventory", checked === true)
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor="track_inventory" className="text-sm font-medium">
+              Track inventory
+            </label>
+          </div>
+          {form.track_inventory && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="inventory_count">Stock Count</FieldLabel>
+                <Input
+                  id="inventory_count"
+                  type="number"
+                  min="0"
+                  value={form.inventory_count}
+                  onChange={(e) => updateField("inventory_count", e.target.value)}
+                  placeholder="0"
+                  disabled={isSubmitting}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="low_stock_threshold">Low Stock Alert</FieldLabel>
+                <Input
+                  id="low_stock_threshold"
+                  type="number"
+                  min="0"
+                  value={form.low_stock_threshold}
+                  onChange={(e) => updateField("low_stock_threshold", e.target.value)}
+                  placeholder="0"
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Alert when stock falls to this number (0 = no alert)
+                </p>
+              </Field>
+            </div>
+          )}
         </FieldGroup>
       </section>
 

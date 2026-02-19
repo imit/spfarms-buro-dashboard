@@ -28,10 +28,12 @@ export function PublicProductCard({
   product,
   strain,
   onRegister,
+  showPrice = false,
 }: {
   product: Product;
   strain?: Strain;
   onRegister: () => void;
+  showPrice?: boolean;
 }) {
   const weightLabel = product.bulk
     ? (product.unit_weight ? `${parseFloat(product.unit_weight)} lbs` : null)
@@ -97,8 +99,8 @@ export function PublicProductCard({
       </div>
 
       <div className="shrink-0 flex items-center gap-2 sm:gap-3">
-        <div className="text-sm sm:text-base font-semibold text-right whitespace-nowrap">
-          {formatPrice(product.default_price)}
+        <div className={`text-sm sm:text-base font-semibold text-right whitespace-nowrap ${!showPrice ? "select-none blur-sm" : ""}`}>
+          {showPrice ? formatPrice(product.default_price) : "$XX.XX"}
         </div>
         <Button
           size="default"

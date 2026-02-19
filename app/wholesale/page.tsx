@@ -69,7 +69,7 @@ export default function WholesalePage() {
           <div>
             <h1 className="text-2xl font-bold">SPFarms Wholesale</h1>
             <p className="text-sm text-muted-foreground">
-              Premium cannabis products for licensed dispensaries
+              Indoor, live-soil, craft cannabis products for licensed dispensaries
             </p>
           </div>
           <Button onClick={() => router.push("/wholesale/register")}>
@@ -90,6 +90,7 @@ export default function WholesalePage() {
                 product={product}
                 strain={product.strain_id ? strainMap[product.strain_id] : undefined}
                 onRegister={() => router.push("/wholesale/register")}
+                showPrice={isAuthenticated}
               />
             ))}
           </div>

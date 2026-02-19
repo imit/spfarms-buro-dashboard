@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeftIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, PencilIcon, Trash2Icon, PackageIcon, AlertTriangleIcon } from "lucide-react";
 
 function DetailRow({
   label,
@@ -244,6 +244,45 @@ export default function ProductDetailPage({
           <dl>
             <DetailRow label="Price" value={formatPrice(product.default_price)} />
           </dl>
+        </div>
+
+        {/* Inventory */}
+        <div className="rounded-lg border bg-card p-5">
+          <h3 className="font-medium mb-3">Inventory</h3>
+          <Separator className="mb-1" />
+          {product.track_inventory ? (
+            <dl>
+              <DetailRow
+                label="Stock"
+                value={
+                  <span className="inline-flex items-center gap-2">
+                    <span className="text-base font-semibold">{product.inventory_count}</span>
+                    {!product.in_stock ? (
+                      <Badge variant="destructive">Out of stock</Badge>
+                    ) : product.low_stock ? (
+                      <span className="inline-flex items-center gap-1 text-amber-600 text-xs font-medium">
+                        <AlertTriangleIcon className="size-3.5" />
+                        Low stock
+                      </span>
+                    ) : (
+                      <Badge variant="secondary" className="bg-green-100 text-green-700">In stock</Badge>
+                    )}
+                  </span>
+                }
+              />
+              {product.low_stock_threshold > 0 && (
+                <DetailRow
+                  label="Low stock alert"
+                  value={`at ${product.low_stock_threshold} units`}
+                />
+              )}
+            </dl>
+          ) : (
+            <p className="py-2 text-sm text-muted-foreground">
+              <PackageIcon className="inline size-4 mr-1.5 -mt-0.5" />
+              Inventory tracking disabled
+            </p>
+          )}
         </div>
 
         {/* Weight & Box Configuration */}
