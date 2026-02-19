@@ -18,6 +18,7 @@ export interface BoxProgressItem {
   minimum_order_quantity: number;
   strain_name: string | null;
   thumbnail_url?: string | null;
+  bulk?: boolean;
 }
 
 interface WeightGroup {
@@ -33,6 +34,7 @@ function groupByWeight(items: BoxProgressItem[]): WeightGroup[] {
   const groups = new Map<number, WeightGroup>();
 
   for (const item of items) {
+    if (item.bulk) continue;
     if (!item.unit_weight) continue;
     const w = parseFloat(item.unit_weight);
     if (isNaN(w)) continue;
@@ -70,8 +72,10 @@ function groupByWeight(items: BoxProgressItem[]): WeightGroup[] {
 export function useMinimumOrderMet(items: BoxProgressItem[]): boolean {
   return useMemo(() => {
     if (items.length === 0) return false;
+    const nonBulkItems = items.filter((i) => !i.bulk);
+    if (nonBulkItems.length === 0) return true; // only bulk items — no box minimum applies
     const groups = groupByWeight(items);
-    if (groups.length === 0) return false;
+    if (groups.length === 0) return true;
     return groups.every((g) => g.totalQty >= g.minimumOrder);
   }, [items]);
 }

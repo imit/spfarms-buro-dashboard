@@ -32,9 +32,11 @@ const COMPANY_TYPES = Object.entries(COMPANY_TYPE_LABELS) as [CompanyType, strin
 interface CompanyFormProps {
   company?: Company;
   mode?: "create" | "edit";
+  redirectPath?: string;
+  cancelPath?: string;
 }
 
-export function CompanyForm({ company, mode = "create" }: CompanyFormProps) {
+export function CompanyForm({ company, mode = "create", redirectPath, cancelPath }: CompanyFormProps) {
   const isEdit = mode === "edit";
   const router = useRouter();
   const { user: currentUser } = useAuth();
@@ -157,10 +159,10 @@ export function CompanyForm({ company, mode = "create" }: CompanyFormProps) {
 
       if (isEdit && company) {
         await apiClient.updateCompany(company.slug, payload);
-        router.push(`/admin/companies/${company.slug}`);
+        router.push(redirectPath || `/admin/companies/${company.slug}`);
       } else {
         await apiClient.createCompany(payload);
-        router.push("/admin/companies");
+        router.push(redirectPath || "/admin/companies");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : `Failed to ${isEdit ? "update" : "create"} company`);
@@ -455,7 +457,7 @@ export function CompanyForm({ company, mode = "create" }: CompanyFormProps) {
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push(isEdit && company ? `/admin/companies/${company.slug}` : "/admin/companies")}
+          onClick={() => router.push(cancelPath || (isEdit && company ? `/admin/companies/${company.slug}` : "/admin/companies"))}
           disabled={isSubmitting}
         >
           Cancel

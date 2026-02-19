@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Avatar from "boring-avatars";
 import {
   PlusIcon,
@@ -9,6 +9,8 @@ import {
   CheckIcon,
   XIcon,
   Loader2Icon,
+  BuildingIcon,
+  ImageIcon,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -54,6 +56,15 @@ export default function SettingsPage({
   const [company, setCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Company info
+  const [companyName, setCompanyName] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [companyEmail, setCompanyEmail] = useState("");
+  const [companyPhone, setCompanyPhone] = useState("");
+  const [savingCompany, setSavingCompany] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
   // Profile form
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -87,6 +98,10 @@ export default function SettingsPage({
       try {
         const data = await apiClient.getCompany(slug);
         setCompany(data);
+        setCompanyName(data.name);
+        setLicenseNumber(data.license_number || "");
+        setCompanyEmail(data.email || "");
+        setCompanyPhone(data.phone_number || "");
       } catch (err) {
         console.error("Failed to load company:", err);
       } finally {
@@ -95,6 +110,43 @@ export default function SettingsPage({
     }
     load();
   }, [slug]);
+
+  async function handleSaveCompany() {
+    setSavingCompany(true);
+    try {
+      const updated = await apiClient.updateCompany(slug, {
+        name: companyName,
+        license_number: licenseNumber || null,
+        email: companyEmail || null,
+        phone_number: companyPhone || null,
+      });
+      setCompany(updated);
+      toast.success("Company updated");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update company"
+      );
+    } finally {
+      setSavingCompany(false);
+    }
+  }
+
+  async function handleLogoUpload(file: File) {
+    setUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("company[logo]", file);
+      const updated = await apiClient.updateCompanyWithFormData(slug, formData);
+      setCompany(updated);
+      toast.success("Logo updated");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to upload logo"
+      );
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
 
   async function handleSaveProfile() {
     setSavingProfile(true);
@@ -201,7 +253,115 @@ export default function SettingsPage({
   const members: CompanyMember[] = company?.members || [];
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-8">
+      {/* Company Info Section */}
+      <section>
+        <div className="flex items-center gap-3 mb-4">
+          <BuildingIcon className="size-5" />
+          <h2 className="text-lg font-semibold">Company</h2>
+        </div>
+        <Separator className="mb-4" />
+
+        {/* Logo */}
+        <div className="flex items-center gap-4 mb-6">
+          {company?.logo_url ? (
+            <img
+              src={company.logo_url}
+              alt={company.name}
+              className="size-16 rounded-lg object-cover border"
+            />
+          ) : (
+            <div className="size-16 rounded-lg border border-dashed bg-muted flex items-center justify-center text-muted-foreground">
+              <ImageIcon className="size-6" />
+            </div>
+          )}
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Company Logo</p>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleLogoUpload(file);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => logoInputRef.current?.click()}
+              disabled={uploadingLogo}
+            >
+              {uploadingLogo ? (
+                <>
+                  <Loader2Icon className="mr-1.5 size-3.5 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                company?.logo_url ? "Change Logo" : "Upload Logo"
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="companyName">Company Name</Label>
+            <Input
+              id="companyName"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="Your company name"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="licenseNumber">License Number</Label>
+            <Input
+              id="licenseNumber"
+              value={licenseNumber}
+              onChange={(e) => setLicenseNumber(e.target.value)}
+              placeholder="OCM-XXXXX"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="companyEmail">Company Email</Label>
+            <Input
+              id="companyEmail"
+              type="email"
+              value={companyEmail}
+              onChange={(e) => setCompanyEmail(e.target.value)}
+              placeholder="info@company.com"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="companyPhoneNumber">Company Phone</Label>
+            <Input
+              id="companyPhoneNumber"
+              value={companyPhone}
+              onChange={(e) => setCompanyPhone(e.target.value)}
+              placeholder="(555) 123-4567"
+            />
+          </div>
+        </div>
+        <Button
+          className="mt-4"
+          size="sm"
+          onClick={handleSaveCompany}
+          disabled={savingCompany}
+        >
+          {savingCompany ? (
+            <>
+              <Loader2Icon className="mr-2 size-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save Company"
+          )}
+        </Button>
+      </section>
+
       {/* Profile Section */}
       <section>
         <div className="flex items-center gap-4 mb-4">

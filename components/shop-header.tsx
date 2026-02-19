@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Avatar from "boring-avatars";
 import { ShoppingCartIcon, BellIcon, LogOutIcon, PackageIcon, FlaskConicalIcon, SettingsIcon } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
@@ -20,6 +20,7 @@ import {
 export function ShopHeader({ slug }: { slug: string }) {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [cartCount, setCartCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -67,6 +68,25 @@ export function ShopHeader({ slug }: { slug: string }) {
         <Link href={`/${slug}/storefront`} className="w-28">
           <Logo />
         </Link>
+
+        <nav className="flex items-center gap-6">
+          <Link
+            href={`/${slug}/storefront`}
+            className={`text-sm font-medium transition-opacity ${
+              pathname === `/${slug}/storefront` ? "opacity-100" : "opacity-50 hover:opacity-70"
+            }`}
+          >
+            products
+          </Link>
+          <Link
+            href={`/${slug}/storefront/bulk`}
+            className={`text-sm font-medium transition-opacity ${
+              pathname === `/${slug}/storefront/bulk` ? "opacity-100" : "opacity-50 hover:opacity-70"
+            }`}
+          >
+            bulk
+          </Link>
+        </nav>
 
         <div className="flex items-center gap-2">
           <Button

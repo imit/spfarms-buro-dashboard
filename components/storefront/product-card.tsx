@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MinusIcon, PlusIcon, ShoppingCartIcon, FileTextIcon, LeafIcon } from "lucide-react";
-import { type Product, type Strain, PRODUCT_TYPE_LABELS } from "@/lib/api";
+import { ShoppingCartIcon, FileTextIcon, WeightIcon, ClockIcon } from "lucide-react";
+import { type Product, type Strain } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -38,20 +38,22 @@ export function ProductCard({
   strain?: Strain;
   onAddToCart: (productId: number, quantity: number) => Promise<void>;
 }) {
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(product.bulk ? 1 : 32);
   const [adding, setAdding] = useState(false);
 
   const handleAdd = async () => {
     setAdding(true);
     try {
       await onAddToCart(product.id, quantity);
-      setQuantity(1);
+      setQuantity(product.bulk ? 1 : 32);
     } finally {
       setAdding(false);
     }
   };
 
-  const weightLabel = formatWeight(product.unit_weight);
+  const weightLabel = product.bulk
+    ? (product.unit_weight ? `${parseFloat(product.unit_weight)} lbs` : null)
+    : formatWeight(product.unit_weight);
   const coaPdfUrl = strain?.current_coa?.pdf_url;
 
   // Cannabinoid values — prefer strain data, fall back to product fields; hide zeros
@@ -61,13 +63,14 @@ export function ProductCard({
   const cbg = nonZero(strain?.cbg);
   const hasCannabinoids = thc || cbd || cbg;
 
-  // Flavor
-  const smellTags = strain?.smell_tags ?? [];
-
   return (
-    <div className="group rounded-lg border bg-card overflow-hidden">
-      <Link href={`/${slug}/storefront/${product.slug}`}>
-        <div className="aspect-square bg-muted overflow-hidden relative">
+    <div className="group flex items-center gap-3 sm:gap-4 rounded-lg border bg-card p-2 sm:p-3 hover:bg-muted/30 transition-colors">
+      {/* Thumbnail */}
+      <Link
+        href={`/${slug}/storefront/${product.slug}`}
+        className="shrink-0"
+      >
+        <div className="relative size-16 sm:size-20 rounded-md bg-muted overflow-hidden">
           {product.thumbnail_url ? (
             <img
               src={product.thumbnail_url}
@@ -75,72 +78,98 @@ export function ProductCard({
               className="size-full object-cover transition-transform group-hover:scale-105"
             />
           ) : (
-            <div className="size-full flex items-center justify-center text-muted-foreground text-sm">
+            <div className="size-full flex items-center justify-center text-muted-foreground text-[10px]">
               No image
             </div>
           )}
-          {weightLabel && (
-            <span className="absolute bottom-2 left-2 rounded bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white">
-              {weightLabel}
+          {product.bulk && (
+            <span className="absolute top-1 left-1 rounded bg-amber-600 px-1 py-px text-[9px] font-semibold text-white flex items-center gap-0.5">
+              <WeightIcon className="size-2.5" />
+              Bulk
             </span>
           )}
         </div>
       </Link>
 
-      <div className="p-3 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <Link
-            href={`/${slug}/storefront/${product.slug}`}
-            className="font-medium text-sm leading-tight hover:underline line-clamp-2"
-          >
-            {product.name}
-          </Link>
-        </div>
+      {/* Info */}
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <Link
+          href={`/${slug}/storefront/${product.slug}`}
+          className="font-medium text-sm leading-tight hover:underline line-clamp-1"
+        >
+          {product.name}
+        </Link>
 
-       
-
-        {/* Cannabinoid profile */}
-        {hasCannabinoids && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-            {thc && <span>THC {thc}%</span>}
-            {cbd && <span>CBD {cbd}%</span>}
-            {cbg && <span>CBG {cbg}%</span>}
-          </div>
-        )}
-
-        
-
-        <div className="flex items-center justify-between">
-          <div className="text-lg font-semibold">
-            {formatPrice(product.default_price)}
-          </div>
-          {coaPdfUrl && (
-            <a
-              href={coaPdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <FileTextIcon className="size-3.5" />
-              COA
-            </a>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+          {weightLabel && <span>{weightLabel}</span>}
+          {hasCannabinoids && (
+            <>
+              {thc && <span>THC {thc}%</span>}
+              {cbd && <span>CBD {cbd}%</span>}
+              {cbg && <span>CBG {cbg}%</span>}
+            </>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          
-          <Button
-            size="lg"
-            variant="default"
-            className="flex-1"
-            onClick={handleAdd}
-            disabled={adding}
+        {coaPdfUrl && (
+          <a
+            href={coaPdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+            onClick={(e) => e.stopPropagation()}
           >
-            <ShoppingCartIcon className="mr-1.5 size-3.5" />
-            {adding ? "Adding..." : "Add"}
-          </Button>
+            <FileTextIcon className="size-3" />
+            COA
+          </a>
+        )}
+      </div>
+
+      {/* Price + Quantity + Add */}
+      <div className="shrink-0 flex items-center gap-2 sm:gap-3">
+        {product.coming_soon && (
+          <Badge variant="outline" className="gap-1 text-muted-foreground">
+            <ClockIcon className="size-3" />
+            Coming Soon
+          </Badge>
+        )}
+
+        <div className="text-sm sm:text-base font-semibold text-right whitespace-nowrap">
+          {formatPrice(product.default_price)}
         </div>
+
+        {/* Quantity selector for non-bulk products */}
+        {!product.bulk && (
+          <select
+            value={quantity}
+            onChange={(e) => setQuantity(Number(e.target.value))}
+            className="h-9 rounded-md border bg-background px-2 text-sm font-medium tabular-nums"
+          >
+            <option value={8}>8</option>
+            <option value={16}>16</option>
+            <option value={32}>32</option>
+          </select>
+        )}
+
+        <Button
+          size="default"
+          variant={product.coming_soon ? "outline" : "default"}
+          onClick={handleAdd}
+          disabled={adding}
+          className="shrink-0 px-4"
+        >
+          {product.coming_soon ? (
+            <>
+              <ClockIcon className="mr-1.5 size-4" />
+              {adding ? "..." : product.bulk ? "Pre-order" : `Pre-order (${quantity})`}
+            </>
+          ) : (
+            <>
+              <ShoppingCartIcon className="mr-1.5 size-4" />
+              {adding ? "..." : product.bulk ? "Add" : `Add (${quantity})`}
+            </>
+          )}
+        </Button>
       </div>
     </div>
   );

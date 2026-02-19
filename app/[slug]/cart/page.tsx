@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeftIcon, MinusIcon, PlusIcon, TrashIcon,
+  ArrowLeftIcon, MinusIcon, PlusIcon, TrashIcon, WeightIcon, ClockIcon,
 } from "lucide-react";
 import { apiClient, type Cart, type Company } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
@@ -69,7 +69,16 @@ export default function CartPage({
     }
   };
 
-  const meetsMinimum = useMinimumOrderMet(cart?.items ?? []);
+  const regularItems = cart?.items.filter((i) => !i.coming_soon) ?? [];
+  const preorderItems = cart?.items.filter((i) => i.coming_soon) ?? [];
+  const meetsMinimum = useMinimumOrderMet(regularItems);
+
+  const regularSubtotal = regularItems.reduce(
+    (sum, i) => sum + parseFloat(i.unit_price || "0") * i.quantity, 0
+  );
+  const preorderSubtotal = preorderItems.reduce(
+    (sum, i) => sum + parseFloat(i.unit_price || "0") * i.quantity, 0
+  );
 
   if (isLoading) {
     return <p className="text-muted-foreground">Loading cart...</p>;
@@ -86,6 +95,44 @@ export default function CartPage({
     );
   }
 
+  const cartItemRow = (item: typeof regularItems[number], borderClass?: string) => (
+    <div key={item.id} className={`flex items-center gap-4 rounded-lg border p-3 ${borderClass || ""}`}>
+      <div className="size-16 shrink-0 overflow-hidden rounded-md bg-muted">
+        {item.thumbnail_url ? (
+          <img src={item.thumbnail_url} alt={item.product_name} className="size-full object-cover" />
+        ) : (
+          <div className="size-full" />
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm truncate">{item.product_name}</p>
+        <p className="text-sm text-muted-foreground">
+          {formatPrice(item.unit_price)}
+          {item.bulk && item.unit_weight ? ` / ${parseFloat(item.unit_weight)} lbs` : ""}
+        </p>
+      </div>
+
+      <div className="flex items-center rounded-md border">
+        <Button variant="ghost" size="icon" className="size-8" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+          <MinusIcon className="size-3" />
+        </Button>
+        <span className="w-8 text-center text-sm">{item.quantity}</span>
+        <Button variant="ghost" size="icon" className="size-8" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+          <PlusIcon className="size-3" />
+        </Button>
+      </div>
+
+      <div className="w-20 text-right font-medium text-sm">
+        {formatPrice(parseFloat(item.unit_price || "0") * item.quantity)}
+      </div>
+
+      <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
+        <TrashIcon className="size-4" />
+      </Button>
+    </div>
+  );
+
   return (
     <div>
       <Button
@@ -100,77 +147,80 @@ export default function CartPage({
 
       <h1 className="text-2xl font-bold mb-6">Cart</h1>
 
-      {/* Box progress */}
-      <div className="rounded-lg border p-4 mb-4">
-        <BoxProgress items={cart.items} />
-      </div>
-
-      <div className="space-y-3">
-        {cart.items.map((item) => (
-          <div key={item.id} className="flex items-center gap-4 rounded-lg border p-3">
-            <div className="size-16 shrink-0 overflow-hidden rounded-md bg-muted">
-              {item.thumbnail_url ? (
-                <img src={item.thumbnail_url} alt={item.product_name} className="size-full object-cover" />
-              ) : (
-                <div className="size-full" />
-              )}
+      {/* ── Regular order section ── */}
+      {regularItems.length > 0 && (
+        <>
+          {/* Box progress (non-bulk regular items only) */}
+          {regularItems.some((i) => !i.bulk) && (
+            <div className="rounded-lg border p-4 mb-4">
+              <BoxProgress items={regularItems.filter((i) => !i.bulk)} />
             </div>
+          )}
 
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{item.product_name}</p>
-              <p className="text-sm text-muted-foreground">{formatPrice(item.unit_price)}</p>
+          {/* Regular non-bulk items */}
+          {regularItems.filter((i) => !i.bulk).length > 0 && (
+            <div className="space-y-3">
+              {regularItems.filter((i) => !i.bulk).map((item) => cartItemRow(item))}
             </div>
+          )}
 
-            <div className="flex items-center rounded-md border">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-              >
-                <MinusIcon className="size-3" />
-              </Button>
-              <span className="w-8 text-center text-sm">{item.quantity}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-              >
-                <PlusIcon className="size-3" />
-              </Button>
+          {/* Regular bulk items */}
+          {regularItems.some((i) => i.bulk) && (
+            <>
+              <div className="flex items-center gap-2 mt-6 mb-3">
+                <WeightIcon className="size-4 text-amber-600" />
+                <h2 className="text-lg font-semibold">Bulk Orders</h2>
+              </div>
+              <div className="space-y-3">
+                {regularItems.filter((i) => i.bulk).map((item) =>
+                  cartItemRow(item, "border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20")
+                )}
+              </div>
+            </>
+          )}
+
+          <div className="flex items-center justify-between border-t pt-4 mt-4">
+            <div className="text-lg font-semibold">
+              Subtotal: {formatPrice(regularSubtotal)}
             </div>
-
-            <div className="w-20 text-right font-medium text-sm">
-              {formatPrice(
-                parseFloat(item.unit_price || "0") * item.quantity
-              )}
-            </div>
-
             <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 text-muted-foreground hover:text-destructive"
-              onClick={() => removeItem(item.id)}
+              size="lg"
+              disabled={!meetsMinimum}
+              onClick={() => router.push(`/${slug}/checkout`)}
             >
-              <TrashIcon className="size-4" />
+              {meetsMinimum ? "Proceed to Checkout" : "Minimum order not met"}
             </Button>
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
-      <div className="flex items-center justify-between border-t pt-4 mt-4">
-        <div className="text-lg font-semibold">
-          Subtotal: {formatPrice(cart.subtotal)}
-        </div>
-        <Button
-          size="lg"
-          disabled={!meetsMinimum}
-          onClick={() => router.push(`/${slug}/checkout`)}
-        >
-          {meetsMinimum ? "Proceed to Checkout" : "Minimum order not met"}
-        </Button>
-      </div>
+      {/* ── Pre-order section ── */}
+      {preorderItems.length > 0 && (
+        <>
+          <div className={`flex items-center gap-2 mb-3 ${regularItems.length > 0 ? "mt-8 pt-6 border-t" : ""}`}>
+            <ClockIcon className="size-5 text-blue-600" />
+            <h2 className="text-lg font-semibold">Pre-orders</h2>
+          </div>
+          <div className="space-y-3">
+            {preorderItems.map((item) =>
+              cartItemRow(item, "border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20")
+            )}
+          </div>
+          <div className="flex items-center justify-between border-t pt-4 mt-4">
+            <div className="text-lg font-semibold">
+              Pre-order Subtotal: {formatPrice(preorderSubtotal)}
+            </div>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => router.push(`/${slug}/checkout?type=preorder`)}
+            >
+              <ClockIcon className="mr-2 size-4" />
+              Checkout Pre-orders
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

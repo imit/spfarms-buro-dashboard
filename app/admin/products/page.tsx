@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlusIcon } from "lucide-react";
 
-type TypeFilter = "all" | "cannabis" | "promo";
+type TypeFilter = "all" | "cannabis" | "promo" | "bulk";
 type StatusFilter = "all" | ProductStatus;
 
 const PRODUCT_TYPES = Object.entries(PRODUCT_TYPE_LABELS) as [ProductType, string][];
@@ -76,6 +76,7 @@ export default function ProductsPage() {
     return products.filter((p) => {
       if (typeFilter === "cannabis" && !p.cannabis) return false;
       if (typeFilter === "promo" && p.cannabis) return false;
+      if (typeFilter === "bulk" && !p.bulk) return false;
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
       return true;
     });
@@ -129,6 +130,13 @@ export default function ProductsPage() {
               onClick={() => setTypeFilter("promo")}
             >
               Promo
+            </Button>
+            <Button
+              variant={typeFilter === "bulk" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setTypeFilter("bulk")}
+            >
+              Bulk
             </Button>
           </div>
           <div className="flex items-center gap-1 rounded-lg border p-1">

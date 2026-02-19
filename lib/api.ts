@@ -285,6 +285,8 @@ export interface Product {
   slug: string;
   description: string | null;
   cannabis: boolean;
+  bulk: boolean;
+  coming_soon: boolean;
   product_type: ProductType;
   product_uid: string | null;
   strain_id: number | null;
@@ -483,6 +485,8 @@ export interface CartItem {
   unit_weight: string | null;
   box_capacity: number;
   minimum_order_quantity: number;
+  bulk: boolean;
+  coming_soon: boolean;
 }
 
 export interface CartDiscount {
@@ -595,6 +599,13 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   cancelled: "Cancelled",
 };
 
+export type OrderType = "standard" | "preorder";
+
+export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
+  standard: "Standard",
+  preorder: "Pre-order",
+};
+
 export interface OrderItem {
   id: number;
   product_id: number;
@@ -640,6 +651,7 @@ export interface OrderCompanyDetails {
 export interface Order {
   id: number;
   order_number: string;
+  order_type: OrderType;
   status: OrderStatus;
   subtotal: string;
   total: string;
@@ -894,6 +906,7 @@ export interface CreateNotificationParams {
 
 export interface CreateOrderParams {
   company_id: number;
+  order_type?: OrderType;
   shipping_location_id?: number;
   billing_location_id?: number;
   notes_to_vendor?: string;
@@ -1423,6 +1436,20 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
+  async updateCompanyWithFormData(
+    slug: string,
+    formData: FormData
+  ): Promise<Company> {
+    const res = await this.requestFormData<JsonApiResponse<Company>>(
+      `/api/v1/companies/${slug}`,
+      {
+        method: "PATCH",
+        body: formData,
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async deleteCompany(slug: string): Promise<void> {
     await this.request(`/api/v1/companies/${slug}`, {
       method: "DELETE",
@@ -1887,10 +1914,13 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
-  async sendWelcomeEmail(userId: number): Promise<User> {
+  async sendWelcomeEmail(userId: number, customMessage?: string): Promise<User> {
     const res = await this.request<{ data: { attributes: User } }>(
       `/api/v1/users/${userId}/send_welcome_email`,
-      { method: "POST" }
+      {
+        method: "POST",
+        body: JSON.stringify({ custom_message: customMessage || undefined }),
+      }
     );
     return res.data.attributes;
   }
@@ -1973,10 +2003,12 @@ export class ApiClient {
 
   async getCheckoutPreview(
     companyId: number,
-    paymentTermId?: number
+    paymentTermId?: number,
+    orderType?: OrderType
   ): Promise<CheckoutPreview> {
     const body: Record<string, unknown> = { company_id: companyId };
     if (paymentTermId) body.payment_term_id = paymentTermId;
+    if (orderType) body.order_type = orderType;
 
     const res = await this.request<{ data: CheckoutPreview }>(
       "/api/v1/cart/checkout_preview",

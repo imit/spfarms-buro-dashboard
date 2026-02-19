@@ -50,6 +50,8 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
     name: product?.name ?? "",
     description: product?.description ?? "",
     cannabis: product?.cannabis ?? true,
+    bulk: product?.bulk ?? false,
+    coming_soon: product?.coming_soon ?? false,
     product_type: (product?.product_type ?? "flower") as ProductType,
     status: (product?.status ?? "draft") as ProductStatus,
     strain_id: product?.strain_id?.toString() ?? "",
@@ -138,6 +140,8 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       formData.append("product[name]", name);
       formData.append("product[description]", form.description);
       formData.append("product[cannabis]", String(form.cannabis));
+      formData.append("product[bulk]", String(form.bulk));
+      formData.append("product[coming_soon]", String(form.coming_soon));
       formData.append("product[product_type]", form.product_type);
       formData.append("product[status]", form.status);
       formData.append("product[active]", String(form.active));
@@ -212,6 +216,34 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
             />
             <label htmlFor="cannabis" className="text-sm font-medium">
               Cannabis product
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 mb-2">
+            <Checkbox
+              id="bulk"
+              checked={form.bulk}
+              onCheckedChange={(checked) =>
+                updateField("bulk", checked === true)
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor="bulk" className="text-sm font-medium">
+              Bulk product
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 mb-2">
+            <Checkbox
+              id="coming_soon"
+              checked={form.coming_soon}
+              onCheckedChange={(checked) =>
+                updateField("coming_soon", checked === true)
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor="coming_soon" className="text-sm font-medium">
+              Coming soon
             </label>
           </div>
 
@@ -380,65 +412,89 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
         </FieldGroup>
       </section>
 
-      {/* Weight & Box Configuration */}
-      <section className="space-y-4">
-        <h3 className="text-lg font-medium">Weight & Box Configuration</h3>
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="unit_weight">Pouch Weight</FieldLabel>
-            <Select
-              value={form.unit_weight}
-              onValueChange={(v) => updateField("unit_weight", v)}
-            >
-              <SelectTrigger id="unit_weight" className="w-full">
-                <SelectValue placeholder="Select weight" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="3.5">Eighth (3.5g)</SelectItem>
-                <SelectItem value="7">Quarter (7g)</SelectItem>
-                <SelectItem value="14">Half (14g)</SelectItem>
-                <SelectItem value="28">Ounce (28g)</SelectItem>
-              </SelectContent>
-            </Select>
-            {ozConversion && (
-              <p className="text-xs text-muted-foreground mt-1">
-                = {ozConversion}
-              </p>
-            )}
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
+      {/* Weight & Box Configuration (non-bulk only) */}
+      {!form.bulk && (
+        <section className="space-y-4">
+          <h3 className="text-lg font-medium">Weight & Box Configuration</h3>
+          <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="box_capacity">Box Capacity (pouches)</FieldLabel>
-              <Input
-                id="box_capacity"
-                type="number"
-                min="1"
-                value={form.box_capacity}
-                onChange={(e) => updateField("box_capacity", e.target.value)}
-                placeholder="32"
-                disabled={isSubmitting}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="minimum_order_quantity">Minimum Order (pouches)</FieldLabel>
-              <Input
-                id="minimum_order_quantity"
-                type="number"
-                min="1"
-                value={form.minimum_order_quantity}
-                onChange={(e) => updateField("minimum_order_quantity", e.target.value)}
-                placeholder="16"
-                disabled={isSubmitting}
-              />
-              {form.box_capacity && form.minimum_order_quantity && (
+              <FieldLabel htmlFor="unit_weight">Pouch Weight</FieldLabel>
+              <Select
+                value={form.unit_weight}
+                onValueChange={(v) => updateField("unit_weight", v)}
+              >
+                <SelectTrigger id="unit_weight" className="w-full">
+                  <SelectValue placeholder="Select weight" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3.5">Eighth (3.5g)</SelectItem>
+                  <SelectItem value="7">Quarter (7g)</SelectItem>
+                  <SelectItem value="14">Half (14g)</SelectItem>
+                  <SelectItem value="28">Ounce (28g)</SelectItem>
+                </SelectContent>
+              </Select>
+              {ozConversion && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  = {((parseInt(form.minimum_order_quantity) / parseInt(form.box_capacity)) * 100).toFixed(0)}% of a box
+                  = {ozConversion}
                 </p>
               )}
             </Field>
-          </div>
-        </FieldGroup>
-      </section>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="box_capacity">Box Capacity (pouches)</FieldLabel>
+                <Input
+                  id="box_capacity"
+                  type="number"
+                  min="1"
+                  value={form.box_capacity}
+                  onChange={(e) => updateField("box_capacity", e.target.value)}
+                  placeholder="32"
+                  disabled={isSubmitting}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="minimum_order_quantity">Minimum Order (pouches)</FieldLabel>
+                <Input
+                  id="minimum_order_quantity"
+                  type="number"
+                  min="1"
+                  value={form.minimum_order_quantity}
+                  onChange={(e) => updateField("minimum_order_quantity", e.target.value)}
+                  placeholder="16"
+                  disabled={isSubmitting}
+                />
+                {form.box_capacity && form.minimum_order_quantity && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    = {((parseInt(form.minimum_order_quantity) / parseInt(form.box_capacity)) * 100).toFixed(0)}% of a box
+                  </p>
+                )}
+              </Field>
+            </div>
+          </FieldGroup>
+        </section>
+      )}
+
+      {/* Bulk Weight */}
+      {form.bulk && (
+        <section className="space-y-4">
+          <h3 className="text-lg font-medium">Bulk Configuration</h3>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="unit_weight">Weight (lbs)</FieldLabel>
+              <Input
+                id="unit_weight"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.unit_weight}
+                onChange={(e) => updateField("unit_weight", e.target.value)}
+                placeholder="1"
+                disabled={isSubmitting}
+              />
+            </Field>
+          </FieldGroup>
+        </section>
+      )}
 
       {/* Images */}
       <section className="space-y-4">

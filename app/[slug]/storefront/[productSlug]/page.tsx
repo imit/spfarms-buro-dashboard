@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, MinusIcon, PlusIcon, ShoppingCartIcon, FileTextIcon, LeafIcon } from "lucide-react";
+import { ArrowLeftIcon, MinusIcon, PlusIcon, ShoppingCartIcon, FileTextIcon, LeafIcon, WeightIcon } from "lucide-react";
 import { apiClient, type Product, type Strain, type Coa, PRODUCT_TYPE_LABELS } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -152,6 +152,12 @@ export default function ProductDetailPage({
               <Badge variant="outline">
                 {PRODUCT_TYPE_LABELS[product.product_type]}
               </Badge>
+              {product.bulk && (
+                <Badge className="bg-amber-600 text-white gap-1">
+                  <WeightIcon className="size-3" />
+                  Bulk
+                </Badge>
+              )}
               {product.strain_name && (
                 <Badge variant="secondary" className="gap-1">
                   <LeafIcon className="size-3" />
@@ -182,29 +188,40 @@ export default function ProductDetailPage({
                 <span>{product.sku}</span>
               </div>
             )}
-            {unitWeight && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Unit Weight</span>
-                <span>
-                  {product.unit_weight}{product.unit_weight_uom || "g"}
-                  {(() => {
-                    const name = WEIGHT_NAMES[unitWeight];
-                    return name ? ` (${name})` : "";
-                  })()}
-                </span>
-              </div>
-            )}
-            {product.box_capacity && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Box Size</span>
-                <span>{product.box_capacity} pouches</span>
-              </div>
-            )}
-            {product.minimum_order_quantity && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Minimum Order</span>
-                <span>{product.minimum_order_quantity} pouches</span>
-              </div>
+            {product.bulk ? (
+              unitWeight && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Weight</span>
+                  <span>{product.unit_weight} lbs</span>
+                </div>
+              )
+            ) : (
+              <>
+                {unitWeight && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Unit Weight</span>
+                    <span>
+                      {product.unit_weight}{product.unit_weight_uom || "g"}
+                      {(() => {
+                        const name = WEIGHT_NAMES[unitWeight];
+                        return name ? ` (${name})` : "";
+                      })()}
+                    </span>
+                  </div>
+                )}
+                {product.box_capacity && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Box Size</span>
+                    <span>{product.box_capacity} pouches</span>
+                  </div>
+                )}
+                {product.minimum_order_quantity && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Minimum Order</span>
+                    <span>{product.minimum_order_quantity} pouches</span>
+                  </div>
+                )}
+              </>
             )}
             {product.brand && (
               <div className="flex justify-between">

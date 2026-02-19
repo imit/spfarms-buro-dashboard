@@ -46,6 +46,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   ArrowLeftIcon,
@@ -63,6 +64,11 @@ import {
   UserIcon,
   XIcon,
 } from "lucide-react";
+
+const INVITE_PRESETS = [
+  { label: "Call follow-up", message: "As discussed on our call, here's your direct access to our wholesale menu." },
+  { label: "Cold outreach", message: "We're reaching out to introduce SPFarms and provide direct access to our available inventory." },
+] as const;
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   idle: "bg-slate-100 text-slate-700",
@@ -112,6 +118,8 @@ export default function CompanyDetailPage({
   const [memberSubmitting, setMemberSubmitting] = useState(false);
   const [memberError, setMemberError] = useState("");
   const [sendingInviteId, setSendingInviteId] = useState<number | null>(null);
+  const [inviteModalMember, setInviteModalMember] = useState<{ id: number; email: string; full_name: string | null } | null>(null);
+  const [inviteCustomMessage, setInviteCustomMessage] = useState("");
   const [cart, setCart] = useState<Cart | null>(null);
   const [allDiscounts, setAllDiscounts] = useState<DiscountRecord[]>([]);
 
@@ -199,12 +207,15 @@ export default function CompanyDetailPage({
     }
   }
 
-  async function handleSendInvite(memberId: number) {
-    setSendingInviteId(memberId);
+  async function handleSendInvite() {
+    if (!inviteModalMember) return;
+    setSendingInviteId(inviteModalMember.id);
     try {
-      await apiClient.sendWelcomeEmail(memberId);
+      await apiClient.sendWelcomeEmail(inviteModalMember.id, inviteCustomMessage || undefined);
       const updated = await apiClient.getCompany(slug);
       setCompany(updated);
+      setInviteModalMember(null);
+      setInviteCustomMessage("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send invite");
     } finally {
@@ -563,11 +574,13 @@ export default function CompanyDetailPage({
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={sendingInviteId === member.id}
-                          onClick={() => handleSendInvite(member.id)}
+                          onClick={() => {
+                            setInviteCustomMessage("");
+                            setInviteModalMember({ id: member.id, email: member.email, full_name: member.full_name });
+                          }}
                         >
                           <SendIcon className="mr-1.5 size-3.5" />
-                          {sendingInviteId === member.id ? "Sending..." : "Send Invite"}
+                          Send Invite
                         </Button>
                       )}
                     </td>
@@ -774,6 +787,84 @@ export default function CompanyDetailPage({
           </div>
         )}
       </div>
+
+      {/* Invite modal */}
+      <Dialog open={!!inviteModalMember} onOpenChange={(open) => { if (!open) { setInviteModalMember(null); setInviteCustomMessage(""); } }}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Send Invite</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              To: <span className="font-medium text-foreground">{inviteModalMember?.email}</span>
+            </p>
+
+            {/* Tone presets */}
+            <div className="flex flex-wrap gap-2">
+              {INVITE_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => setInviteCustomMessage(preset.message)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    inviteCustomMessage === preset.message
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "hover:bg-muted"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom sentence */}
+            <Textarea
+              placeholder="Add a custom sentence (optional)..."
+              value={inviteCustomMessage}
+              onChange={(e) => setInviteCustomMessage(e.target.value)}
+              rows={2}
+            />
+
+            {/* Email preview */}
+            <div className="rounded-lg border bg-white p-5 text-sm space-y-3 max-h-64 overflow-y-auto">
+              <p className="text-lg font-bold">Hi {inviteModalMember?.full_name || "there"}</p>
+              {inviteCustomMessage && (
+                <p>{inviteCustomMessage}</p>
+              )}
+              <p>
+                We've created wholesale access for you at SPFarms under <strong>{company?.name}</strong>.
+              </p>
+              <p>You can now:</p>
+              <ul className="list-disc pl-5 space-y-0.5">
+                <li>View available inventory</li>
+                <li>Download COAs</li>
+                <li>Order packaged or bulk flower</li>
+                <li>Submit purchase requests directly</li>
+              </ul>
+              <div className="pt-1">
+                <span className="inline-block rounded-lg bg-[#48A848] px-5 py-2 text-sm font-semibold text-white">
+                  View Available Inventory
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This secure link will log you in automatically. It expires in 30 days.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={handleSendInvite}
+              disabled={sendingInviteId === inviteModalMember?.id}
+              className="w-full"
+            >
+              <SendIcon className="mr-2 size-4" />
+              {sendingInviteId === inviteModalMember?.id ? "Sending..." : "Send Invite"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

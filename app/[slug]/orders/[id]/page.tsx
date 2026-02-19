@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, DownloadIcon } from "lucide-react";
-import { apiClient, type Order, ORDER_STATUS_LABELS } from "@/lib/api";
+import { apiClient, type Order, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -88,7 +88,14 @@ export default function OrderDetailPage({
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Order Summary</h1>
-          <p className="text-lg text-muted-foreground">{order.order_number}</p>
+          <p className="text-lg text-muted-foreground">
+            {order.order_number}
+            {order.order_type === "preorder" && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                {ORDER_TYPE_LABELS.preorder}
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
@@ -144,7 +151,14 @@ export default function OrderDetailPage({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{item.product_name}</p>
+                    <p className="font-medium text-sm">
+                      {item.product_name}
+                      {order.order_type === "preorder" && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                          Pre-order
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {formatPrice(item.unit_price)} x {item.quantity}
                     </p>

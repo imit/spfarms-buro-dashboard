@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeftIcon, PlusCircleIcon, TrashIcon, LoaderIcon,
 } from "lucide-react";
@@ -13,6 +13,7 @@ import {
   type PaymentTerm,
   type CheckoutPreview,
   type CreateOrderParams,
+  type OrderType,
 } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,9 @@ export default function CheckoutPage({
   const { slug } = use(params);
   const { isAuthenticated, user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isPreorder = searchParams.get("type") === "preorder";
+  const orderType: OrderType = isPreorder ? "preorder" : "standard";
 
   const [cart, setCart] = useState<Cart | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
@@ -80,7 +84,10 @@ export default function CheckoutPage({
         const cartData = await apiClient.getCart(companyData.id);
         setCart(cartData);
 
-        if (cartData.items.length === 0) {
+        const relevantItems = cartData.items.filter((i) =>
+          isPreorder ? i.coming_soon : !i.coming_soon
+        );
+        if (relevantItems.length === 0) {
           router.replace(`/${slug}/cart`);
           return;
         }
@@ -113,7 +120,8 @@ export default function CheckoutPage({
       try {
         const data = await apiClient.getCheckoutPreview(
           company!.id,
-          selectedPaymentTermId || undefined
+          skipPaymentTerms ? undefined : (selectedPaymentTermId || undefined),
+          orderType
         );
         setPreview(data);
       } catch (err) {
@@ -147,6 +155,7 @@ export default function CheckoutPage({
     try {
       const orderParams: CreateOrderParams = {
         company_id: company.id,
+        order_type: orderType,
         notes_to_vendor: notesToVendor || undefined,
         desired_delivery_date: desiredDeliveryDate || undefined,
       };
@@ -160,7 +169,7 @@ export default function CheckoutPage({
         orderParams.billing_location_id = Number(billingLocationId);
       }
 
-      if (selectedPaymentTermId) {
+      if (selectedPaymentTermId && !skipPaymentTerms) {
         orderParams.payment_term_id = selectedPaymentTermId;
       }
 
@@ -171,7 +180,7 @@ export default function CheckoutPage({
 
       const order = await apiClient.createOrder(orderParams);
       window.dispatchEvent(new CustomEvent("cart:updated"));
-      toast.success("Order placed successfully!");
+      toast.success(isPreorder ? "Pre-order placed successfully!" : "Order placed successfully!");
       router.push(`/${slug}/orders/${order.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to place order");
@@ -180,7 +189,13 @@ export default function CheckoutPage({
     }
   };
 
-  const meetsMinimum = useMinimumOrderMet(
+  const checkoutItems = cart?.items.filter((i) =>
+    isPreorder ? i.coming_soon : !i.coming_soon
+  ) ?? [];
+  const isBulkOnly = !isPreorder && checkoutItems.length > 0 && checkoutItems.every((i) => i.bulk);
+  const skipPaymentTerms = isPreorder || isBulkOnly;
+
+  const meetsMinimum = isPreorder || useMinimumOrderMet(
     preview?.items ?? cart?.items ?? []
   );
 
@@ -213,7 +228,9 @@ export default function CheckoutPage({
         Back to Cart
       </Button>
 
-      <h1 className="text-2xl font-bold mb-6">Checkout</h1>
+      <h1 className="text-2xl font-bold mb-6">
+        {isPreorder ? "Pre-order Checkout" : "Checkout"}
+      </h1>
 
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Left column: Order summary + form */}
@@ -243,7 +260,7 @@ export default function CheckoutPage({
                     {formatPrice(item.line_total)}
                   </div>
                 </div>
-              )) : cart.items.map((item) => (
+              )) : cart.items.filter((i) => isPreorder ? i.coming_soon : !i.coming_soon).map((item) => (
                 <div key={item.id} className="flex items-center gap-4 px-4 py-3">
                   <div className="size-12 shrink-0 overflow-hidden rounded-md bg-muted">
                     {item.thumbnail_url ? (
@@ -264,10 +281,12 @@ export default function CheckoutPage({
                 </div>
               ))}
             </div>
-            {/* Box progress */}
-            <div className="px-4 py-3 border-t">
-              <BoxProgress items={preview?.items ?? cart.items} compact />
-            </div>
+            {/* Box progress (standard orders only) */}
+            {!isPreorder && (
+              <div className="px-4 py-3 border-t">
+                <BoxProgress items={preview?.items ?? cart.items} compact />
+              </div>
+            )}
           </div>
 
           {/* Checkout Form */}
@@ -401,37 +420,39 @@ export default function CheckoutPage({
 
         {/* Right column: Payment terms + price breakdown */}
         <div className="space-y-4">
-          {/* Payment Terms */}
-          <div className="rounded-lg border p-4 space-y-3">
-            <h3 className="font-semibold text-sm">Payment Terms</h3>
-            {paymentTerms.map((term) => (
-              <label
-                key={term.id}
-                className={cn(
-                  "flex items-center gap-3 rounded-md border p-3 cursor-pointer transition-colors",
-                  selectedPaymentTermId === term.id
-                    ? "border-primary bg-primary/5"
-                    : "hover:bg-muted/50"
-                )}
-              >
-                <input
-                  type="radio"
-                  name="payment_term"
-                  checked={selectedPaymentTermId === term.id}
-                  onChange={() => setSelectedPaymentTermId(term.id)}
-                  className="size-4 accent-primary"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{term.name}</p>
-                  {parseFloat(term.discount_percentage) > 0 && (
-                    <p className="text-xs text-green-600">
-                      {parseFloat(term.discount_percentage)}% discount
-                    </p>
+          {/* Payment Terms (hidden for pre-orders and bulk orders) */}
+          {!skipPaymentTerms && (
+            <div className="rounded-lg border p-4 space-y-3">
+              <h3 className="font-semibold text-sm">Payment Terms</h3>
+              {paymentTerms.map((term) => (
+                <label
+                  key={term.id}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md border p-3 cursor-pointer transition-colors",
+                    selectedPaymentTermId === term.id
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-muted/50"
                   )}
-                </div>
-              </label>
-            ))}
-          </div>
+                >
+                  <input
+                    type="radio"
+                    name="payment_term"
+                    checked={selectedPaymentTermId === term.id}
+                    onChange={() => setSelectedPaymentTermId(term.id)}
+                    className="size-4 accent-primary"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{term.name}</p>
+                    {parseFloat(term.discount_percentage) > 0 && (
+                      <p className="text-xs text-green-600">
+                        {parseFloat(term.discount_percentage)}% discount
+                      </p>
+                    )}
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
 
           {/* Price Breakdown */}
           <div className="rounded-lg border p-4 space-y-2">
@@ -497,10 +518,12 @@ export default function CheckoutPage({
             disabled={submitting || !cart || cart.items.length === 0 || !meetsMinimum}
           >
             {submitting
-              ? "Placing Order..."
+              ? isPreorder ? "Placing Pre-order..." : "Placing Order..."
               : !meetsMinimum
                 ? "Minimum order not met"
-                : `Confirm Order — ${formatPrice(preview?.total || cart.subtotal)}`}
+                : isPreorder
+                  ? `Confirm Pre-order — ${formatPrice(preview?.total || cart.subtotal)}`
+                  : `Confirm Order — ${formatPrice(preview?.total || cart.subtotal)}`}
           </Button>
         </div>
       </div>
