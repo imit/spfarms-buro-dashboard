@@ -2,9 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PandaSymbol } from "@/components/shared/panda-symbol";
+
+const chatTransport = new DefaultChatTransport({ api: "/api/chat" });
 
 export function ChatBubble() {
   const [open, setOpen] = useState(false);
@@ -13,10 +16,7 @@ export function ChatBubble() {
 
   const [input, setInput] = useState("");
   const { messages, sendMessage, status } = useChat({
-    transport: {
-      type: "fetch",
-      url: "/api/chat",
-    },
+    transport: chatTransport,
   });
 
   const isLoading = status === "streaming";
