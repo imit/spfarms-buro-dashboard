@@ -2,12 +2,12 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MailIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { MailIcon, Loader2Icon, CheckCircleIcon } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 
 export default function VerifyMagicLinkPage() {
@@ -15,11 +15,16 @@ export default function VerifyMagicLinkPage() {
     <Suspense
       fallback={
         <div className="flex min-h-svh flex-col items-center justify-center p-6">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-6 text-center">
-              <h2 className="text-xl font-semibold mb-2">Loading...</h2>
-            </CardContent>
-          </Card>
+          <div className="w-full max-w-md space-y-6">
+            <div className="mx-auto w-48">
+              <Logo />
+            </div>
+            <Card>
+              <CardContent className="p-6 text-center">
+                <h2 className="text-xl font-semibold mb-2">Loading...</h2>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       }
     >
@@ -36,6 +41,9 @@ function VerifyMagicLinkContent() {
     token ? null : "No token provided."
   );
   const [isVerifying, setIsVerifying] = useState(!!token);
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -48,7 +56,7 @@ function VerifyMagicLinkContent() {
         setError(
           err instanceof Error
             ? err.message
-            : "This link is invalid or has already been used."
+            : "This link is no longer valid."
         );
         setIsVerifying(false);
       }
@@ -56,6 +64,20 @@ function VerifyMagicLinkContent() {
 
     verify();
   }, [token, loginWithToken]);
+
+  async function handleSendLink(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSending(true);
+    try {
+      await apiClient.requestMagicLink(email.trim());
+      setSent(true);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center p-6">
@@ -67,35 +89,64 @@ function VerifyMagicLinkContent() {
           <CardContent className="p-6 text-center">
             {isVerifying && !error && (
               <>
+                <Loader2Icon className="mx-auto mb-3 size-8 animate-spin text-muted-foreground" />
                 <h2 className="text-xl font-semibold mb-2">
-                  Verifying your login...
+                  Logging you in...
                 </h2>
                 <p className="text-muted-foreground">
-                  Please wait while we log you in.
+                  Hang tight, this will only take a second.
                 </p>
               </>
             )}
 
-            {error && (
+            {error && !sent && (
               <>
                 <h2 className="text-xl font-semibold mb-2">
-                  Link Already Used
+                  Let&apos;s get you logged in
                 </h2>
                 <p className="text-muted-foreground mb-5">
-                  Looks like this link was already used. No worries — just
-                  request a fresh one and you&apos;ll be in!
+                  This link is no longer active. Enter your email below and
+                  we&apos;ll send you a new one right away.
                 </p>
-                <Link href="/">
-                  <Button>
-                    <MailIcon className="mr-2 size-4" />
-                    Get a New Link
+                <form onSubmit={handleSendLink} className="space-y-3">
+                  <Input
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                  <Button type="submit" className="w-full" disabled={sending}>
+                    {sending ? (
+                      <>
+                        <Loader2Icon className="mr-2 size-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <MailIcon className="mr-2 size-4" />
+                        Send me a login link
+                      </>
+                    )}
                   </Button>
-                </Link>
+                </form>
                 <p className="mt-4 text-xs text-muted-foreground">
                   Need help?{" "}
                   <a href="mailto:info@spfarmsny.com" className="underline hover:text-foreground">
                     info@spfarmsny.com
                   </a>
+                </p>
+              </>
+            )}
+
+            {sent && (
+              <>
+                <CheckCircleIcon className="mx-auto mb-3 size-10 text-green-600" />
+                <h2 className="text-xl font-semibold mb-2">Check your email!</h2>
+                <p className="text-muted-foreground">
+                  We sent a login link to <strong>{email}</strong>. Click the
+                  link in the email and you&apos;ll be logged in instantly.
                 </p>
               </>
             )}
