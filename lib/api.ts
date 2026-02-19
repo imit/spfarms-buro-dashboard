@@ -1947,6 +1947,30 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
+  async lookupCompanyMember(
+    slug: string,
+    email: string
+  ): Promise<{
+    id: number;
+    email: string;
+    full_name: string | null;
+    phone_number: string | null;
+    deleted: boolean;
+    already_member: boolean;
+  } | null> {
+    const res = await this.request<{ data: {
+      id: number;
+      email: string;
+      full_name: string | null;
+      phone_number: string | null;
+      deleted: boolean;
+      already_member: boolean;
+    } | null }>(
+      `/api/v1/companies/${slug}/members/lookup?email=${encodeURIComponent(email)}`
+    );
+    return res.data;
+  }
+
   async sendWelcomeEmail(userId: number, customMessage?: string): Promise<User> {
     const res = await this.request<{ data: { attributes: User } }>(
       `/api/v1/users/${userId}/send_welcome_email`,

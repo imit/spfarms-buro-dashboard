@@ -85,6 +85,11 @@ export default function SettingsPage({
   const [invitePhone, setInvitePhone] = useState("");
   const [inviteTitle, setInviteTitle] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [inviteLookup, setInviteLookup] = useState<{
+    id: number; email: string; full_name: string | null;
+    phone_number: string | null; deleted: boolean; already_member: boolean;
+  } | null>(null);
+  const [inviteLookingUp, setInviteLookingUp] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -219,6 +224,26 @@ export default function SettingsPage({
     }
   }
 
+  async function handleInviteEmailLookup(email: string) {
+    if (!email.trim() || !email.includes("@")) {
+      setInviteLookup(null);
+      return;
+    }
+    setInviteLookingUp(true);
+    try {
+      const result = await apiClient.lookupCompanyMember(slug, email);
+      setInviteLookup(result);
+      if (result && !result.already_member) {
+        setInviteName(result.full_name || inviteName);
+        setInvitePhone(result.phone_number || invitePhone);
+      }
+    } catch {
+      setInviteLookup(null);
+    } finally {
+      setInviteLookingUp(false);
+    }
+  }
+
   async function handleInviteMember() {
     if (!inviteEmail.trim()) return;
     setSendingInvite(true);
@@ -235,7 +260,8 @@ export default function SettingsPage({
       setInviteName("");
       setInvitePhone("");
       setInviteTitle("");
-      toast.success(`Invitation sent to ${inviteEmail}`);
+      setInviteLookup(null);
+      toast.success(inviteLookup ? `${inviteEmail} added to this company` : `Invitation sent to ${inviteEmail}`);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to invite member"
@@ -554,9 +580,31 @@ export default function SettingsPage({
                 id="inviteEmail"
                 type="email"
                 value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
+                onChange={(e) => {
+                  setInviteEmail(e.target.value);
+                  setInviteLookup(null);
+                }}
+                onBlur={(e) => handleInviteEmailLookup(e.target.value)}
                 placeholder="colleague@company.com"
               />
+              {inviteLookingUp && (
+                <p className="text-xs text-muted-foreground">Looking up user...</p>
+              )}
+              {inviteLookup && !inviteLookup.already_member && !inviteLookup.deleted && (
+                <p className="text-xs text-blue-600">
+                  Existing user found — will be added to this company
+                </p>
+              )}
+              {inviteLookup?.deleted && (
+                <p className="text-xs text-amber-600">
+                  Deactivated account — will be restored and added
+                </p>
+              )}
+              {inviteLookup?.already_member && (
+                <p className="text-xs text-destructive">
+                  Already a member of this company
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="inviteName">Full Name</Label>
@@ -565,6 +613,7 @@ export default function SettingsPage({
                 value={inviteName}
                 onChange={(e) => setInviteName(e.target.value)}
                 placeholder="Jane Doe"
+                disabled={!!inviteLookup && !inviteLookup.already_member && !inviteLookup.deleted}
               />
             </div>
             <div className="space-y-1.5">
@@ -574,6 +623,7 @@ export default function SettingsPage({
                 value={invitePhone}
                 onChange={(e) => setInvitePhone(e.target.value)}
                 placeholder="(555) 123-4567"
+                disabled={!!inviteLookup && !inviteLookup.already_member && !inviteLookup.deleted}
               />
             </div>
             <div className="space-y-1.5">
@@ -589,12 +639,17 @@ export default function SettingsPage({
           <Button
             size="sm"
             onClick={handleInviteMember}
-            disabled={sendingInvite || !inviteEmail.trim()}
+            disabled={sendingInvite || !inviteEmail.trim() || !!inviteLookup?.already_member}
           >
             {sendingInvite ? (
               <>
                 <Loader2Icon className="mr-2 size-4 animate-spin" />
-                Sending...
+                Adding...
+              </>
+            ) : inviteLookup && !inviteLookup.already_member ? (
+              <>
+                <PlusIcon className="mr-2 size-4" />
+                Add Existing User
               </>
             ) : (
               <>

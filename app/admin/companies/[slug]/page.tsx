@@ -118,6 +118,11 @@ export default function CompanyDetailPage({
   const [memberForm, setMemberForm] = useState({ email: "", full_name: "", phone_number: "", company_title: "" });
   const [memberSubmitting, setMemberSubmitting] = useState(false);
   const [memberError, setMemberError] = useState("");
+  const [memberLookup, setMemberLookup] = useState<{
+    id: number; email: string; full_name: string | null;
+    phone_number: string | null; deleted: boolean; already_member: boolean;
+  } | null>(null);
+  const [lookingUp, setLookingUp] = useState(false);
   const [sendingInviteId, setSendingInviteId] = useState<number | null>(null);
   const [inviteModalMember, setInviteModalMember] = useState<{ id: number; email: string; full_name: string | null } | null>(null);
   const [inviteCustomMessage, setInviteCustomMessage] = useState("");
@@ -185,6 +190,29 @@ export default function CompanyDetailPage({
     }
   }
 
+  async function handleMemberEmailLookup(email: string) {
+    if (!company || !email.trim() || !email.includes("@")) {
+      setMemberLookup(null);
+      return;
+    }
+    setLookingUp(true);
+    try {
+      const result = await apiClient.lookupCompanyMember(company.slug, email);
+      setMemberLookup(result);
+      if (result && !result.already_member) {
+        setMemberForm((f) => ({
+          ...f,
+          full_name: result.full_name || f.full_name,
+          phone_number: result.phone_number || f.phone_number,
+        }));
+      }
+    } catch {
+      setMemberLookup(null);
+    } finally {
+      setLookingUp(false);
+    }
+  }
+
   async function handleAddMember(e: React.FormEvent) {
     e.preventDefault();
     if (!company) return;
@@ -200,6 +228,7 @@ export default function CompanyDetailPage({
       const updated = await apiClient.getCompany(slug);
       setCompany(updated);
       setMemberForm({ email: "", full_name: "", phone_number: "", company_title: "" });
+      setMemberLookup(null);
       setMemberDialogOpen(false);
     } catch (err) {
       setMemberError(err instanceof Error ? err.message : "Failed to add member");
@@ -478,7 +507,10 @@ export default function CompanyDetailPage({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-medium">Members</h3>
-          <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
+          <Dialog open={memberDialogOpen} onOpenChange={(open) => {
+              setMemberDialogOpen(open);
+              if (!open) { setMemberLookup(null); setMemberError(""); }
+            }}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
                 <PlusIcon className="mr-2 size-4" />
@@ -497,8 +529,30 @@ export default function CompanyDetailPage({
                     type="email"
                     required
                     value={memberForm.email}
-                    onChange={(e) => setMemberForm((f) => ({ ...f, email: e.target.value }))}
+                    onChange={(e) => {
+                      setMemberForm((f) => ({ ...f, email: e.target.value }));
+                      setMemberLookup(null);
+                    }}
+                    onBlur={(e) => handleMemberEmailLookup(e.target.value)}
                   />
+                  {lookingUp && (
+                    <p className="text-xs text-muted-foreground">Looking up user...</p>
+                  )}
+                  {memberLookup && !memberLookup.already_member && !memberLookup.deleted && (
+                    <p className="text-xs text-blue-600">
+                      Existing user found — will be added to this company
+                    </p>
+                  )}
+                  {memberLookup?.deleted && (
+                    <p className="text-xs text-amber-600">
+                      Deactivated account — will be restored and added
+                    </p>
+                  )}
+                  {memberLookup?.already_member && (
+                    <p className="text-xs text-destructive">
+                      Already a member of this company
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="member-name">Full Name</Label>
@@ -506,6 +560,7 @@ export default function CompanyDetailPage({
                     id="member-name"
                     value={memberForm.full_name}
                     onChange={(e) => setMemberForm((f) => ({ ...f, full_name: e.target.value }))}
+                    disabled={!!memberLookup && !memberLookup.already_member && !memberLookup.deleted}
                   />
                 </div>
                 <div className="space-y-2">
@@ -514,6 +569,7 @@ export default function CompanyDetailPage({
                     id="member-phone"
                     value={memberForm.phone_number}
                     onChange={(e) => setMemberForm((f) => ({ ...f, phone_number: e.target.value }))}
+                    disabled={!!memberLookup && !memberLookup.already_member && !memberLookup.deleted}
                   />
                 </div>
                 <div className="space-y-2">
@@ -529,8 +585,8 @@ export default function CompanyDetailPage({
                   <p className="text-sm text-destructive">{memberError}</p>
                 )}
                 <DialogFooter>
-                  <Button type="submit" disabled={memberSubmitting}>
-                    {memberSubmitting ? "Adding..." : "Add Member"}
+                  <Button type="submit" disabled={memberSubmitting || !!memberLookup?.already_member}>
+                    {memberSubmitting ? "Adding..." : memberLookup && !memberLookup.already_member ? "Add Existing User" : "Add Member"}
                   </Button>
                 </DialogFooter>
               </form>
