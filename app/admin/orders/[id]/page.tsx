@@ -137,7 +137,7 @@ export default function AdminOrderDetailPage({
             )}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {order.company.name} — {new Date(order.created_at).toLocaleDateString()}
+            {order.company?.name ?? "Unknown company"} — {new Date(order.created_at).toLocaleDateString()}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -359,7 +359,7 @@ export default function AdminOrderDetailPage({
               <strong>{ORDER_STATUS_LABELS[order.status]}</strong> to{" "}
               <strong>{ORDER_STATUS_LABELS[pendingStatus as OrderStatus]}</strong>.
               An email notification will be sent to all members of{" "}
-              <strong>{order.company.name}</strong>.
+              <strong>{order.company?.name ?? "the company"}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

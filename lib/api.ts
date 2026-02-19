@@ -676,17 +676,17 @@ export interface Order {
     email: string;
     full_name: string | null;
     phone_number: string | null;
-  };
+  } | null;
   company: {
     id: number;
     name: string;
     slug: string;
-  };
+  } | null;
   items: OrderItem[];
   order_users: OrderUser[];
   shipping_location: OrderLocation | null;
   billing_location: OrderLocation | null;
-  company_details: OrderCompanyDetails;
+  company_details: OrderCompanyDetails | null;
   created_at: string;
   updated_at: string;
 }

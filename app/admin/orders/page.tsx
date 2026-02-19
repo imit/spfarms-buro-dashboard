@@ -86,7 +86,7 @@ export default function AdminOrdersPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">{order.company.name}</td>
+                  <td className="px-4 py-3">{order.company?.name ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(order.created_at).toLocaleDateString()}
                   </td>
@@ -95,7 +95,7 @@ export default function AdminOrdersPage() {
                   </td>
                   <td className="px-4 py-3">{formatPrice(order.total)}</td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {order.user.full_name || order.user.email}
+                    {order.user?.full_name || order.user?.email || "—"}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
