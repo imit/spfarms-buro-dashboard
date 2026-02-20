@@ -2407,6 +2407,10 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
+  async deleteNotification(id: number): Promise<void> {
+    await this.request(`/api/v1/notifications/${id}`, { method: "DELETE" });
+  }
+
   // Notifications (Storefront)
 
   async getMyNotifications(): Promise<NotificationRecipient[]> {

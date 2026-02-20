@@ -11,7 +11,19 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PlusIcon } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { PlusIcon, TrashIcon } from "lucide-react";
+import { toast } from "sonner";
 
 const TYPE_COLORS: Record<NotificationType, string> = {
   order_status: "bg-blue-100 text-blue-800",
@@ -35,6 +47,20 @@ export default function AdminNotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  async function handleDelete(id: number) {
+    setDeletingId(id);
+    try {
+      await apiClient.deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      toast.success("Notification deleted");
+    } catch {
+      toast.error("Failed to delete notification");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -98,6 +124,7 @@ export default function AdminNotificationsPage() {
                 <th className="px-4 py-3 text-left font-medium">Sent by</th>
                 <th className="px-4 py-3 text-left font-medium">Recipients</th>
                 <th className="px-4 py-3 text-left font-medium">Sent</th>
+                <th className="px-4 py-3 w-10"></th>
               </tr>
             </thead>
             <tbody>
@@ -122,6 +149,37 @@ export default function AdminNotificationsPage() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {n.sent_at ? new Date(n.sent_at).toLocaleString() : "Sending..."}
+                  </td>
+                  <td className="px-4 py-3">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-muted-foreground hover:text-destructive"
+                          disabled={deletingId === n.id}
+                        >
+                          <TrashIcon className="size-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete notification?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete &ldquo;{n.subject}&rdquo; and remove it from all recipients. This cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(n.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </td>
                 </tr>
               ))}
