@@ -505,10 +505,13 @@ export interface CartDiscount {
 export interface Cart {
   id: number;
   company_id: number;
+  company_name?: string;
+  company_slug?: string;
   items: CartItem[];
   item_count: number;
   subtotal: number;
   discounts: CartDiscount[];
+  updated_at: string;
 }
 
 // ---- Payment Terms ----
@@ -2010,6 +2013,11 @@ export class ApiClient {
   }
 
   // Cart
+
+  async getCarts(): Promise<Cart[]> {
+    const res = await this.request<JsonApiCollectionResponse<Cart>>("/api/v1/carts");
+    return res.data.map((item) => ({ ...item.attributes, id: Number(item.id) }));
+  }
 
   async getCart(companyId: number): Promise<Cart> {
     const res = await this.request<JsonApiResponse<Cart>>(
