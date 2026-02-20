@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -60,6 +61,11 @@ export default function SettingsPage() {
   const [editingTax, setEditingTax] = useState(false);
   const [taxValue, setTaxValue] = useState("");
   const [savingTax, setSavingTax] = useState(false);
+
+  // Bank info editing
+  const [editingBank, setEditingBank] = useState(false);
+  const [bankValue, setBankValue] = useState("");
+  const [savingBank, setSavingBank] = useState(false);
 
   // Payment term dialog
   const [ptDialogOpen, setPtDialogOpen] = useState(false);
@@ -133,6 +139,27 @@ export default function SettingsPage() {
       toast.error("Failed to update tax rate");
     } finally {
       setSavingTax(false);
+    }
+  };
+
+  // --- Bank Info ---
+
+  const startEditBank = () => {
+    setBankValue(settings?.bank_info || "");
+    setEditingBank(true);
+  };
+
+  const saveBank = async () => {
+    setSavingBank(true);
+    try {
+      const updated = await apiClient.updateSettings({ bank_info: bankValue });
+      setSettings(updated);
+      setEditingBank(false);
+      toast.success("Bank information updated");
+    } catch {
+      toast.error("Failed to update bank information");
+    } finally {
+      setSavingBank(false);
     }
   };
 
@@ -319,6 +346,53 @@ export default function SettingsPage() {
           </div>
         ) : (
           <p className="text-2xl font-bold">{settings?.tax_rate || "0"}%</p>
+        )}
+      </div>
+
+      {/* Bank Information */}
+      <div className="rounded-lg border p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="font-semibold">Bank Information</h3>
+            <p className="text-sm text-muted-foreground">
+              Shown on order confirmation emails and storefront
+            </p>
+          </div>
+          {!editingBank && (
+            <Button variant="outline" size="sm" onClick={startEditBank}>
+              <PencilIcon className="mr-1.5 size-3.5" />
+              Edit
+            </Button>
+          )}
+        </div>
+
+        {editingBank ? (
+          <div className="space-y-3">
+            <Textarea
+              value={bankValue}
+              onChange={(e) => setBankValue(e.target.value)}
+              placeholder={"Bank Name\nRouting Number: XXXXXXXXX\nAccount Number: XXXXXXXXX"}
+              rows={4}
+            />
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={saveBank} disabled={savingBank}>
+                <CheckIcon className="mr-1 size-3.5" />
+                {savingBank ? "Saving..." : "Save"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditingBank(false)}
+              >
+                <XIcon className="mr-1 size-3.5" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : settings?.bank_info ? (
+          <p className="text-sm whitespace-pre-wrap">{settings.bank_info}</p>
+        ) : (
+          <p className="text-sm text-muted-foreground">No bank information set</p>
         )}
       </div>
 

@@ -542,6 +542,7 @@ export interface DiscountRecord {
 
 export interface AppSettings {
   tax_rate: string;
+  bank_info: string;
 }
 
 // ---- Checkout Preview ----

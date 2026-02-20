@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, DownloadIcon } from "lucide-react";
-import { apiClient, type Order, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
+import { apiClient, type Order, type AppSettings, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export default function OrderDetailPage({
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -38,8 +39,12 @@ export default function OrderDetailPage({
 
     async function load() {
       try {
-        const data = await apiClient.getOrder(Number(id));
+        const [data, s] = await Promise.all([
+          apiClient.getOrder(Number(id)),
+          apiClient.getSettings(),
+        ]);
         setOrder(data);
+        setSettings(s);
       } catch (err) {
         console.error("Failed to load order:", err);
       } finally {
@@ -242,6 +247,15 @@ export default function OrderDetailPage({
               {order.payment_term_name || "ACH / Bank Transfer"}
             </p>
           </div>
+
+          {settings?.bank_info && (
+            <div className="rounded-lg border p-4">
+              <h3 className="font-semibold text-sm mb-1">Payment Information</h3>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {settings.bank_info}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
