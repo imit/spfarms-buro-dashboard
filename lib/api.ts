@@ -2002,6 +2002,12 @@ export class ApiClient {
     return res.data;
   }
 
+  async removeCompanyMember(slug: string, userId: number): Promise<void> {
+    await this.request(`/api/v1/companies/${slug}/members/${userId}`, {
+      method: "DELETE",
+    });
+  }
+
   async sendWelcomeEmail(userId: number, customMessage?: string): Promise<User> {
     const res = await this.request<{ data: { attributes: User } }>(
       `/api/v1/users/${userId}/send_welcome_email`,

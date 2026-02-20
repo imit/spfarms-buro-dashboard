@@ -132,6 +132,7 @@ export default function CompanyDetailPage({
     phone_number: string | null; deleted: boolean; already_member: boolean;
   } | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<number | null>(null);
   const [sendingInviteId, setSendingInviteId] = useState<number | null>(null);
   const [inviteModalMember, setInviteModalMember] = useState<{ id: number; email: string; full_name: string | null } | null>(null);
   const [inviteCustomMessage, setInviteCustomMessage] = useState("");
@@ -252,6 +253,20 @@ export default function CompanyDetailPage({
       setMemberError(err instanceof Error ? err.message : "Failed to add member");
     } finally {
       setMemberSubmitting(false);
+    }
+  }
+
+  async function handleRemoveMember(userId: number) {
+    if (!company) return;
+    setRemovingMemberId(userId);
+    try {
+      await apiClient.removeCompanyMember(company.slug, userId);
+      const updated = await apiClient.getCompany(slug);
+      setCompany(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove member");
+    } finally {
+      setRemovingMemberId(null);
     }
   }
 
@@ -658,6 +673,7 @@ export default function CompanyDetailPage({
                   <th className="px-4 py-3 text-left font-medium">Title</th>
                   <th className="px-4 py-3 text-left font-medium">Role</th>
                   <th className="px-4 py-3 text-left font-medium">Invite</th>
+                  <th className="px-4 py-3 w-10"></th>
                 </tr>
               </thead>
               <tbody>
@@ -710,6 +726,34 @@ export default function CompanyDetailPage({
                           Send Invite
                         </Button>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground hover:text-destructive"
+                            disabled={removingMemberId === member.id}
+                          >
+                            <XIcon className="size-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove member?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove {member.full_name || member.email} from {company.name}. They will lose access to the storefront.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleRemoveMember(member.id)}>
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </td>
                   </tr>
                 ))}

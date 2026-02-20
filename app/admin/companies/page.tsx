@@ -227,7 +227,16 @@ export default function CompaniesPage() {
                     className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer ${c.deleted_at ? "opacity-50" : ""}`}
                     onClick={() => router.push(`/admin/companies/${c.slug}`)}
                   >
-                    <td className="px-4 py-3 font-medium">{c.name}</td>
+                    <td className="px-4 py-3 font-medium">
+                      <span className="flex items-center gap-2">
+                        {c.name}
+                        {c.bulk_buyer && (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-1.5 py-0.5 text-[10px] font-semibold leading-none">
+                            Bulk
+                          </span>
+                        )}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {COMPANY_TYPE_LABELS[c.company_type]}
                     </td>
