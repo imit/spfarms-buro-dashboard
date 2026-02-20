@@ -134,7 +134,7 @@ export default function GrowPage() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-medium">{batch.name}</p>
-                        <p className="text-muted-foreground text-xs">{batch.strain.name}</p>
+                        <p className="text-muted-foreground text-xs">{batch.strain?.name}</p>
                       </div>
                       <Badge variant="outline">{BATCH_TYPE_LABELS[batch.batch_type]}</Badge>
                     </div>

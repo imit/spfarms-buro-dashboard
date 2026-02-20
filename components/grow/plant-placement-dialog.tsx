@@ -105,7 +105,7 @@ export function PlantPlacementDialog({
               <SelectContent>
                 {batches.map((b) => (
                   <SelectItem key={b.id} value={String(b.id)}>
-                    {b.name} ({b.strain.name}) &middot; {b.active_plant_count}/{b.initial_count}
+                    {b.name} ({b.strain?.name}) &middot; {b.active_plant_count}/{b.initial_count}
                   </SelectItem>
                 ))}
               </SelectContent>

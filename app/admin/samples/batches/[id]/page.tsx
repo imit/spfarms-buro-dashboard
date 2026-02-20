@@ -93,7 +93,7 @@ export default function BatchDetailPage({
         </Button>
         <div className="flex-1">
           <h2 className="text-2xl font-semibold">
-            {batch.strain.name} &mdash; {batch.weight}g Batch
+            {batch.strain?.name} &mdash; {batch.weight}g Batch
           </h2>
           <p className="text-sm text-muted-foreground">
             {new Date(batch.created_at).toLocaleDateString("en-US", {
@@ -129,7 +129,7 @@ export default function BatchDetailPage({
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <dt className="text-muted-foreground">Strain</dt>
-            <dd className="font-medium">{batch.strain.name}</dd>
+            <dd className="font-medium">{batch.strain?.name}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Unit Weight</dt>

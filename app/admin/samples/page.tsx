@@ -165,7 +165,7 @@ export default function SamplesPage() {
                         <td className="px-4 py-3 font-medium">
                           {new Date(b.created_at).toLocaleDateString()}
                         </td>
-                        <td className="px-4 py-3">{b.strain.name}</td>
+                        <td className="px-4 py-3">{b.strain?.name}</td>
                         <td className="px-4 py-3 text-muted-foreground">
                           {b.weight}g
                         </td>

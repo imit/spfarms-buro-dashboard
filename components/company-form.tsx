@@ -123,7 +123,7 @@ export function CompanyForm({ company, mode = "create", redirectPath, cancelPath
 
     try {
       const socialMedia = Object.fromEntries(
-        Object.entries(form.social_media).filter(([, v]) => v.trim() !== "")
+        Object.entries(form.social_media).filter(([, v]) => v?.trim() !== "")
       );
 
       // Build location attributes if any address field is filled

@@ -173,7 +173,7 @@ export default function CheckoutPage({
         orderParams.payment_term_id = selectedPaymentTermId;
       }
 
-      const validContacts = contactUsers.filter((c) => c.email.trim());
+      const validContacts = contactUsers.filter((c) => c.email?.trim());
       if (validContacts.length > 0) {
         orderParams.contact_users = validContacts;
       }

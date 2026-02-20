@@ -172,8 +172,8 @@ export function OnboardRepresentativeForm() {
       const result = await apiClient.onboardRepresentative(payload);
 
       setSuccess({
-        companyName: companyName || result.company.name,
-        companySlug: result.company.slug,
+        companyName: companyName || result.company?.name || "",
+        companySlug: result.company?.slug || "",
         email: rep.email,
         emailSent: sendEmail,
         isExisting: dispensaryMode === "existing",

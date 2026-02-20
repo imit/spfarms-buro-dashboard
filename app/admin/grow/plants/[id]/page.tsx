@@ -116,7 +116,7 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">{plant.strain.name}</h1>
+            <h1 className="text-2xl font-semibold">{plant.strain?.name}</h1>
             <PhaseBadge phase={plant.growth_phase} />
             {plant.status !== "active" && (
               <Badge variant="destructive">{plant.status}</Badge>
@@ -132,12 +132,12 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
           <div>
             <p className="text-muted-foreground text-xs">Location</p>
             <p className="text-sm font-medium">
-              {plant.room.name} &middot; Floor {plant.floor} &middot; {String.fromCharCode(65 + plant.col)}{plant.row + 1}
+              {plant.room?.name} &middot; Floor {plant.floor} &middot; {String.fromCharCode(65 + plant.col)}{plant.row + 1}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground text-xs">Strain</p>
-            <p className="text-sm font-medium">{plant.strain.name}</p>
+            <p className="text-sm font-medium">{plant.strain?.name}</p>
           </div>
           {plant.plant_batch && (
             <div>
