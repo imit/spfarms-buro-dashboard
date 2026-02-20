@@ -179,6 +179,61 @@ export function CompanyForm({ company, mode = "create", redirectPath, cancelPath
         </div>
       )}
 
+       {/* Location */}
+       <section className="space-y-4 bg-amber-50 p-4 rounded-lg">
+        {/* <h3 className="text-lg font-medium">Location</h3> */}
+        <FieldGroup>
+          {!isEdit && (
+            <Field>
+              <FieldLabel htmlFor="place-search">Search Google Places</FieldLabel>
+              {selectedPlace ? (
+                <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {selectedPlace.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[
+                        selectedPlace.address,
+                        selectedPlace.city,
+                        selectedPlace.state,
+                        selectedPlace.zip_code,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearPlace();
+                      lastPlaceId.current = null;
+                      if (searchInputRef.current) searchInputRef.current.value = "";
+                    }}
+                    className="rounded-full p-1 hover:bg-muted-foreground/20"
+                  >
+                    <XIcon className="size-4 text-muted-foreground" />
+                  </button>
+                </div>
+              ) : (
+                <Input
+                  ref={searchInputRef}
+                  id="place-search"
+                  placeholder={
+                    isLoaded
+                      ? "Start typing a business name..."
+                      : "Loading Google Places..."
+                  }
+                  disabled={!isLoaded || isSubmitting}
+                />
+              )}
+            </Field>
+          )}
+          
+          
+        </FieldGroup>
+      </section>
+
       {/* Basic Info */}
       <section className="space-y-4">
         <h3 className="text-lg font-medium">Basic Information</h3>
@@ -240,56 +295,11 @@ export function CompanyForm({ company, mode = "create", redirectPath, cancelPath
         </FieldGroup>
       </section>
 
-      {/* Location */}
-      <section className="space-y-4">
+       {/* Location */}
+       <section className="space-y-4">
         <h3 className="text-lg font-medium">Location</h3>
         <FieldGroup>
-          {!isEdit && (
-            <Field>
-              <FieldLabel htmlFor="place-search">Search Google Places</FieldLabel>
-              {selectedPlace ? (
-                <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {selectedPlace.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {[
-                        selectedPlace.address,
-                        selectedPlace.city,
-                        selectedPlace.state,
-                        selectedPlace.zip_code,
-                      ]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearPlace();
-                      lastPlaceId.current = null;
-                      if (searchInputRef.current) searchInputRef.current.value = "";
-                    }}
-                    className="rounded-full p-1 hover:bg-muted-foreground/20"
-                  >
-                    <XIcon className="size-4 text-muted-foreground" />
-                  </button>
-                </div>
-              ) : (
-                <Input
-                  ref={searchInputRef}
-                  id="place-search"
-                  placeholder={
-                    isLoaded
-                      ? "Start typing a business name..."
-                      : "Loading Google Places..."
-                  }
-                  disabled={!isLoaded || isSubmitting}
-                />
-              )}
-            </Field>
-          )}
+          
           <Field>
             <FieldLabel htmlFor="address">Street Address</FieldLabel>
             <Input
@@ -352,6 +362,8 @@ export function CompanyForm({ company, mode = "create", redirectPath, cancelPath
           </Field>
         </FieldGroup>
       </section>
+
+     
 
       {/* Contact */}
       <section className="space-y-4">
