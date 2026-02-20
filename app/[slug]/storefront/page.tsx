@@ -6,6 +6,7 @@ import {
   MinusIcon, PlusIcon, TrashIcon, PackageIcon, ShoppingCartIcon, WeightIcon, ClockIcon,
   AlertTriangleIcon, PencilIcon, MapPinIcon,
 } from "lucide-react";
+import posthog from "posthog-js";
 import { apiClient, type Product, type Strain, type Cart, type Company } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { ProductCard } from "@/components/storefront/product-card";
@@ -91,6 +92,14 @@ export default function StorefrontPage({
       const updated = await apiClient.addToCart(company.id, productId, quantity);
       setCart(updated);
       window.dispatchEvent(new CustomEvent("cart:updated"));
+      const product = products.find((p) => p.id === productId);
+      posthog.capture("product_added_to_cart", {
+        product_id: productId,
+        product_name: product?.name,
+        quantity,
+        company_slug: slug,
+        company_name: company.name,
+      });
       toast.success("Added to cart");
     } catch {
       toast.error("Failed to add to cart");
@@ -263,6 +272,12 @@ export default function StorefrontPage({
                 size="lg"
                 disabled={!meetsMinimum}
                 onClick={() => {
+                  posthog.capture("checkout_started", {
+                    company_slug: slug,
+                    company_name: company?.name,
+                    item_count: regularItems.length,
+                    total_pouches: totalPouches,
+                  });
                   setSheetOpen(false);
                   router.push(`/${slug}/checkout`);
                 }}

@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import posthog from "posthog-js";
 import {
   ArrowLeftIcon, PlusCircleIcon, TrashIcon, LoaderIcon,
 } from "lucide-react";
@@ -180,6 +181,14 @@ export default function CheckoutPage({
 
       const order = await apiClient.createOrder(orderParams);
       window.dispatchEvent(new CustomEvent("cart:updated"));
+      posthog.capture("order_placed", {
+        order_id: order.id,
+        order_type: orderType,
+        company_slug: slug,
+        company_name: company.name,
+        item_count: checkoutItems.length,
+        total: preview?.total || cart.subtotal,
+      });
       toast.success(isPreorder ? "Pre-order placed successfully!" : "Order placed successfully!");
       router.push(`/${slug}/orders/${order.id}`);
     } catch (err) {

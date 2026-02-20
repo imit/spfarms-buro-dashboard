@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, MinusIcon, PlusIcon, ShoppingCartIcon, FileTextIcon, LeafIcon, WeightIcon } from "lucide-react";
+import posthog from "posthog-js";
 import { apiClient, type Product, type Strain, type Coa, PRODUCT_TYPE_LABELS } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,13 @@ export default function ProductDetailPage({
         ]);
         setProduct(productData);
         setCompanyId(company.id);
+        posthog.capture("product_viewed", {
+          product_id: productData.id,
+          product_name: productData.name,
+          product_type: productData.product_type,
+          price: productData.default_price,
+          company_slug: slug,
+        });
 
         if (productData.strain_id) {
           const [strainData, strainCoas] = await Promise.all([
@@ -73,6 +81,12 @@ export default function ProductDetailPage({
     try {
       await apiClient.addToCart(companyId, product.id, quantity);
       window.dispatchEvent(new CustomEvent("cart:updated"));
+      posthog.capture("product_added_to_cart", {
+        product_id: product.id,
+        product_name: product.name,
+        quantity,
+        company_slug: slug,
+      });
       toast.success("Added to cart");
       setQuantity(1);
     } catch {
