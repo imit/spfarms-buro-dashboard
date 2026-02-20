@@ -50,9 +50,12 @@ type DispensaryMode = "existing" | "google" | "manual";
 export function OnboardRepresentativeForm() {
   const router = useRouter();
   const { user: currentUser } = useAuth();
+  // Dispensary mode: "existing" (pick from DB), "google" (Google Places), or "manual"
+  const [dispensaryMode, setDispensaryMode] = useState<DispensaryMode>("existing");
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { selectedPlace, clearPlace, isLoaded } =
-    useGooglePlacesAutocomplete(searchInputRef);
+    useGooglePlacesAutocomplete(searchInputRef, dispensaryMode === "google");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -65,9 +68,6 @@ export function OnboardRepresentativeForm() {
   } | null>(null);
 
   const [referredById, setReferredById] = useState<string>("");
-
-  // Dispensary mode: "existing" (pick from DB), "google" (Google Places), or "manual"
-  const [dispensaryMode, setDispensaryMode] = useState<DispensaryMode>("existing");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [companyOpen, setCompanyOpen] = useState(false);

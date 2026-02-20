@@ -73,7 +73,8 @@ function extractShortAddressComponent(
 }
 
 export function useGooglePlacesAutocomplete(
-  inputRef: React.RefObject<HTMLInputElement | null>
+  inputRef: React.RefObject<HTMLInputElement | null>,
+  active: boolean = true
 ) {
   const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -92,7 +93,7 @@ export function useGooglePlacesAutocomplete(
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !inputRef.current || !window.google?.maps?.places) return;
+    if (!active || !isLoaded || !inputRef.current || !window.google?.maps?.places) return;
 
     // Restrict to New York state
     const nyStateBounds = new google.maps.LatLngBounds(
@@ -153,7 +154,7 @@ export function useGooglePlacesAutocomplete(
         google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
     };
-  }, [isLoaded, inputRef]);
+  }, [isLoaded, inputRef, active]);
 
   const clearPlace = useCallback(() => {
     setSelectedPlace(null);
