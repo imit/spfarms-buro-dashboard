@@ -228,7 +228,14 @@ export default function CompaniesPage() {
                     onClick={() => router.push(`/admin/companies/${c.slug}`)}
                   >
                     <td className="px-4 py-3 font-medium">
-                      <span className="flex items-center gap-2">
+                      <span className="flex items-center gap-2.5">
+                        {c.logo_url ? (
+                          <img src={c.logo_url} alt="" className="size-7 shrink-0 rounded object-contain bg-white border" />
+                        ) : (
+                          <span className="size-7 shrink-0 rounded border bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                            {c.name.charAt(0)}
+                          </span>
+                        )}
                         {c.name}
                         {c.bulk_buyer && (
                           <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-1.5 py-0.5 text-[10px] font-semibold leading-none">
