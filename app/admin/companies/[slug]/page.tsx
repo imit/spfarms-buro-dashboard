@@ -60,6 +60,7 @@ import {
   ClipboardListIcon,
   DollarSignIcon,
   GlobeIcon,
+  ImageIcon,
   MailIcon,
   MapPinIcon,
   MessageSquareIcon,
@@ -145,6 +146,7 @@ export default function CompanyDetailPage({
   const [followupOpen, setFollowupOpen] = useState(false);
   const [followupForm, setFollowupForm] = useState<{ notification_type: NotificationType; subject: string; body: string }>({ notification_type: "feedback_request", subject: "", body: "" });
   const [sendingFollowup, setSendingFollowup] = useState(false);
+  const [fetchingLogo, setFetchingLogo] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -348,6 +350,19 @@ export default function CompanyDetailPage({
     }
   }
 
+  async function handleFetchLogo() {
+    if (!company?.website) return;
+    setFetchingLogo(true);
+    try {
+      const updated = await apiClient.fetchCompanyLogo(company.slug);
+      setCompany(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not fetch logo from website");
+    } finally {
+      setFetchingLogo(false);
+    }
+  }
+
   if (authLoading || !isAuthenticated) return null;
 
   if (isLoading) {
@@ -387,6 +402,20 @@ export default function CompanyDetailPage({
                 <ArrowLeftIcon className="size-4" />
               </Link>
             </Button>
+            {company.logo_url ? (
+              <img src={company.logo_url} alt="" className="size-10 rounded-lg object-cover border" />
+            ) : company.website ? (
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-10 rounded-lg"
+                onClick={handleFetchLogo}
+                disabled={fetchingLogo}
+                title="Fetch logo from website"
+              >
+                <ImageIcon className={`size-4 ${fetchingLogo ? "animate-pulse" : ""}`} />
+              </Button>
+            ) : null}
             <h2 className="text-2xl font-semibold">{company.name}</h2>
             <Badge variant="outline">
               {COMPANY_TYPE_LABELS[company.company_type]}

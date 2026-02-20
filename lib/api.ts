@@ -1500,6 +1500,17 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
+  async fetchCompanyLogo(slug: string, url?: string): Promise<Company> {
+    const res = await this.request<JsonApiResponse<Company>>(
+      `/api/v1/companies/${slug}/fetch_logo`,
+      {
+        method: "POST",
+        body: JSON.stringify(url ? { url } : {}),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async deleteCompany(slug: string): Promise<void> {
     await this.request(`/api/v1/companies/${slug}`, {
       method: "DELETE",
