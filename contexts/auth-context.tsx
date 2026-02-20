@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import posthog from "posthog-js";
 import { apiClient, type User } from "@/lib/api";
 
 const PUBLIC_ROUTES = ["/", "/auth/invitation", "/auth/verify", "/wholesale"];
@@ -39,7 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedUser = localStorage.getItem("auth_user");
     if (token && storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+        posthog.identify(String(parsed.id), { email: parsed.email, name: parsed.full_name, role: parsed.role });
       } catch {
         localStorage.removeItem("auth_user");
       }
@@ -78,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(user);
       setHasToken(true);
       localStorage.setItem("auth_user", JSON.stringify(user));
+      posthog.identify(String(user.id), { email: user.email, name: user.full_name, role: user.role });
       document.cookie = `spf_email=${encodeURIComponent(user.email)};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
       router.push(getRedirectPath(user));
     } catch (error) {
@@ -89,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(authenticatedUser);
     setHasToken(true);
     localStorage.setItem("auth_user", JSON.stringify(authenticatedUser));
+    posthog.identify(String(authenticatedUser.id), { email: authenticatedUser.email, name: authenticatedUser.full_name, role: authenticatedUser.role });
     document.cookie = `spf_email=${encodeURIComponent(authenticatedUser.email)};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
     router.push(getRedirectPath(authenticatedUser));
   }, [router]);
@@ -105,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Even if the API call fails, we still want to clear local state
       console.error("Logout error:", error);
     } finally {
+      posthog.reset();
       setUser(null);
       setHasToken(false);
       localStorage.removeItem("auth_user");
