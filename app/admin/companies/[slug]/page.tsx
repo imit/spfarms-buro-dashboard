@@ -54,6 +54,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import {
   ArrowLeftIcon,
   CheckCircle2Icon,
@@ -357,8 +358,8 @@ export default function CompanyDetailPage({
     try {
       const updated = await apiClient.fetchCompanyLogo(company.slug);
       setCompany(updated);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not fetch logo from website");
+    } catch {
+      toast.error("Couldn't find a logo on this website");
     } finally {
       setFetchingLogo(false);
     }
