@@ -61,6 +61,7 @@ import {
   DollarSignIcon,
   GlobeIcon,
   ImageIcon,
+  RefreshCwIcon,
   MailIcon,
   MapPinIcon,
   MessageSquareIcon,
@@ -402,19 +403,29 @@ export default function CompanyDetailPage({
                 <ArrowLeftIcon className="size-4" />
               </Link>
             </Button>
-            {company.logo_url ? (
-              <img src={company.logo_url} alt="" className="size-10 rounded-lg object-cover border" />
-            ) : company.website ? (
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-10 rounded-lg"
+            {company.website ? (
+              <button
+                type="button"
                 onClick={handleFetchLogo}
                 disabled={fetchingLogo}
-                title="Fetch logo from website"
+                title={company.logo_url ? "Re-fetch logo from website" : "Fetch logo from website"}
+                className="relative size-10 shrink-0 rounded-lg border overflow-hidden group cursor-pointer disabled:cursor-wait"
               >
-                <ImageIcon className={`size-4 ${fetchingLogo ? "animate-pulse" : ""}`} />
-              </Button>
+                {company.logo_url ? (
+                  <>
+                    <img src={company.logo_url} alt="" className="size-full object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <RefreshCwIcon className={`size-4 text-white ${fetchingLogo ? "animate-spin" : ""}`} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="size-full flex items-center justify-center bg-muted">
+                    <ImageIcon className={`size-4 text-muted-foreground ${fetchingLogo ? "animate-pulse" : ""}`} />
+                  </div>
+                )}
+              </button>
+            ) : company.logo_url ? (
+              <img src={company.logo_url} alt="" className="size-10 rounded-lg object-cover border" />
             ) : null}
             <h2 className="text-2xl font-semibold">{company.name}</h2>
             <Badge variant="outline">
