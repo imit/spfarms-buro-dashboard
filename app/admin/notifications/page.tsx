@@ -22,7 +22,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { PlusIcon, TrashIcon, CheckIcon } from "lucide-react";
 import { toast } from "sonner";
 
 const TYPE_COLORS: Record<NotificationType, string> = {
@@ -145,7 +150,34 @@ export default function AdminNotificationsPage() {
                     {n.sender.full_name || n.sender.email}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant="outline">{n.recipient_count}</Badge>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="cursor-pointer">
+                          <Badge variant="outline" className="hover:bg-muted">
+                            {n.recipient_count} recipient{n.recipient_count !== 1 ? "s" : ""}
+                          </Badge>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-0" align="start">
+                        <div className="px-3 py-2 border-b">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            {n.recipient_count} recipient{n.recipient_count !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                        <ul className="max-h-48 overflow-y-auto divide-y">
+                          {n.recipients.map((r) => (
+                            <li key={r.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                              <span className="truncate flex-1">
+                                {r.full_name || r.email}
+                              </span>
+                              {r.read_at && (
+                                <CheckIcon className="size-3.5 text-green-600 shrink-0" />
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </PopoverContent>
+                    </Popover>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {n.sent_at ? new Date(n.sent_at).toLocaleString() : "Sending..."}

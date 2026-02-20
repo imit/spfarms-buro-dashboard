@@ -900,6 +900,7 @@ export interface Notification {
   target_user: { id: number; full_name: string | null; email: string } | null;
   order: { id: number; order_number: string; status: OrderStatus } | null;
   recipient_count: number;
+  recipients: { id: number; full_name: string | null; email: string; read_at: string | null }[];
 }
 
 export interface NotificationRecipient {

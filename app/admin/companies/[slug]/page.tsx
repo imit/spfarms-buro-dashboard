@@ -1258,7 +1258,7 @@ export default function CompanyDetailPage({
               <ul className="list-disc pl-5 space-y-0.5">
                 <li>View available inventory</li>
                 <li>Download COAs</li>
-                <li>Order packaged or bulk flower</li>
+                <li>Order packaged</li>
                 <li>Submit purchase requests directly</li>
               </ul>
               <div className="pt-1">
