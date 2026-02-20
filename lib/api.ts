@@ -834,6 +834,15 @@ export interface DashboardTopDispensary {
   order_count: number;
 }
 
+export interface DashboardUnsentInvite {
+  id: number;
+  full_name: string | null;
+  email: string;
+  phone_number: string | null;
+  companies: { slug: string; name: string }[];
+  created_at: string;
+}
+
 export interface DashboardStats {
   total_orders: number;
   total_revenue: number;
@@ -844,6 +853,7 @@ export interface DashboardStats {
   best_dispensary_ever: DashboardTopDispensary | null;
   recent_companies: DashboardRecentCompany[];
   recent_users: DashboardRecentUser[];
+  unsent_invitations: DashboardUnsentInvite[];
 }
 
 // ---- Notifications ----
@@ -854,7 +864,8 @@ export type NotificationType =
   | "feedback_request"
   | "info_request"
   | "product_update"
-  | "announcement";
+  | "announcement"
+  | "cart_reminder";
 
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   order_status: "Order Status",
@@ -863,6 +874,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   info_request: "Information Request",
   product_update: "Product Update",
   announcement: "Announcement",
+  cart_reminder: "Cart Reminder",
 };
 
 export type NotificationChannel = "email_and_in_app" | "email_only" | "in_app_only";
@@ -1486,6 +1498,20 @@ export class ApiClient {
   async deleteCompany(slug: string): Promise<void> {
     await this.request(`/api/v1/companies/${slug}`, {
       method: "DELETE",
+    });
+  }
+
+  async sendCartReminder(slug: string, customMessage?: string): Promise<void> {
+    await this.request(`/api/v1/companies/${slug}/send_cart_reminder`, {
+      method: "POST",
+      body: JSON.stringify({ custom_message: customMessage || undefined }),
+    });
+  }
+
+  async sendCompanyFollowup(slug: string, params: { notification_type: NotificationType; subject: string; body?: string }): Promise<void> {
+    await this.request(`/api/v1/companies/${slug}/send_followup`, {
+      method: "POST",
+      body: JSON.stringify(params),
     });
   }
 

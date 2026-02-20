@@ -11,10 +11,12 @@ import {
   type Company,
   type DiscountRecord,
   type LeadStatus,
+  type NotificationType,
   type Order,
   type OrderStatus,
   COMPANY_TYPE_LABELS,
   LEAD_STATUS_LABELS,
+  NOTIFICATION_TYPE_LABELS,
   ORDER_STATUS_LABELS,
   PRODUCT_TYPE_LABELS,
   REGION_LABELS,
@@ -60,6 +62,7 @@ import {
   GlobeIcon,
   MailIcon,
   MapPinIcon,
+  MessageSquareIcon,
   PackageIcon,
   PencilIcon,
   PhoneIcon,
@@ -135,6 +138,12 @@ export default function CompanyDetailPage({
   const [cart, setCart] = useState<Cart | null>(null);
   const [allDiscounts, setAllDiscounts] = useState<DiscountRecord[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [cartReminderOpen, setCartReminderOpen] = useState(false);
+  const [cartReminderMessage, setCartReminderMessage] = useState("");
+  const [sendingCartReminder, setSendingCartReminder] = useState(false);
+  const [followupOpen, setFollowupOpen] = useState(false);
+  const [followupForm, setFollowupForm] = useState<{ notification_type: NotificationType; subject: string; body: string }>({ notification_type: "feedback_request", subject: "", body: "" });
+  const [sendingFollowup, setSendingFollowup] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -289,6 +298,38 @@ export default function CompanyDetailPage({
       setCart(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove discount");
+    }
+  }
+
+  async function handleSendCartReminder() {
+    if (!company) return;
+    setSendingCartReminder(true);
+    try {
+      await apiClient.sendCartReminder(company.slug, cartReminderMessage || undefined);
+      setCartReminderOpen(false);
+      setCartReminderMessage("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send cart reminder");
+    } finally {
+      setSendingCartReminder(false);
+    }
+  }
+
+  async function handleSendFollowup() {
+    if (!company) return;
+    setSendingFollowup(true);
+    try {
+      await apiClient.sendCompanyFollowup(company.slug, {
+        notification_type: followupForm.notification_type,
+        subject: followupForm.subject,
+        body: followupForm.body || undefined,
+      });
+      setFollowupOpen(false);
+      setFollowupForm({ notification_type: "feedback_request", subject: "", body: "" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send follow-up");
+    } finally {
+      setSendingFollowup(false);
     }
   }
 
@@ -824,6 +865,126 @@ export default function CompanyDetailPage({
               No discounts assigned to this cart.
             </p>
           )}
+        </div>
+      </div>
+
+      {/* Follow-up Emails */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageSquareIcon className="size-5 text-muted-foreground" />
+            <h3 className="text-lg font-medium">Follow-up Emails</h3>
+          </div>
+          <div className="flex gap-2">
+            {cart && cart.items.length > 0 && (
+              <Dialog open={cartReminderOpen} onOpenChange={(open) => { setCartReminderOpen(open); if (!open) setCartReminderMessage(""); }}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <ShoppingCartIcon className="mr-1.5 size-3.5" />
+                    Cart Reminder
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-xl">
+                  <DialogHeader>
+                    <DialogTitle>Send Cart Reminder</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Send a &quot;You have items waiting&quot; email to all members of <span className="font-medium text-foreground">{company?.name}</span>.
+                    </p>
+                    <Textarea
+                      placeholder="Add a custom message (optional)..."
+                      value={cartReminderMessage}
+                      onChange={(e) => setCartReminderMessage(e.target.value)}
+                      rows={2}
+                    />
+                    <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Cart items</p>
+                      {cart.items.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between text-sm">
+                          <div>
+                            <span className="font-medium">{item.product_name}</span>
+                            {item.strain_name && <span className="text-muted-foreground ml-1">({item.strain_name})</span>}
+                            <span className="text-muted-foreground"> x{item.quantity}</span>
+                          </div>
+                          <span className="text-muted-foreground">
+                            {item.unit_price ? `$${parseFloat(item.unit_price).toFixed(2)}` : "—"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleSendCartReminder} disabled={sendingCartReminder} className="w-full">
+                      <SendIcon className="mr-2 size-4" />
+                      {sendingCartReminder ? "Sending..." : "Send Cart Reminder"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+            <Dialog open={followupOpen} onOpenChange={(open) => { setFollowupOpen(open); if (!open) setFollowupForm({ notification_type: "feedback_request", subject: "", body: "" }); }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MailIcon className="mr-1.5 size-3.5" />
+                  Send Follow-up
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-xl">
+                <DialogHeader>
+                  <DialogTitle>Send Follow-up Email</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Send an email to all members of <span className="font-medium text-foreground">{company?.name}</span>.
+                  </p>
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <select
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={followupForm.notification_type}
+                      onChange={(e) => setFollowupForm((f) => ({ ...f, notification_type: e.target.value as NotificationType }))}
+                    >
+                      {(["feedback_request", "info_request", "product_update", "announcement"] as NotificationType[]).map((t) => (
+                        <option key={t} value={t}>{NOTIFICATION_TYPE_LABELS[t]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Subject *</Label>
+                    <Input
+                      value={followupForm.subject}
+                      onChange={(e) => setFollowupForm((f) => ({ ...f, subject: e.target.value }))}
+                      placeholder="Email subject line"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Message</Label>
+                    <Textarea
+                      value={followupForm.body}
+                      onChange={(e) => setFollowupForm((f) => ({ ...f, body: e.target.value }))}
+                      placeholder="Email body..."
+                      rows={4}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleSendFollowup} disabled={sendingFollowup || !followupForm.subject.trim()} className="w-full">
+                    <SendIcon className="mr-2 size-4" />
+                    {sendingFollowup ? "Sending..." : "Send Follow-up"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+        <div className="rounded-lg border bg-card p-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            {cart && cart.items.length > 0
+              ? `${cart.item_count} item${cart.item_count !== 1 ? "s" : ""} in cart — use "Cart Reminder" to nudge this company.`
+              : "Cart is empty. Use \"Send Follow-up\" for general emails."}
+          </p>
         </div>
       </div>
 

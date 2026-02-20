@@ -20,6 +20,7 @@ const TYPE_COLORS: Record<NotificationType, string> = {
   info_request: "bg-cyan-100 text-cyan-800",
   product_update: "bg-green-100 text-green-800",
   announcement: "bg-orange-100 text-orange-800",
+  cart_reminder: "bg-pink-100 text-pink-800",
 };
 
 function targetLabel(n: Notification) {

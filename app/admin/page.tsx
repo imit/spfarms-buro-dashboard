@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   apiClient,
   type DashboardStats,
+  type DashboardUnsentInvite,
   type LeadStatus,
   LEAD_STATUS_LABELS,
   ROLE_LABELS,
@@ -13,6 +14,15 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   ShoppingCartIcon,
   DollarSignIcon,
@@ -24,6 +34,8 @@ import {
   StarIcon,
   CrownIcon,
   UserPlusIcon,
+  SendIcon,
+  MailWarningIcon,
 } from "lucide-react";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
@@ -62,11 +74,19 @@ function timeAgo(dateStr: string) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+const INVITE_PRESETS = [
+  { label: "Call follow-up", message: "As discussed on our call, here's your direct access to our wholesale menu." },
+  { label: "Cold outreach", message: "We're reaching out to introduce SPFarms and provide direct access to our available inventory." },
+] as const;
+
 export default function DashboardPage() {
   const { isAuthenticated, isLoading: authLoading, user: currentUser } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [inviteTarget, setInviteTarget] = useState<DashboardUnsentInvite | null>(null);
+  const [inviteMessage, setInviteMessage] = useState("");
+  const [sendingId, setSendingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -83,6 +103,24 @@ export default function DashboardPage() {
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, [isAuthenticated]);
+
+  async function handleSendInvite() {
+    if (!inviteTarget || !stats) return;
+    setSendingId(inviteTarget.id);
+    try {
+      await apiClient.sendWelcomeEmail(inviteTarget.id, inviteMessage || undefined);
+      setStats({
+        ...stats,
+        unsent_invitations: stats.unsent_invitations.filter((u) => u.id !== inviteTarget.id),
+      });
+      setInviteTarget(null);
+      setInviteMessage("");
+    } catch {
+      // silent
+    } finally {
+      setSendingId(null);
+    }
+  }
 
   if (authLoading || isLoading) {
     return (
@@ -235,6 +273,117 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      {/* Unsent invitations */}
+      {stats.unsent_invitations.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 shadow-xs dark:border-amber-800 dark:bg-amber-950/20">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MailWarningIcon className="size-4 text-amber-600" />
+              <h3 className="text-sm font-medium">Unsent Invitations</h3>
+              <Badge variant="secondary" className="text-xs">
+                {stats.unsent_invitations.length}
+              </Badge>
+            </div>
+          </div>
+          <div className="rounded-lg border bg-card">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-2.5 text-left font-medium">Name</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Company</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Added</th>
+                  <th className="px-4 py-2.5 text-right font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.unsent_invitations.map((u) => (
+                  <tr key={u.id} className="border-b last:border-0">
+                    <td className="px-4 py-2.5">
+                      <div>
+                        <p className="font-medium">{u.full_name || u.email}</p>
+                        {u.full_name && (
+                          <p className="text-xs text-muted-foreground">{u.email}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">
+                      {u.companies.length > 0
+                        ? u.companies.map((c) => c.name).join(", ")
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">
+                      {timeAgo(u.created_at)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setInviteMessage("");
+                          setInviteTarget(u);
+                        }}
+                      >
+                        <SendIcon className="mr-1.5 size-3.5" />
+                        Send Invite
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Invite modal */}
+      <Dialog open={!!inviteTarget} onOpenChange={(open) => { if (!open) { setInviteTarget(null); setInviteMessage(""); } }}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Send Invite</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              To: <span className="font-medium text-foreground">{inviteTarget?.email}</span>
+              {inviteTarget?.companies && inviteTarget.companies.length > 0 && (
+                <span className="ml-2 text-xs">({inviteTarget.companies.map((c) => c.name).join(", ")})</span>
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {INVITE_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => setInviteMessage(preset.message)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    inviteMessage === preset.message
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "hover:bg-muted"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            <Textarea
+              placeholder="Add a custom sentence (optional)..."
+              value={inviteMessage}
+              onChange={(e) => setInviteMessage(e.target.value)}
+              rows={2}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleSendInvite}
+              disabled={sendingId === inviteTarget?.id}
+              className="w-full"
+            >
+              <SendIcon className="mr-2 size-4" />
+              {sendingId === inviteTarget?.id ? "Sending..." : "Send Invite"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Recent lists */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

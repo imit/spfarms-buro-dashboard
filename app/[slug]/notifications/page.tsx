@@ -28,6 +28,7 @@ const TYPE_ICONS: Record<NotificationType, React.ReactNode> = {
   info_request: <InfoIcon className="size-4" />,
   product_update: <BoxIcon className="size-4" />,
   announcement: <MegaphoneIcon className="size-4" />,
+  cart_reminder: <PackageIcon className="size-4" />,
 };
 
 const TYPE_COLORS: Record<NotificationType, string> = {
@@ -37,6 +38,7 @@ const TYPE_COLORS: Record<NotificationType, string> = {
   info_request: "bg-cyan-100 text-cyan-700",
   product_update: "bg-green-100 text-green-700",
   announcement: "bg-orange-100 text-orange-700",
+  cart_reminder: "bg-pink-100 text-pink-700",
 };
 
 function timeAgo(dateStr: string) {
