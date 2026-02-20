@@ -112,40 +112,64 @@ export default function CartPage({
   }
 
   const cartItemRow = (item: typeof regularItems[number], borderClass?: string) => (
-    <div key={item.id} className={`flex items-center gap-4 rounded-lg border p-3 ${borderClass || ""}`}>
-      <div className="size-16 shrink-0 overflow-hidden rounded-md bg-muted">
-        {item.thumbnail_url ? (
-          <img src={item.thumbnail_url} alt={item.product_name} className="size-full object-cover" />
-        ) : (
-          <div className="size-full" />
-        )}
+    <div key={item.id} className={`rounded-lg border p-3 ${borderClass || ""}`}>
+      <div className="flex items-center gap-3">
+        <div className="size-12 sm:size-16 shrink-0 overflow-hidden rounded-md bg-muted">
+          {item.thumbnail_url ? (
+            <img src={item.thumbnail_url} alt={item.product_name} className="size-full object-cover" />
+          ) : (
+            <div className="size-full" />
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm truncate">{item.product_name}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            {formatPrice(item.unit_price)}
+            {item.bulk && item.unit_weight ? ` / ${parseFloat(item.unit_weight)} lbs` : ""}
+          </p>
+        </div>
+
+        {/* Desktop: line total + trash inline */}
+        <div className="hidden sm:flex items-center gap-3">
+          <div className="flex items-center rounded-md border">
+            <Button variant="ghost" size="icon" className="size-8" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+              <MinusIcon className="size-3" />
+            </Button>
+            <span className="w-8 text-center text-sm">{item.quantity}</span>
+            <Button variant="ghost" size="icon" className="size-8" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+              <PlusIcon className="size-3" />
+            </Button>
+          </div>
+          <div className="w-20 text-right font-medium text-sm">
+            {formatPrice(parseFloat(item.unit_price || "0") * item.quantity)}
+          </div>
+          <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
+            <TrashIcon className="size-4" />
+          </Button>
+        </div>
       </div>
 
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{item.product_name}</p>
-        <p className="text-sm text-muted-foreground">
-          {formatPrice(item.unit_price)}
-          {item.bulk && item.unit_weight ? ` / ${parseFloat(item.unit_weight)} lbs` : ""}
-        </p>
+      {/* Mobile: quantity + total + trash below */}
+      <div className="flex items-center justify-between mt-2 sm:hidden">
+        <div className="flex items-center rounded-md border">
+          <Button variant="ghost" size="icon" className="size-7" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+            <MinusIcon className="size-3" />
+          </Button>
+          <span className="w-7 text-center text-xs font-medium">{item.quantity}</span>
+          <Button variant="ghost" size="icon" className="size-7" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+            <PlusIcon className="size-3" />
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">
+            {formatPrice(parseFloat(item.unit_price || "0") * item.quantity)}
+          </span>
+          <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
+            <TrashIcon className="size-3.5" />
+          </Button>
+        </div>
       </div>
-
-      <div className="flex items-center rounded-md border">
-        <Button variant="ghost" size="icon" className="size-8" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
-          <MinusIcon className="size-3" />
-        </Button>
-        <span className="w-8 text-center text-sm">{item.quantity}</span>
-        <Button variant="ghost" size="icon" className="size-8" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
-          <PlusIcon className="size-3" />
-        </Button>
-      </div>
-
-      <div className="w-20 text-right font-medium text-sm">
-        {formatPrice(parseFloat(item.unit_price || "0") * item.quantity)}
-      </div>
-
-      <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => removeItem(item.id)}>
-        <TrashIcon className="size-4" />
-      </Button>
     </div>
   );
 
@@ -218,15 +242,14 @@ export default function CartPage({
                 Subtotal: {formatPrice(regularSubtotal)}
               </div>
             )}
-            <div className="flex justify-end">
-              <Button
-                size="lg"
-                disabled={!meetsMinimum}
-                onClick={() => router.push(`/${slug}/checkout`)}
-              >
-                {meetsMinimum ? "Proceed to Checkout" : "Minimum order not met"}
-              </Button>
-            </div>
+            <Button
+              className="w-full sm:w-auto sm:ml-auto sm:flex"
+              size="lg"
+              disabled={!meetsMinimum}
+              onClick={() => router.push(`/${slug}/checkout`)}
+            >
+              {meetsMinimum ? "Proceed to Checkout" : "Minimum order not met"}
+            </Button>
           </div>
         </>
       )}
@@ -266,16 +289,15 @@ export default function CartPage({
                 Pre-order Subtotal: {formatPrice(preorderSubtotal)}
               </div>
             )}
-            <div className="flex justify-end">
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => router.push(`/${slug}/checkout?type=preorder`)}
-              >
-                <ClockIcon className="mr-2 size-4" />
-                Checkout Pre-orders
-              </Button>
-            </div>
+            <Button
+              className="w-full sm:w-auto sm:ml-auto sm:flex"
+              size="lg"
+              variant="outline"
+              onClick={() => router.push(`/${slug}/checkout?type=preorder`)}
+            >
+              <ClockIcon className="mr-2 size-4" />
+              Checkout Pre-orders
+            </Button>
           </div>
         </>
       )}

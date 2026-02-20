@@ -338,19 +338,68 @@ export default function StorefrontPage({
     <>
       <div className="flex h-full">
         {/* Product grid — full width on mobile, half on desktop */}
-        <div className="w-full lg:w-[70%] overflow-y-auto px-4 py-6 sm:px-8 pb-24 lg:pb-6">
+        <div className="w-full lg:w-[70%] overflow-y-auto py-4 sm:px-4 sm:py-6 pb-24 lg:pb-6">
           {/* Dispensary header */}
           {company && (
             <div className="mb-6 rounded-lg border bg-card p-4">
-              <div className="flex items-start gap-4">
+              {/* Mobile: stacked layout */}
+              <div className="flex flex-col gap-3 sm:hidden">
+                <div className="flex items-center gap-3">
+                  {company.logo_url ? (
+                    <img
+                      src={company.logo_url}
+                      alt={company.name}
+                      className="size-14 shrink-0 rounded-xl object-contain bg-white p-1 border"
+                    />
+                  ) : (
+                    <div className="size-14 shrink-0 rounded-xl border bg-muted flex items-center justify-center text-muted-foreground text-xl font-bold">
+                      {company.name.charAt(0)}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">
+                      Hello, {user?.full_name || user?.email}
+                    </p>
+                    <h1 className="text-lg font-bold leading-tight">
+                      {company.name}
+                    </h1>
+                    {company.license_number && (
+                      <p className="text-xs text-muted-foreground">#{company.license_number}</p>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8 shrink-0"
+                    onClick={() => router.push(`/${slug}/settings`)}
+                  >
+                    <PencilIcon className="size-3.5" />
+                  </Button>
+                </div>
+                {!company.license_number && (
+                  <p className="flex items-center gap-1.5 text-xs text-amber-600">
+                    <AlertTriangleIcon className="size-3.5" />
+                    No license number on file
+                  </p>
+                )}
+                {company.locations.length > 0 && (
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPinIcon className="size-3.5 shrink-0" />
+                    {[company.locations[0].address, company.locations[0].city, company.locations[0].state, company.locations[0].zip_code].filter(Boolean).join(", ")}
+                  </p>
+                )}
+              </div>
+
+              {/* Desktop: horizontal layout */}
+              <div className="hidden sm:flex items-center gap-5">
                 {company.logo_url ? (
                   <img
                     src={company.logo_url}
                     alt={company.name}
-                    className="size-14 shrink-0 rounded-lg object-cover border"
+                    className="size-20 shrink-0 rounded-xl object-contain bg-white p-1.5 border"
                   />
                 ) : (
-                  <div className="size-14 shrink-0 rounded-lg border bg-muted flex items-center justify-center text-muted-foreground text-lg font-bold">
+                  <div className="size-20 shrink-0 rounded-xl border bg-muted flex items-center justify-center text-muted-foreground text-2xl font-bold">
                     {company.name.charAt(0)}
                   </div>
                 )}
@@ -358,7 +407,7 @@ export default function StorefrontPage({
                   <p className="text-sm text-muted-foreground">
                     Hello, {user?.full_name || user?.email}
                   </p>
-                  <h1 className="text-xl font-bold truncate">
+                  <h1 className="text-xl font-bold">
                     {company.name}
                     {company.license_number && (
                       <span className="ml-2 text-sm font-normal text-muted-foreground">

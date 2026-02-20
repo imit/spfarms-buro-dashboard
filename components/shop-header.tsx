@@ -71,7 +71,7 @@ export function ShopHeader({ slug }: { slug: string }) {
           <Logo />
         </Link>
 
-        <nav className="flex items-center gap-6">
+        <nav className="flex items-center gap-3 sm:gap-6">
           <Link
             href={`/${slug}/storefront`}
             className={`text-sm font-medium transition-opacity ${
