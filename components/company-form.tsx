@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { XIcon } from "lucide-react";
 
 const REGIONS = Object.entries(REGION_LABELS) as [Region, string][];
@@ -60,6 +61,7 @@ export function CompanyForm({ company, mode = "create", redirectPath, cancelPath
     phone_number: company?.phone_number ?? "",
     email: company?.email ?? "",
     license_number: company?.license_number ?? "",
+    bulk_buyer: company?.bulk_buyer ?? false,
     social_media: {
       instagram: company?.social_media?.instagram ?? "",
       twitter: company?.social_media?.twitter ?? "",
@@ -133,6 +135,7 @@ export function CompanyForm({ company, mode = "create", redirectPath, cancelPath
       const payload: Record<string, unknown> = {
         name: form.name,
         company_type: form.company_type,
+        bulk_buyer: form.bulk_buyer,
         website: form.website || undefined,
         description: form.description || undefined,
         phone_number: form.phone_number || undefined,
@@ -280,6 +283,21 @@ export function CompanyForm({ company, mode = "create", redirectPath, cancelPath
               disabled={isSubmitting}
             />
           </Field>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="bulk_buyer"
+              checked={form.bulk_buyer}
+              onCheckedChange={(checked) =>
+                setForm((prev) => ({ ...prev, bulk_buyer: checked === true }))
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor="bulk_buyer" className="text-sm font-medium leading-none cursor-pointer">
+              Bulk buyer
+            </label>
+            <span className="text-xs text-muted-foreground">— allows access to bulk products &amp; pricing</span>
+          </div>
 
           <Field>
             <FieldLabel htmlFor="description">Description</FieldLabel>

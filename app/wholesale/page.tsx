@@ -96,7 +96,7 @@ export default function WholesalePage() {
                 product={product}
                 strain={product.strain_id ? strainMap[product.strain_id] : undefined}
                 onRegister={() => router.push("/wholesale/register")}
-                showPrice={isAuthenticated}
+                showPrice={false}
               />
             ))}
           </div>

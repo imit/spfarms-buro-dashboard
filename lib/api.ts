@@ -167,6 +167,7 @@ export interface Company {
   social_media: Record<string, string>;
   license_number: string | null;
   active: boolean;
+  bulk_buyer: boolean;
   logo_url: string | null;
   locations: Location[];
   members: CompanyMember[];

@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { apiClient, type Product, type Strain } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { ProductCard } from "@/components/storefront/product-card";
@@ -13,6 +14,7 @@ export default function BulkStorefrontPage({
 }) {
   const { slug } = use(params);
   const { isAuthenticated } = useAuth();
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [companyId, setCompanyId] = useState<number | null>(null);
@@ -28,6 +30,12 @@ export default function BulkStorefrontPage({
           apiClient.getCompany(slug),
           apiClient.getStrains(),
         ]);
+
+        if (!company.bulk_buyer) {
+          router.replace(`/${slug}/storefront`);
+          return;
+        }
+
         setProducts(productData.filter((p) => p.active && p.status === "active" && p.bulk));
         setCompanyId(company.id);
 

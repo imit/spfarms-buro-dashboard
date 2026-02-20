@@ -7,7 +7,7 @@ import Avatar from "boring-avatars";
 import { ShoppingCartIcon, BellIcon, LogOutIcon, PackageIcon, FlaskConicalIcon, SettingsIcon } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { useAuth } from "@/contexts/auth-context";
-import { apiClient } from "@/lib/api";
+import { apiClient, type Company } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,12 +23,14 @@ export function ShopHeader({ slug }: { slug: string }) {
   const pathname = usePathname();
   const [cartCount, setCartCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [company, setCompany] = useState<Company | null>(null);
 
   useEffect(() => {
     async function fetchCartCount() {
       try {
-        const company = await apiClient.getCompany(slug);
-        const cart = await apiClient.getCart(company.id);
+        const companyData = await apiClient.getCompany(slug);
+        setCompany(companyData);
+        const cart = await apiClient.getCart(companyData.id);
         setCartCount(cart.item_count);
       } catch {
         // Cart may not exist yet
@@ -78,14 +80,16 @@ export function ShopHeader({ slug }: { slug: string }) {
           >
             products
           </Link>
-          <Link
-            href={`/${slug}/storefront/bulk`}
-            className={`text-sm font-medium transition-opacity ${
-              pathname === `/${slug}/storefront/bulk` ? "opacity-100" : "opacity-50 hover:opacity-70"
-            }`}
-          >
-            bulk
-          </Link>
+          {company?.bulk_buyer && (
+            <Link
+              href={`/${slug}/storefront/bulk`}
+              className={`text-sm font-medium transition-opacity ${
+                pathname === `/${slug}/storefront/bulk` ? "opacity-100" : "opacity-50 hover:opacity-70"
+              }`}
+            >
+              bulk
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-2">
