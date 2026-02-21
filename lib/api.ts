@@ -429,6 +429,41 @@ export interface LabelDesign {
     width?: number;
     height?: number;
   };
+  metrc_zone?: {
+    enabled?: boolean;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    render_as?: "original_image" | "qr_code" | "barcode" | "text";
+  };
+}
+
+// ---- METRC Label Sets ----
+
+export interface MetrcLabelItem {
+  id: number;
+  position: number;
+  tag_string: string | null;
+  has_image: boolean;
+}
+
+export interface MetrcLabelSet {
+  id: number;
+  name: string;
+  source_type: "pdf_upload" | "tag_strings";
+  item_count: number;
+  items: MetrcLabelItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MetrcLabelSetSummary {
+  id: number;
+  name: string;
+  source_type: "pdf_upload" | "tag_strings";
+  item_count: number;
+  created_at: string;
 }
 
 export interface Label {
@@ -447,6 +482,7 @@ export interface Label {
   logo_url: string | null;
   overlays: LabelOverlayData[];
   render_data: Record<string, unknown>;
+  metrc_label_sets: MetrcLabelSetSummary[];
   created_at: string;
   updated_at: string;
 }
@@ -1761,13 +1797,21 @@ export class ApiClient {
   async printLabels(
     slug: string,
     sheetLayoutId: string,
-    copies: number
+    copies: number,
+    metrcLabelSetId?: number
   ): Promise<Blob> {
     const url = `${this.baseUrl}/api/v1/labels/${slug}/print`;
     const token =
       typeof window !== "undefined"
         ? localStorage.getItem("auth_token")
         : null;
+    const body: Record<string, unknown> = {
+      sheet_layout_id: sheetLayoutId,
+      copies,
+    };
+    if (metrcLabelSetId) {
+      body.metrc_label_set_id = metrcLabelSetId;
+    }
     const res = await fetch(url, {
       method: "POST",
       headers: {
@@ -1775,10 +1819,7 @@ export class ApiClient {
         "Content-Type": "application/json",
       },
       credentials: "include",
-      body: JSON.stringify({
-        sheet_layout_id: sheetLayoutId,
-        copies,
-      }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error("Failed to generate print PDF");
     return res.blob();
@@ -1818,6 +1859,56 @@ export class ApiClient {
       { method: "DELETE" }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  // METRC Label Sets
+
+  async getMetrcLabelSets(labelSlug: string): Promise<MetrcLabelSet[]> {
+    const res = await this.request<JsonApiCollectionResponse<MetrcLabelSet>>(
+      `/api/v1/labels/${labelSlug}/metrc_label_sets`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createMetrcLabelSetFromTags(
+    labelSlug: string,
+    tags: string[],
+    name?: string
+  ): Promise<MetrcLabelSet> {
+    const res = await this.request<JsonApiResponse<MetrcLabelSet>>(
+      `/api/v1/labels/${labelSlug}/metrc_label_sets`,
+      {
+        method: "POST",
+        body: JSON.stringify({ tags, name }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createMetrcLabelSetFromPdf(
+    labelSlug: string,
+    pdf: File,
+    name?: string
+  ): Promise<MetrcLabelSet> {
+    const formData = new FormData();
+    formData.append("pdf", pdf);
+    if (name) formData.append("name", name);
+
+    const res = await this.requestFormData<JsonApiResponse<MetrcLabelSet>>(
+      `/api/v1/labels/${labelSlug}/metrc_label_sets`,
+      { method: "POST", body: formData }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteMetrcLabelSet(
+    labelSlug: string,
+    setId: number
+  ): Promise<void> {
+    await this.request(
+      `/api/v1/labels/${labelSlug}/metrc_label_sets/${setId}`,
+      { method: "DELETE" }
+    );
   }
 
   // Sheet Layouts

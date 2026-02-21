@@ -161,6 +161,20 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
     height: label?.design?.logo?.height?.toString() ?? "36",
   });
 
+  // METRC Zone
+  const [metrcZone, setMetrcZone] = useState({
+    enabled: label?.design?.metrc_zone?.enabled ?? false,
+    render_as: (label?.design?.metrc_zone?.render_as ?? "original_image") as
+      | "original_image"
+      | "qr_code"
+      | "barcode"
+      | "text",
+    x: label?.design?.metrc_zone?.x?.toString() ?? "10",
+    y: label?.design?.metrc_zone?.y?.toString() ?? "150",
+    width: label?.design?.metrc_zone?.width?.toString() ?? "80",
+    height: label?.design?.metrc_zone?.height?.toString() ?? "30",
+  });
+
   useEffect(() => {
     apiClient.getStrains().then(setStrains).catch(() => {});
     apiClient.getProducts().then(setProducts).catch(() => {});
@@ -259,6 +273,19 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
         };
       } else {
         designPayload.logo = { visible: false };
+      }
+
+      if (metrcZone.enabled) {
+        designPayload.metrc_zone = {
+          enabled: true,
+          render_as: metrcZone.render_as,
+          x: parseFloat(metrcZone.x) || 0,
+          y: parseFloat(metrcZone.y) || 0,
+          width: parseFloat(metrcZone.width) || 80,
+          height: parseFloat(metrcZone.height) || 30,
+        };
+      } else {
+        designPayload.metrc_zone = { enabled: false };
       }
 
       const data: Record<string, unknown> = {
@@ -897,6 +924,119 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
                     min="1"
                     value={logo.height}
                     onChange={(e) => updateLogo("height", e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+            </>
+          )}
+        </FieldGroup>
+      </section>
+
+      <Separator />
+
+      {/* METRC Zone */}
+      <section className="space-y-4">
+        <h3 className="text-lg font-medium">METRC Zone</h3>
+        <FieldGroup>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="metrc_zone_enabled"
+              checked={metrcZone.enabled}
+              onCheckedChange={(checked) =>
+                setMetrcZone((p) => ({ ...p, enabled: checked === true }))
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor="metrc_zone_enabled" className="text-sm font-medium">
+              Enable METRC Zone
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Designates where METRC tag identifiers (QR codes, barcodes, or text)
+            will be rendered on each label. Upload METRC data from the label
+            detail page.
+          </p>
+
+          {metrcZone.enabled && (
+            <>
+              <Field>
+                <FieldLabel htmlFor="metrc_render_as">Render As</FieldLabel>
+                <Select
+                  value={metrcZone.render_as}
+                  onValueChange={(v) =>
+                    setMetrcZone((p) => ({
+                      ...p,
+                      render_as: v as typeof metrcZone.render_as,
+                    }))
+                  }
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger id="metrc_render_as" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="original_image">
+                      Original Image (from PDF)
+                    </SelectItem>
+                    <SelectItem value="qr_code">QR Code</SelectItem>
+                    <SelectItem value="barcode">Barcode (Code 128)</SelectItem>
+                    <SelectItem value="text">Text</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="metrc_x">Position X</FieldLabel>
+                  <Input
+                    id="metrc_x"
+                    type="number"
+                    value={metrcZone.x}
+                    onChange={(e) =>
+                      setMetrcZone((p) => ({ ...p, x: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="metrc_y">Position Y</FieldLabel>
+                  <Input
+                    id="metrc_y"
+                    type="number"
+                    value={metrcZone.y}
+                    onChange={(e) =>
+                      setMetrcZone((p) => ({ ...p, y: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="metrc_width">Width</FieldLabel>
+                  <Input
+                    id="metrc_width"
+                    type="number"
+                    min="1"
+                    value={metrcZone.width}
+                    onChange={(e) =>
+                      setMetrcZone((p) => ({ ...p, width: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="metrc_height">Height</FieldLabel>
+                  <Input
+                    id="metrc_height"
+                    type="number"
+                    min="1"
+                    value={metrcZone.height}
+                    onChange={(e) =>
+                      setMetrcZone((p) => ({ ...p, height: e.target.value }))
+                    }
                     disabled={isSubmitting}
                   />
                 </Field>

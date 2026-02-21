@@ -25,6 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { LabelPrintDialog } from "@/components/label-print-dialog";
+import { MetrcLabelSetPanel } from "@/components/metrc-label-set-panel";
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -83,24 +84,23 @@ export default function LabelDetailPage({
     }
   }, [isAuthenticated, authLoading, router]);
 
+  const fetchLabel = useCallback(async () => {
+    try {
+      const data = await apiClient.getLabel(slug);
+      setLabel(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load label"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [slug]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    async function fetchLabel() {
-      try {
-        const data = await apiClient.getLabel(slug);
-        setLabel(data);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load label"
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     fetchLabel();
-  }, [isAuthenticated, slug]);
+  }, [isAuthenticated, fetchLabel]);
 
   const fetchPreview = useCallback(async () => {
     try {
@@ -315,6 +315,20 @@ export default function LabelDetailPage({
                   }
                 />
               )}
+              {label.design.metrc_zone?.enabled && (
+                <DetailRow
+                  label="METRC Zone"
+                  value={
+                    label.design.metrc_zone.render_as === "original_image"
+                      ? "Original Image"
+                      : label.design.metrc_zone.render_as === "qr_code"
+                        ? "QR Code"
+                        : label.design.metrc_zone.render_as === "barcode"
+                          ? "Barcode"
+                          : "Text"
+                  }
+                />
+              )}
             </dl>
           </div>
         )}
@@ -351,9 +365,14 @@ export default function LabelDetailPage({
         </div>
       )}
 
+      <Separator />
+
+      {/* METRC Label Sets */}
+      <MetrcLabelSetPanel label={label} onUpdated={fetchLabel} />
+
       {/* Print Dialog */}
       <LabelPrintDialog
-        labelSlug={label.slug}
+        label={label}
         open={printOpen}
         onOpenChange={setPrintOpen}
       />

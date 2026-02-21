@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { LabelForm } from "@/components/label-form";
 import { LabelOverlayPanel } from "@/components/label-overlay-panel";
+import { MetrcLabelSetPanel } from "@/components/metrc-label-set-panel";
 import { ArrowLeftIcon, RefreshCwIcon } from "lucide-react";
 
 export default function EditLabelPage({
@@ -134,6 +135,13 @@ export default function EditLabelPage({
           <LabelOverlayPanel
             label={label}
             onUpdated={handleOverlayUpdated}
+          />
+
+          <Separator />
+
+          <MetrcLabelSetPanel
+            label={label}
+            onUpdated={fetchLabel}
           />
         </div>
       </div>
