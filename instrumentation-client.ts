@@ -5,6 +5,8 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
   person_profiles: "identified_only",
   capture_pageview: true,
   capture_pageleave: true,
+  autocapture: true,
+  capture_exceptions: true,
   session_recording: {
     maskAllInputs: false,
     maskTextSelector: "[data-ph-mask]",

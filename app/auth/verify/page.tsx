@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import posthog from "posthog-js";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,8 +58,12 @@ function VerifyMagicLinkContent() {
     const verify = async () => {
       try {
         const { user } = await apiClient.verifyMagicLink(token);
+        posthog.capture("magic_link_verified", { user_id: user.id, email: user.email });
         loginWithToken(user);
       } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "This link is no longer valid.";
+        posthog.capture("magic_link_failed", { error: errorMessage, had_saved_email: !!getSavedEmail() });
+
         // If we have their email from a previous login, auto-send a new link
         const saved = getSavedEmail();
         if (saved) {
@@ -67,6 +72,7 @@ function VerifyMagicLinkContent() {
           try {
             await apiClient.requestMagicLink(saved);
             setSent(true);
+            posthog.capture("magic_link_auto_resent", { email: saved });
           } catch {
             // Fall back to showing the form
             setError("This link is no longer valid.");
@@ -74,11 +80,7 @@ function VerifyMagicLinkContent() {
             setSending(false);
           }
         } else {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "This link is no longer valid."
-          );
+          setError(errorMessage);
         }
         setIsVerifying(false);
       }
@@ -94,8 +96,10 @@ function VerifyMagicLinkContent() {
     try {
       await apiClient.requestMagicLink(email.trim());
       setSent(true);
+      posthog.capture("magic_link_manual_resent", { email: email.trim() });
     } catch {
       setError("Something went wrong. Please try again.");
+      posthog.capture("magic_link_resend_failed", { email: email.trim() });
     } finally {
       setSending(false);
     }

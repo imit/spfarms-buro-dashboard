@@ -1,3 +1,5 @@
+import posthog from "posthog-js";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface ApiResponse<T> {
@@ -42,6 +44,16 @@ export interface UserInviter {
   id: number;
   full_name: string | null;
   email: string;
+}
+
+export interface MagicLoginToken {
+  id: number;
+  status: "active" | "consumed";
+  source: string | null;
+  sent_at: string | null;
+  consumed_at: string | null;
+  last_used_at: string | null;
+  created_at: string;
 }
 
 export interface User {
@@ -1044,12 +1056,24 @@ export interface RoomSummary {
   total_tray_count: number;
 }
 
+export interface GrowSummary {
+  total_plants: number;
+  immature: number;
+  vegetative: number;
+  flowering: number;
+  seed_batches: number;
+  clone_batches: number;
+  mother_batches: number;
+  active_harvests: number;
+}
+
 export interface Facility {
   id: number;
   name: string;
   description: string | null;
   license_number: string | null;
   rooms: RoomSummary[];
+  grow_summary: GrowSummary;
   metrc_facility_id: string | null;
   metrc_license_number: string | null;
   metrc_last_synced_at: string | null;
@@ -1157,9 +1181,9 @@ export interface Plant {
   custom_label: string | null;
   growth_phase: GrowthPhase;
   status: PlantStatus;
-  tray: { id: number; name: string; capacity: number };
-  rack: { id: number; name: string; floor: number; position: number };
-  room: { id: number; name: string };
+  tray: { id: number; name: string; capacity: number } | null;
+  rack: { id: number; name: string; floor: number; position: number } | null;
+  room: { id: number; name: string } | null;
   strain: { id: number; name: string; category: string | null };
   plant_batch: { id: number; name: string; batch_uid: string } | null;
   placed_by: { id: number; full_name: string | null; email: string } | null;
@@ -1188,6 +1212,74 @@ export interface PlantBatch {
   metrc_id: string | null;
   metrc_tag: string | null;
   metrc_name: string | null;
+  metrc_last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type HarvestType = "whole_plant" | "partial";
+export type HarvestStatus = "active" | "drying" | "dried" | "packaged" | "closed";
+
+export const HARVEST_TYPE_LABELS: Record<HarvestType, string> = {
+  whole_plant: "Whole Plant",
+  partial: "Partial",
+};
+
+export const HARVEST_STATUS_LABELS: Record<HarvestStatus, string> = {
+  active: "Active",
+  drying: "Drying",
+  dried: "Dried",
+  packaged: "Packaged",
+  closed: "Closed",
+};
+
+export interface HarvestPlant {
+  id: number;
+  plant_id: number;
+  plant_uid: string;
+  strain_id: number;
+  strain_name: string;
+  metrc_label: string | null;
+  wet_weight_grams: number | null;
+  harvested_at: string;
+}
+
+export interface HarvestWeight {
+  id: number;
+  strain_id: number;
+  strain_name: string;
+  wet_weight_grams: number | null;
+  dry_weight_grams: number | null;
+  waste_weight_grams: number | null;
+}
+
+export interface Harvest {
+  id: number;
+  name: string;
+  harvest_uid: string;
+  harvest_type: HarvestType;
+  status: HarvestStatus;
+  harvest_date: string;
+  drying_started_at: string | null;
+  dried_at: string | null;
+  wet_weight_grams: number | null;
+  dry_weight_grams: number | null;
+  waste_weight_grams: number | null;
+  unit_of_weight: string;
+  plant_count: number;
+  notes: string | null;
+  strain: { id: number; name: string; category: string | null };
+  plant_batch: { id: number; name: string; batch_uid: string } | null;
+  created_by: { id: number; full_name: string | null; email: string } | null;
+  drying_room: { id: number; name: string } | null;
+  dry_weight_loss_pct: number | null;
+  drying_days: number | null;
+  total_days: number | null;
+  harvest_plants: HarvestPlant[];
+  harvest_weights: HarvestWeight[];
+  strains_in_harvest: { id: number; name: string }[];
+  metrc_id: string | null;
+  metrc_tag: string | null;
   metrc_last_synced_at: string | null;
   created_at: string;
   updated_at: string;
@@ -1302,6 +1394,12 @@ export class ApiClient {
       const message = error.message
         || (Array.isArray(error.errors) ? error.errors.join(", ") : null)
         || `HTTP error! status: ${response.status}`;
+      posthog.capture("api_error", {
+        endpoint,
+        method: options.method || "GET",
+        status: response.status,
+        error: message,
+      });
       throw new Error(message);
     }
 
@@ -1345,6 +1443,12 @@ export class ApiClient {
       const message = error.message
         || (Array.isArray(error.errors) ? error.errors.join(", ") : null)
         || `HTTP error! status: ${response.status}`;
+      posthog.capture("api_error", {
+        endpoint,
+        method: options.method || "GET",
+        status: response.status,
+        error: message,
+      });
       throw new Error(message);
     }
 
@@ -1543,6 +1647,32 @@ export class ApiClient {
     await this.request(`/api/v1/users/${id}`, {
       method: "DELETE",
     });
+  }
+
+  // Magic Login Tokens
+
+  async getMagicLoginTokens(userId: number): Promise<MagicLoginToken[]> {
+    const res = await this.request<JsonApiCollectionResponse<MagicLoginToken>>(
+      `/api/v1/users/${userId}/magic_login_tokens`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async consumeMagicLoginToken(
+    userId: number,
+    tokenId: number
+  ): Promise<void> {
+    await this.request(
+      `/api/v1/users/${userId}/magic_login_tokens/${tokenId}`,
+      { method: "DELETE" }
+    );
+  }
+
+  async consumeAllMagicLoginTokens(userId: number): Promise<void> {
+    await this.request(
+      `/api/v1/users/${userId}/magic_login_tokens/destroy_all`,
+      { method: "DELETE" }
+    );
   }
 
   // Companies
@@ -2766,6 +2896,107 @@ export class ApiClient {
 
   async deletePlantBatch(id: number): Promise<void> {
     await this.request(`/api/v1/facility/plant_batches/${id}`, { method: "DELETE" });
+  }
+
+  // ---- Harvests ----
+
+  async getHarvests(): Promise<Harvest[]> {
+    const res = await this.request<JsonApiCollectionResponse<Harvest>>("/api/v1/facility/harvests");
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getHarvest(id: number): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}`);
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createHarvest(data: {
+    harvest: {
+      name?: string;
+      harvest_type: string;
+      harvest_date: string;
+      wet_weight_grams?: number;
+      drying_room_id?: number;
+      plant_batch_id?: number;
+      notes?: string;
+    };
+    plant_ids: number[];
+    per_plant_wet_weight?: number;
+  }): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>("/api/v1/facility/harvests", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateHarvest(id: number, data: Record<string, unknown>): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ harvest: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async startDrying(id: number, dryingRoomId?: number): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/start_drying`, {
+      method: "POST",
+      body: JSON.stringify({ drying_room_id: dryingRoomId }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async finishDrying(id: number, data?: { dry_weight_grams?: number; waste_weight_grams?: number }): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/finish_drying`, {
+      method: "POST",
+      body: JSON.stringify(data || {}),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async recordWetWeight(id: number, wetWeightGrams: number): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/record_wet_weight`, {
+      method: "POST",
+      body: JSON.stringify({ wet_weight_grams: wetWeightGrams }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async recordDryWeight(id: number, dryWeightGrams: number): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/record_dry_weight`, {
+      method: "POST",
+      body: JSON.stringify({ dry_weight_grams: dryWeightGrams }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async recordWaste(id: number, wasteWeightGrams: number): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/record_waste`, {
+      method: "POST",
+      body: JSON.stringify({ waste_weight_grams: wasteWeightGrams }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async recordStrainWeight(id: number, data: {
+    strain_id: number;
+    wet_weight_grams?: number;
+    dry_weight_grams?: number;
+    waste_weight_grams?: number;
+  }): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/record_strain_weight`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async addPlantsToHarvest(id: number, plantIds: number[]): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/add_plants`, {
+      method: "POST",
+      body: JSON.stringify({ plant_ids: plantIds }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
   // ---- Plants ----

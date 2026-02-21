@@ -65,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Auto-logout on session expiry (401 from API)
   useEffect(() => {
     function handleSessionExpired() {
+      posthog.capture("session_expired");
       setUser(null);
       setHasToken(false);
       localStorage.removeItem("auth_token");

@@ -8,6 +8,7 @@ import { apiClient, type Strain, CATEGORY_LABELS } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlusIcon } from "lucide-react";
+import { StrainAvatar } from "@/components/grow/strain-avatar";
 
 export default function StrainsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -93,7 +94,12 @@ export default function StrainsPage() {
                   className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
                   onClick={() => router.push(`/admin/strains/${s.id}`)}
                 >
-                  <td className="px-4 py-3 font-medium">{s.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <div className="flex items-center gap-2">
+                      <StrainAvatar name={s.name} size={28} />
+                      {s.name}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {s.code || "-"}
                   </td>

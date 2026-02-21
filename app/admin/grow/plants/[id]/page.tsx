@@ -110,7 +110,7 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/admin/grow/rooms/${plant.room.id}`}>
+          <Link href={plant.room ? `/admin/grow/rooms/${plant.room.id}` : "/admin/grow"}>
             <ArrowLeftIcon className="h-4 w-4" />
           </Link>
         </Button>
@@ -217,7 +217,7 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
           onOpenChange={setShowMoveDialog}
           plantId={plant.id}
           plantUid={plant.plant_uid}
-          currentRoomId={plant.room.id}
+          currentRoomId={plant.room?.id ?? 0}
           currentFloor={plant.rack?.floor ?? 1}
           onMoved={load}
         />

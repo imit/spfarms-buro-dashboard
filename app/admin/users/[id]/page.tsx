@@ -5,7 +5,7 @@ import { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { apiClient, type User, ROLE_LABELS } from "@/lib/api";
+import { apiClient, type User, type MagicLoginToken, ROLE_LABELS } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeftIcon, PencilIcon, SendIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, KeyIcon, Loader2Icon, PencilIcon, SendIcon, Trash2Icon, XCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
 function DetailRow({
@@ -52,6 +52,9 @@ export default function UserDetailPage({
   const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [tokens, setTokens] = useState<MagicLoginToken[]>([]);
+  const [revokingTokenId, setRevokingTokenId] = useState<number | null>(null);
+  const [isRevokingAll, setIsRevokingAll] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -64,8 +67,12 @@ export default function UserDetailPage({
 
     async function fetchUser() {
       try {
-        const data = await apiClient.getUser(Number(id));
+        const [data, tokenData] = await Promise.all([
+          apiClient.getUser(Number(id)),
+          apiClient.getMagicLoginTokens(Number(id)).catch(() => [] as MagicLoginToken[]),
+        ]);
         setUser(data);
+        setTokens(tokenData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load user");
       } finally {
@@ -99,6 +106,38 @@ export default function UserDetailPage({
       toast.error(err instanceof Error ? err.message : "Failed to send email");
     } finally {
       setIsSendingEmail(false);
+    }
+  }
+
+  async function handleRevokeToken(tokenId: number) {
+    if (!user) return;
+    setRevokingTokenId(tokenId);
+    try {
+      await apiClient.consumeMagicLoginToken(user.id, tokenId);
+      setTokens((prev) => prev.map((t) =>
+        t.id === tokenId ? { ...t, status: "consumed" as const, consumed_at: new Date().toISOString() } : t
+      ));
+      toast.success("Token revoked");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to revoke token");
+    } finally {
+      setRevokingTokenId(null);
+    }
+  }
+
+  async function handleRevokeAllTokens() {
+    if (!user) return;
+    setIsRevokingAll(true);
+    try {
+      await apiClient.consumeAllMagicLoginTokens(user.id);
+      setTokens((prev) => prev.map((t) =>
+        t.status === "active" ? { ...t, status: "consumed" as const, consumed_at: new Date().toISOString() } : t
+      ));
+      toast.success("All tokens revoked");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to revoke tokens");
+    } finally {
+      setIsRevokingAll(false);
     }
   }
 
@@ -333,6 +372,87 @@ export default function UserDetailPage({
                     </td>
                     <td className="px-3 py-2 text-right">
                       ${r.total_revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tokens.length > 0 && (
+        <div className="max-w-2xl rounded-lg border bg-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <KeyIcon className="size-4 text-muted-foreground" />
+              <h3 className="font-medium">Magic Login Tokens</h3>
+              <span className="text-xs text-muted-foreground">
+                {tokens.filter((t) => t.status === "active").length} active
+              </span>
+            </div>
+            {tokens.some((t) => t.status === "active") && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleRevokeAllTokens}
+                disabled={isRevokingAll}
+              >
+                {isRevokingAll ? (
+                  <><Loader2Icon className="mr-2 size-3 animate-spin" />Revoking...</>
+                ) : (
+                  "Revoke All"
+                )}
+              </Button>
+            )}
+          </div>
+          <Separator className="mb-3" />
+          <div className="rounded-md border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-3 py-2 text-left font-medium">Status</th>
+                  <th className="px-3 py-2 text-left font-medium">Source</th>
+                  <th className="px-3 py-2 text-left font-medium">Created</th>
+                  <th className="px-3 py-2 text-left font-medium">Last Used</th>
+                  <th className="px-3 py-2 text-right font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tokens.map((token) => (
+                  <tr key={token.id} className="border-b last:border-0">
+                    <td className="px-3 py-2">
+                      <Badge variant={token.status === "active" ? "default" : "secondary"}>
+                        {token.status}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {token.source || "—"}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {new Date(token.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {token.last_used_at
+                        ? new Date(token.last_used_at).toLocaleString()
+                        : "Never"}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {token.status === "active" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-destructive hover:text-destructive"
+                          onClick={() => handleRevokeToken(token.id)}
+                          disabled={revokingTokenId === token.id}
+                        >
+                          {revokingTokenId === token.id ? (
+                            <Loader2Icon className="size-3 animate-spin" />
+                          ) : (
+                            <XCircleIcon className="size-3.5" />
+                          )}
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}

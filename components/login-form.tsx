@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react"
+import posthog from "posthog-js"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
@@ -31,7 +32,9 @@ export function LoginForm() {
     try {
       await login(email, password)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed")
+      const message = err instanceof Error ? err.message : "Login failed"
+      setError(message)
+      posthog.capture("login_failed", { method: "password", error: message })
     } finally {
       setIsLoading(false)
     }
@@ -46,8 +49,11 @@ export function LoginForm() {
     try {
       const result = await apiClient.requestMagicLink(email)
       setSuccess(result.message)
+      posthog.capture("magic_link_requested", { source: "login_page" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send login link")
+      const message = err instanceof Error ? err.message : "Failed to send login link"
+      setError(message)
+      posthog.capture("login_failed", { method: "magic_link", error: message })
     } finally {
       setIsLoading(false)
     }
