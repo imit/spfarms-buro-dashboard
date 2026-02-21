@@ -40,7 +40,7 @@ export function ProductCard({
   discounts?: CartDiscount[];
   onAddToCart: (productId: number, quantity: number) => Promise<void>;
 }) {
-  const [quantity, setQuantity] = useState(product.bulk ? 1 : 32);
+  const [quantity, setQuantity] = useState(product.bulk ? 1 : 6);
   const [adding, setAdding] = useState(false);
 
   // Calculate discounted price from percentage discounts only
@@ -55,7 +55,7 @@ export function ProductCard({
     setAdding(true);
     try {
       await onAddToCart(product.id, quantity);
-      setQuantity(product.bulk ? 1 : 32);
+      setQuantity(product.bulk ? 1 : 6);
     } finally {
       setAdding(false);
     }
@@ -173,9 +173,9 @@ export function ProductCard({
               onChange={(e) => setQuantity(Number(e.target.value))}
               className="h-9 rounded-md border bg-background px-2 text-sm font-medium tabular-nums"
             >
-              <option value={8}>8</option>
-              <option value={16}>16</option>
-              <option value={32}>32</option>
+              <option value={1}>1</option>
+              <option value={3}>3</option>
+              <option value={6}>6</option>
             </select>
           )}
 
@@ -214,9 +214,9 @@ export function ProductCard({
               onChange={(e) => setQuantity(Number(e.target.value))}
               className="h-8 rounded-md border bg-background px-1.5 text-sm font-medium tabular-nums"
             >
-              <option value={8}>8</option>
-              <option value={16}>16</option>
-              <option value={32}>32</option>
+              <option value={1}>1</option>
+              <option value={3}>3</option>
+              <option value={6}>6</option>
             </select>
           )}
 
