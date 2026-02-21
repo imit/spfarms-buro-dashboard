@@ -12,10 +12,14 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
+  SidebarGroup,
+  SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
+import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
+import Link from "next/link"
 
 interface NavItem {
   title: string
@@ -24,17 +28,7 @@ interface NavItem {
   roles?: string[]
 }
 
-const navMain: NavItem[] = [
-  {
-    title: "Dashboard",
-    url: "/admin",
-    icon: <LayoutDashboardIcon />,
-  },
-  {
-    title: "Companies",
-    url: "/admin/companies",
-    icon: <ListIcon />,
-  },
+const navOps: NavItem[] = [
   {
     title: "Strains",
     url: "/admin/strains",
@@ -42,16 +36,35 @@ const navMain: NavItem[] = [
     roles: ["admin", "editor"],
   },
   {
-    title: "Products",
-    url: "/admin/products",
-    icon: <BoxIcon />,
-    roles: ["admin", "editor"],
-  },
-  {
     title: "Grow",
     url: "/admin/grow",
     icon: <SproutIcon />,
     roles: ["admin", "editor"],
+  },
+  {
+    title: "Samples",
+    url: "/admin/samples",
+    icon: <FlaskConicalIcon />,
+  },
+  {
+    title: "Projects",
+    url: "/admin/projects",
+    icon: <FolderIcon />,
+    roles: ["admin", "editor"],
+  },
+]
+
+const navSales: NavItem[] = [
+  {
+    title: "Companies",
+    url: "/admin/companies",
+    icon: <ListIcon />,
+  },
+  {
+    title: "Users",
+    url: "/admin/users",
+    icon: <UsersIcon />,
+    roles: ["admin", "editor", "sales"],
   },
   {
     title: "Orders",
@@ -65,32 +78,16 @@ const navMain: NavItem[] = [
     roles: ["admin", "editor"],
   },
   {
-    title: "Samples",
-    url: "/admin/samples",
-    icon: <FlaskConicalIcon />,
+    title: "Products",
+    url: "/admin/products",
+    icon: <BoxIcon />,
+    roles: ["admin", "editor"],
   },
   {
     title: "Notifications",
     url: "/admin/notifications",
     icon: <BellIcon />,
     roles: ["admin", "editor"],
-  },
-  {
-    title: "Projects",
-    url: "/admin/projects",
-    icon: <FolderIcon />,
-    roles: ["admin", "editor"],
-  },
-  {
-    title: "Users",
-    url: "/admin/users",
-    icon: <UsersIcon />,
-    roles: ["admin", "editor", "sales"],
-  },
-  {
-    title: "Quick Onboard",
-    url: "/admin/onboard",
-    icon: <UserPlusIcon />,
   },
 ]
 
@@ -121,7 +118,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, logout } = useAuth()
   const role = user?.role
 
-  const filteredMain = filterByRole(navMain, role)
+  const filteredOps = filterByRole(navOps, role)
+  const filteredSales = filterByRole(navSales, role)
   const filteredSecondary = filterByRole(navSecondary, role)
 
   return (
@@ -136,7 +134,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={filteredMain} />
+        <NavMain label="Dashboard" items={[{ title: "Dashboard", url: "/admin", icon: <LayoutDashboardIcon /> }]} />
+        <NavMain label="Ops" items={filteredOps} />
+        <NavMain label="Sales" items={filteredSales} />
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <div className="px-2 pt-1">
+              <Button className="w-full" size="sm" asChild>
+                <Link href="/admin/onboard">
+                  <UserPlusIcon className="mr-2 h-4 w-4" />
+                  Quick Onboard
+                </Link>
+              </Button>
+            </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
         <NavSecondary items={filteredSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
