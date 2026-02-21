@@ -1186,6 +1186,9 @@ export type AuditEventType =
   | "harvest_strain_weight_recorded"
   | "harvest_waste_recorded"
   | "harvest_updated"
+  | "harvest_trimming_started"
+  | "harvest_trimming_finished"
+  | "harvest_curing_finished"
   | "batch_created"
   | "note_added"
 
@@ -1212,6 +1215,9 @@ export const AUDIT_EVENT_LABELS: Record<AuditEventType, string> = {
   harvest_strain_weight_recorded: "Strain Weight Recorded",
   harvest_waste_recorded: "Waste Recorded",
   harvest_updated: "Harvest Updated",
+  harvest_trimming_started: "Trimming Started",
+  harvest_trimming_finished: "Trimming Finished",
+  harvest_curing_finished: "Curing Finished",
   batch_created: "Batch Created",
   note_added: "Note Added",
 }
@@ -1259,7 +1265,7 @@ export interface PlantBatch {
 }
 
 export type HarvestType = "whole_plant" | "partial";
-export type HarvestStatus = "active" | "drying" | "dried" | "packaged" | "closed";
+export type HarvestStatus = "active" | "drying" | "dried" | "trimming" | "curing" | "packaged" | "closed";
 
 export const HARVEST_TYPE_LABELS: Record<HarvestType, string> = {
   whole_plant: "Whole Plant",
@@ -1270,6 +1276,8 @@ export const HARVEST_STATUS_LABELS: Record<HarvestStatus, string> = {
   active: "Active",
   drying: "Drying",
   dried: "Dried",
+  trimming: "Trimming",
+  curing: "Curing",
   packaged: "Packaged",
   closed: "Closed",
 };
@@ -1292,6 +1300,8 @@ export interface HarvestWeight {
   wet_weight_grams: number | null;
   dry_weight_grams: number | null;
   waste_weight_grams: number | null;
+  flower_weight_grams: number | null;
+  shake_weight_grams: number | null;
 }
 
 export interface Harvest {
@@ -1306,6 +1316,12 @@ export interface Harvest {
   wet_weight_grams: number | null;
   dry_weight_grams: number | null;
   waste_weight_grams: number | null;
+  flower_weight_grams: number | null;
+  shake_weight_grams: number | null;
+  trimming_started_at: string | null;
+  trimming_finished_at: string | null;
+  curing_started_at: string | null;
+  curing_finished_at: string | null;
   unit_of_weight: string;
   plant_count: number;
   notes: string | null;
@@ -1315,6 +1331,8 @@ export interface Harvest {
   drying_room: { id: number; name: string } | null;
   dry_weight_loss_pct: number | null;
   drying_days: number | null;
+  trimming_days: number | null;
+  curing_days: number | null;
   total_days: number | null;
   harvest_plants: HarvestPlant[];
   harvest_weights: HarvestWeight[];
@@ -3024,6 +3042,8 @@ export class ApiClient {
     wet_weight_grams?: number;
     dry_weight_grams?: number;
     waste_weight_grams?: number;
+    flower_weight_grams?: number;
+    shake_weight_grams?: number;
   }): Promise<Harvest> {
     const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/record_strain_weight`, {
       method: "POST",
@@ -3036,6 +3056,27 @@ export class ApiClient {
     const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/add_plants`, {
       method: "POST",
       body: JSON.stringify({ plant_ids: plantIds }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async startTrimming(id: number): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/start_trimming`, {
+      method: "POST",
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async finishTrimming(id: number): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/finish_trimming`, {
+      method: "POST",
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async finishCuring(id: number): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/finish_curing`, {
+      method: "POST",
     });
     return { ...res.data.attributes, id: Number(res.data.id) };
   }

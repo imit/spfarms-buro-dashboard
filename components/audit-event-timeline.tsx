@@ -10,6 +10,7 @@ import {
   EditIcon,
   LayersIcon,
   StickyNoteIcon,
+  PackageIcon,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -24,6 +25,9 @@ const EVENT_CONFIG: Record<AuditEventType, { icon: React.ReactNode; color: strin
   harvest_strain_weight_recorded:{ icon: <ScaleIcon className="h-4 w-4" />,         color: "text-teal-500",    bg: "bg-teal-100 dark:bg-teal-900/30" },
   harvest_waste_recorded:        { icon: <ScaleIcon className="h-4 w-4" />,         color: "text-red-500",     bg: "bg-red-100 dark:bg-red-900/30" },
   harvest_updated:               { icon: <EditIcon className="h-4 w-4" />,          color: "text-gray-500",    bg: "bg-gray-100 dark:bg-gray-800/30" },
+  harvest_trimming_started:      { icon: <ScissorsIcon className="h-4 w-4" />,     color: "text-violet-500",  bg: "bg-violet-100 dark:bg-violet-900/30" },
+  harvest_trimming_finished:     { icon: <CheckCircleIcon className="h-4 w-4" />,  color: "text-violet-600",  bg: "bg-violet-100 dark:bg-violet-900/30" },
+  harvest_curing_finished:       { icon: <PackageIcon className="h-4 w-4" />,      color: "text-pink-500",    bg: "bg-pink-100 dark:bg-pink-900/30" },
   batch_created:                 { icon: <LayersIcon className="h-4 w-4" />,        color: "text-emerald-500", bg: "bg-emerald-100 dark:bg-emerald-900/30" },
   note_added:                    { icon: <StickyNoteIcon className="h-4 w-4" />,    color: "text-yellow-500",  bg: "bg-yellow-100 dark:bg-yellow-900/30" },
 }
@@ -37,6 +41,12 @@ function trackableHref(event: AuditEventData): string | null {
   }
 }
 
+function w(grams: unknown): string {
+  const g = Number(grams)
+  const lbs = (g / 453.592).toFixed(2)
+  return `${g}g (${lbs}lb)`
+}
+
 function formatEventDetail(event: AuditEventData): string {
   const m = event.metadata
   switch (event.event_type) {
@@ -45,14 +55,14 @@ function formatEventDetail(event: AuditEventData): string {
     case "harvest_plants_added":
       return `${m.plant_count} plant${(m.plant_count as number) !== 1 ? "s" : ""} added (total: ${m.new_total})`
     case "harvest_wet_weight_recorded":
-      return `${m.wet_weight_grams}g`
+      return w(m.wet_weight_grams)
     case "harvest_drying_started":
-      return m.drying_room_name ? `Room: ${m.drying_room_name}, ${m.wet_weight_grams}g wet` : `${m.wet_weight_grams}g wet`
+      return m.drying_room_name ? `Room: ${m.drying_room_name}, ${w(m.wet_weight_grams)} wet` : `${w(m.wet_weight_grams)} wet`
     case "harvest_dry_weight_recorded":
-      return `${m.dry_weight_grams}g`
+      return w(m.dry_weight_grams)
     case "harvest_drying_finished": {
       const parts: string[] = []
-      if (m.dry_weight_grams) parts.push(`${m.dry_weight_grams}g dry`)
+      if (m.dry_weight_grams) parts.push(`${w(m.dry_weight_grams)} dry`)
       if (m.drying_days) parts.push(`${m.drying_days} days`)
       return parts.join(", ")
     }
@@ -61,12 +71,26 @@ function formatEventDetail(event: AuditEventData): string {
     case "harvest_strain_weight_recorded": {
       const parts: string[] = []
       if (m.strain_name) parts.push(String(m.strain_name))
-      if (m.wet_weight_grams) parts.push(`${m.wet_weight_grams}g wet`)
-      if (m.dry_weight_grams) parts.push(`${m.dry_weight_grams}g dry`)
+      if (m.wet_weight_grams) parts.push(`${w(m.wet_weight_grams)} wet`)
+      if (m.dry_weight_grams) parts.push(`${w(m.dry_weight_grams)} dry`)
+      if (m.flower_weight_grams) parts.push(`${w(m.flower_weight_grams)} flower`)
+      if (m.shake_weight_grams) parts.push(`${w(m.shake_weight_grams)} shake`)
       return parts.join(" — ")
     }
     case "harvest_waste_recorded":
-      return `${m.waste_weight_grams}g`
+      return w(m.waste_weight_grams)
+    case "harvest_trimming_started":
+      return m.dry_weight_grams ? `${w(m.dry_weight_grams)} dry weight` : ""
+    case "harvest_trimming_finished": {
+      const parts: string[] = []
+      if (m.flower_weight_grams) parts.push(`${w(m.flower_weight_grams)} flower`)
+      if (m.shake_weight_grams) parts.push(`${w(m.shake_weight_grams)} shake`)
+      if (m.waste_weight_grams) parts.push(`${w(m.waste_weight_grams)} waste`)
+      if (m.trimming_days) parts.push(`${m.trimming_days} days`)
+      return parts.join(", ")
+    }
+    case "harvest_curing_finished":
+      return m.curing_days ? `${m.curing_days} days` : ""
     case "batch_created":
       return `${m.batch_type} batch, ${m.initial_count} ${m.strain_name}`
     default:

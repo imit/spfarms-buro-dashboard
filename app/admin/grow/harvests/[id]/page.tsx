@@ -11,13 +11,19 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StrainAvatar } from "@/components/grow/strain-avatar"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeftIcon, TagIcon, ScaleIcon, DropletIcon, TrashIcon, WindIcon, CheckCircleIcon, PlusIcon } from "lucide-react"
+import { ArrowLeftIcon, TagIcon, ScaleIcon, DropletIcon, TrashIcon, WindIcon, CheckCircleIcon, PlusIcon, ScissorsIcon, PackageIcon, Flower as FlowerIcon } from "lucide-react"
 import Link from "next/link"
+
+function gToLbs(grams: number): string {
+  return (grams / 453.592).toFixed(2)
+}
 
 const STATUS_COLORS: Record<HarvestStatus, string> = {
   active: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
   drying: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
   dried: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
+  trimming: "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300",
+  curing: "bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300",
   packaged: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
   closed: "bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400",
 }
@@ -27,6 +33,8 @@ function StrainWeightsSection({ harvest, onUpdate }: { harvest: Harvest; onUpdat
   const [wetVal, setWetVal] = useState("")
   const [dryVal, setDryVal] = useState("")
   const [wasteVal, setWasteVal] = useState("")
+  const [flowerVal, setFlowerVal] = useState("")
+  const [shakeVal, setShakeVal] = useState("")
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState("")
 
@@ -35,12 +43,17 @@ function StrainWeightsSection({ harvest, onUpdate }: { harvest: Harvest; onUpdat
     (harvest.harvest_weights || []).map((hw) => [hw.strain_id, hw])
   )
 
+  const hasTrimmingData = (harvest.harvest_weights || []).some((hw) => hw.flower_weight_grams != null || hw.shake_weight_grams != null)
+  const showTrimCols = hasTrimmingData || ["trimming", "curing", "packaged", "closed"].includes(harvest.status)
+
   const startEdit = (strainId: number) => {
     const existing = weightMap.get(strainId)
     setEditingStrain(strainId)
     setWetVal(existing?.wet_weight_grams != null ? String(existing.wet_weight_grams) : "")
     setDryVal(existing?.dry_weight_grams != null ? String(existing.dry_weight_grams) : "")
     setWasteVal(existing?.waste_weight_grams != null ? String(existing.waste_weight_grams) : "")
+    setFlowerVal(existing?.flower_weight_grams != null ? String(existing.flower_weight_grams) : "")
+    setShakeVal(existing?.shake_weight_grams != null ? String(existing.shake_weight_grams) : "")
     setErr("")
   }
 
@@ -54,6 +67,8 @@ function StrainWeightsSection({ harvest, onUpdate }: { harvest: Harvest; onUpdat
         wet_weight_grams: wetVal ? Number(wetVal) : undefined,
         dry_weight_grams: dryVal ? Number(dryVal) : undefined,
         waste_weight_grams: wasteVal ? Number(wasteVal) : undefined,
+        flower_weight_grams: flowerVal ? Number(flowerVal) : undefined,
+        shake_weight_grams: shakeVal ? Number(shakeVal) : undefined,
       })
       onUpdate(h)
       setEditingStrain(null)
@@ -66,16 +81,22 @@ function StrainWeightsSection({ harvest, onUpdate }: { harvest: Harvest; onUpdat
 
   if (strains.length === 0) return null
 
+  const gridCols = showTrimCols
+    ? "grid-cols-[1fr_70px_70px_70px_70px_70px_50px]"
+    : "grid-cols-[1fr_80px_80px_80px_60px]"
+
   return (
     <div className="space-y-2">
       <h2 className="text-lg font-medium">Weights by Strain</h2>
       <div className="rounded-lg border divide-y">
         {/* Header */}
-        <div className="grid grid-cols-[1fr_80px_80px_80px_60px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground">
+        <div className={`grid ${gridCols} gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground`}>
           <span>Strain</span>
           <span className="text-right">Wet (g)</span>
           <span className="text-right">Dry (g)</span>
           <span className="text-right">Waste (g)</span>
+          {showTrimCols && <span className="text-right">Flower (g)</span>}
+          {showTrimCols && <span className="text-right">Shake (g)</span>}
           <span />
         </div>
         {strains.map((strain) => {
@@ -85,7 +106,7 @@ function StrainWeightsSection({ harvest, onUpdate }: { harvest: Harvest; onUpdat
 
           return (
             <div key={strain.id}>
-              <div className="grid grid-cols-[1fr_80px_80px_80px_60px] gap-2 px-3 py-2.5 items-center">
+              <div className={`grid ${gridCols} gap-2 px-3 py-2.5 items-center`}>
                 <div className="flex items-center gap-2 min-w-0">
                   <StrainAvatar name={strain.name} size={22} />
                   <div className="min-w-0">
@@ -96,6 +117,8 @@ function StrainWeightsSection({ harvest, onUpdate }: { harvest: Harvest; onUpdat
                 <span className="text-sm tabular-nums text-right">{hw?.wet_weight_grams != null ? hw.wet_weight_grams : "—"}</span>
                 <span className="text-sm tabular-nums text-right">{hw?.dry_weight_grams != null ? hw.dry_weight_grams : "—"}</span>
                 <span className="text-sm tabular-nums text-right">{hw?.waste_weight_grams != null ? hw.waste_weight_grams : "—"}</span>
+                {showTrimCols && <span className="text-sm tabular-nums text-right">{hw?.flower_weight_grams != null ? hw.flower_weight_grams : "—"}</span>}
+                {showTrimCols && <span className="text-sm tabular-nums text-right">{hw?.shake_weight_grams != null ? hw.shake_weight_grams : "—"}</span>}
                 <div className="text-right">
                   <button
                     onClick={() => startEdit(strain.id)}
@@ -107,7 +130,7 @@ function StrainWeightsSection({ harvest, onUpdate }: { harvest: Harvest; onUpdat
               </div>
               {isEditing && (
                 <div className="px-3 pb-3 space-y-2">
-                  <div className="flex items-end gap-2">
+                  <div className="flex items-end gap-2 flex-wrap">
                     <div className="space-y-1">
                       <Label className="text-[10px]">Wet (g)</Label>
                       <Input type="number" value={wetVal} onChange={(e) => setWetVal(e.target.value)} placeholder="grams" className="h-7 text-xs w-20" />
@@ -120,6 +143,18 @@ function StrainWeightsSection({ harvest, onUpdate }: { harvest: Harvest; onUpdat
                       <Label className="text-[10px]">Waste (g)</Label>
                       <Input type="number" value={wasteVal} onChange={(e) => setWasteVal(e.target.value)} placeholder="grams" className="h-7 text-xs w-20" />
                     </div>
+                    {showTrimCols && (
+                      <>
+                        <div className="space-y-1">
+                          <Label className="text-[10px]">Flower (g)</Label>
+                          <Input type="number" value={flowerVal} onChange={(e) => setFlowerVal(e.target.value)} placeholder="grams" className="h-7 text-xs w-20" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px]">Shake (g)</Label>
+                          <Input type="number" value={shakeVal} onChange={(e) => setShakeVal(e.target.value)} placeholder="grams" className="h-7 text-xs w-20" />
+                        </div>
+                      </>
+                    )}
                     <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={saving}>
                       {saving ? "..." : "Save"}
                     </Button>
@@ -158,6 +193,12 @@ export default function HarvestDetailPage() {
   const [strainWasteInputs, setStrainWasteInputs] = useState<Record<number, string>>({})
   const [showFinishDryingForm, setShowFinishDryingForm] = useState(false)
   const [strainDryInputs, setStrainDryInputs] = useState<Record<number, string>>({})
+
+  // Trimming flow
+  const [showTrimmingForm, setShowTrimmingForm] = useState(false)
+  const [strainFlowerInputs, setStrainFlowerInputs] = useState<Record<number, string>>({})
+  const [strainShakeInputs, setStrainShakeInputs] = useState<Record<number, string>>({})
+  const [strainTrimWasteInputs, setStrainTrimWasteInputs] = useState<Record<number, string>>({})
 
   // Add plants flow
   const [showAddPlants, setShowAddPlants] = useState(false)
@@ -271,6 +312,64 @@ export default function HarvestDetailPage() {
     }
   }
 
+  const handleStartTrimming = async () => {
+    setIsSaving(true)
+    setError("")
+    try {
+      const h = await apiClient.startTrimming(id)
+      setHarvest(h)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start trimming")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleFinishTrimming = async () => {
+    const strains = harvest?.strains_in_harvest || []
+    const allFilled = strains.every((s) => strainFlowerInputs[s.id] && Number(strainFlowerInputs[s.id]) > 0)
+    if (!allFilled) {
+      setError("Flower weight is required for each strain")
+      return
+    }
+
+    setIsSaving(true)
+    setError("")
+    try {
+      for (const strain of strains) {
+        await apiClient.recordStrainWeight(id, {
+          strain_id: strain.id,
+          flower_weight_grams: Number(strainFlowerInputs[strain.id]),
+          shake_weight_grams: strainShakeInputs[strain.id] ? Number(strainShakeInputs[strain.id]) : undefined,
+          waste_weight_grams: strainTrimWasteInputs[strain.id] ? Number(strainTrimWasteInputs[strain.id]) : undefined,
+        })
+      }
+      const h = await apiClient.finishTrimming(id)
+      setHarvest(h)
+      setShowTrimmingForm(false)
+      setStrainFlowerInputs({})
+      setStrainShakeInputs({})
+      setStrainTrimWasteInputs({})
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to finish trimming")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleFinishCuring = async () => {
+    setIsSaving(true)
+    setError("")
+    try {
+      const h = await apiClient.finishCuring(id)
+      setHarvest(h)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to finish curing")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const handleStatusChange = async (newStatus: string) => {
     setIsSaving(true)
     setError("")
@@ -330,7 +429,7 @@ export default function HarvestDetailPage() {
   if (isLoading) return <div className="p-6"><p className="text-muted-foreground">Loading...</p></div>
   if (!harvest) return <div className="p-6"><p className="text-destructive">{error || "Harvest not found"}</p></div>
 
-  const progressSteps: HarvestStatus[] = ["active", "drying", "dried", "packaged", "closed"]
+  const progressSteps: HarvestStatus[] = ["active", "drying", "dried", "trimming", "curing", "packaged", "closed"]
   const currentStepIdx = progressSteps.indexOf(harvest.status)
 
   return (
@@ -543,8 +642,136 @@ export default function HarvestDetailPage() {
             Dried for {harvest.drying_days ?? "?"} days.
             {harvest.dry_weight_loss_pct != null && <> Weight loss: {harvest.dry_weight_loss_pct}%.</>}
           </p>
+          <Button size="sm" onClick={handleStartTrimming} disabled={isSaving}>
+            <ScissorsIcon className="mr-1.5 h-3.5 w-3.5" /> Start Trimming
+          </Button>
+        </div>
+      )}
+
+      {harvest.status === "trimming" && (
+        <div className="rounded-lg border-2 border-violet-200 dark:border-violet-900 bg-violet-50/50 dark:bg-violet-950/20 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <ScissorsIcon className="h-4 w-4 text-violet-500" />
+            <span className="text-sm font-medium">Trimming in Progress</span>
+          </div>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-sm tabular-nums text-muted-foreground">
+              Day {harvest.trimming_days ?? 0}
+            </span>
+          </div>
+          {!showTrimmingForm ? (
+            <Button size="sm" variant="outline" onClick={() => setShowTrimmingForm(true)}>
+              <CheckCircleIcon className="mr-1.5 h-3.5 w-3.5" /> Finish Trimming
+            </Button>
+          ) : (
+            <div className="space-y-3 mt-2 rounded-lg border bg-background p-3">
+              <p className="text-xs font-medium">Record trim weights per strain</p>
+              <div className="space-y-2">
+                {/* Column headers */}
+                <div className="grid grid-cols-[1fr_96px_96px_96px] gap-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  <span>Strain</span>
+                  <span>Flower (g) *</span>
+                  <span>Shake (g)</span>
+                  <span>Waste (g)</span>
+                </div>
+                {(harvest.strains_in_harvest || []).map((strain) => {
+                  const hw = (harvest.harvest_weights || []).find((w) => w.strain_id === strain.id)
+                  return (
+                    <div key={strain.id} className="grid grid-cols-[1fr_96px_96px_96px] gap-2 items-center">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <StrainAvatar name={strain.name} size={20} />
+                        <span className="text-xs min-w-0 truncate">
+                          {strain.name}
+                          {hw?.dry_weight_grams != null && (
+                            <span className="text-muted-foreground ml-1">{hw.dry_weight_grams}g dry</span>
+                          )}
+                        </span>
+                      </div>
+                      <Input
+                        type="number"
+                        value={strainFlowerInputs[strain.id] || ""}
+                        onChange={(e) => setStrainFlowerInputs((prev) => ({ ...prev, [strain.id]: e.target.value }))}
+                        className="h-7 text-xs"
+                      />
+                      <Input
+                        type="number"
+                        value={strainShakeInputs[strain.id] || ""}
+                        onChange={(e) => setStrainShakeInputs((prev) => ({ ...prev, [strain.id]: e.target.value }))}
+                        className="h-7 text-xs"
+                      />
+                      <Input
+                        type="number"
+                        value={strainTrimWasteInputs[strain.id] || ""}
+                        onChange={(e) => setStrainTrimWasteInputs((prev) => ({ ...prev, [strain.id]: e.target.value }))}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+              {(() => {
+                const totalFlower = Object.values(strainFlowerInputs).reduce((sum, v) => sum + (Number(v) || 0), 0)
+                const totalShake = Object.values(strainShakeInputs).reduce((sum, v) => sum + (Number(v) || 0), 0)
+                const totalWaste = Object.values(strainTrimWasteInputs).reduce((sum, v) => sum + (Number(v) || 0), 0)
+                return totalFlower > 0 ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Total flower: {totalFlower}g
+                    {totalShake > 0 && <> &middot; Shake: {totalShake}g</>}
+                    {totalWaste > 0 && <> &middot; Waste: {totalWaste}g</>}
+                  </p>
+                ) : null
+              })()}
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleFinishTrimming} disabled={isSaving || !(harvest.strains_in_harvest || []).every((s) => strainFlowerInputs[s.id] && Number(strainFlowerInputs[s.id]) > 0)}>
+                  {isSaving ? "Saving..." : "Finish Trimming & Start Curing"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowTrimmingForm(false)}>Cancel</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {harvest.status === "curing" && (
+        <div className="rounded-lg border-2 border-pink-200 dark:border-pink-900 bg-pink-50/50 dark:bg-pink-950/20 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <PackageIcon className="h-4 w-4 text-pink-500" />
+            <span className="text-sm font-medium">Curing in Progress</span>
+          </div>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-pink-500 transition-all"
+                style={{ width: `${Math.min(((harvest.curing_days ?? 0) / 30) * 100, 100)}%` }}
+              />
+            </div>
+            <span className="text-sm tabular-nums text-muted-foreground shrink-0">
+              Day {harvest.curing_days ?? 0}/30
+            </span>
+          </div>
+          {harvest.flower_weight_grams != null && (
+            <p className="text-xs text-muted-foreground mb-3">
+              Flower: {harvest.flower_weight_grams}g
+              {harvest.shake_weight_grams != null && <> &middot; Shake: {harvest.shake_weight_grams}g</>}
+            </p>
+          )}
+          <Button size="sm" variant="outline" onClick={handleFinishCuring} disabled={isSaving}>
+            <CheckCircleIcon className="mr-1.5 h-3.5 w-3.5" /> {isSaving ? "Finishing..." : "Finish Curing"}
+          </Button>
+        </div>
+      )}
+
+      {harvest.status === "packaged" && (
+        <div className="rounded-lg border-2 border-purple-200 dark:border-purple-900 bg-purple-50/50 dark:bg-purple-950/20 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <PackageIcon className="h-4 w-4 text-purple-500" />
+            <span className="text-sm font-medium">Packaged</span>
+          </div>
+          <p className="text-muted-foreground text-xs mb-3">
+            Harvest is packaged and ready to close.
+          </p>
           <Button size="sm" variant="outline" onClick={() => handleStatusChange("closed")} disabled={isSaving}>
-            Close Harvest
+            {isSaving ? "Closing..." : "Close Harvest"}
           </Button>
         </div>
       )}
@@ -557,6 +784,9 @@ export default function HarvestDetailPage() {
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Wet</span>
           </div>
           <p className="text-2xl font-semibold tabular-nums">{harvest.wet_weight_grams != null ? `${harvest.wet_weight_grams}g` : "—"}</p>
+          {harvest.wet_weight_grams != null && (
+            <p className="text-xs text-muted-foreground mt-0.5">{gToLbs(harvest.wet_weight_grams)} lbs</p>
+          )}
         </div>
         <div className="rounded-lg border p-4">
           <div className="flex items-center gap-2 mb-1">
@@ -564,8 +794,8 @@ export default function HarvestDetailPage() {
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Dry</span>
           </div>
           <p className="text-2xl font-semibold tabular-nums">{harvest.dry_weight_grams != null ? `${harvest.dry_weight_grams}g` : "—"}</p>
-          {harvest.dry_weight_loss_pct != null && (
-            <p className="text-xs text-muted-foreground mt-0.5">{harvest.dry_weight_loss_pct}% loss</p>
+          {harvest.dry_weight_grams != null && (
+            <p className="text-xs text-muted-foreground mt-0.5">{gToLbs(harvest.dry_weight_grams)} lbs{harvest.dry_weight_loss_pct != null && ` · ${harvest.dry_weight_loss_pct}% loss`}</p>
           )}
         </div>
         <div className="rounded-lg border p-4">
@@ -574,7 +804,34 @@ export default function HarvestDetailPage() {
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Waste</span>
           </div>
           <p className="text-2xl font-semibold tabular-nums">{harvest.waste_weight_grams != null ? `${harvest.waste_weight_grams}g` : "—"}</p>
+          {harvest.waste_weight_grams != null && (
+            <p className="text-xs text-muted-foreground mt-0.5">{gToLbs(harvest.waste_weight_grams)} lbs</p>
+          )}
         </div>
+        {(harvest.flower_weight_grams != null || harvest.shake_weight_grams != null) && (
+          <>
+            <div className="rounded-lg border p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <FlowerIcon className="h-4 w-4 text-violet-500" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Flower</span>
+              </div>
+              <p className="text-2xl font-semibold tabular-nums">{harvest.flower_weight_grams != null ? `${harvest.flower_weight_grams}g` : "—"}</p>
+              {harvest.flower_weight_grams != null && (
+                <p className="text-xs text-muted-foreground mt-0.5">{gToLbs(harvest.flower_weight_grams)} lbs</p>
+              )}
+            </div>
+            <div className="rounded-lg border p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <ScaleIcon className="h-4 w-4 text-teal-500" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Shake</span>
+              </div>
+              <p className="text-2xl font-semibold tabular-nums">{harvest.shake_weight_grams != null ? `${harvest.shake_weight_grams}g` : "—"}</p>
+              {harvest.shake_weight_grams != null && (
+                <p className="text-xs text-muted-foreground mt-0.5">{gToLbs(harvest.shake_weight_grams)} lbs</p>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Weights by Strain */}
@@ -676,6 +933,10 @@ export default function HarvestDetailPage() {
         {harvest.created_by && <p>Created by: {harvest.created_by.full_name || harvest.created_by.email}</p>}
         {harvest.drying_started_at && <p>Drying started: {new Date(harvest.drying_started_at).toLocaleDateString()}</p>}
         {harvest.dried_at && <p>Dried: {new Date(harvest.dried_at).toLocaleDateString()}</p>}
+        {harvest.trimming_started_at && <p>Trimming started: {new Date(harvest.trimming_started_at).toLocaleDateString()}</p>}
+        {harvest.trimming_finished_at && <p>Trimming finished: {new Date(harvest.trimming_finished_at).toLocaleDateString()}</p>}
+        {harvest.curing_started_at && <p>Curing started: {new Date(harvest.curing_started_at).toLocaleDateString()}</p>}
+        {harvest.curing_finished_at && <p>Curing finished: {new Date(harvest.curing_finished_at).toLocaleDateString()}</p>}
         {harvest.metrc_id && <p>METRC ID: {harvest.metrc_id}</p>}
         {harvest.metrc_tag && <p>METRC Tag: {harvest.metrc_tag}</p>}
       </div>

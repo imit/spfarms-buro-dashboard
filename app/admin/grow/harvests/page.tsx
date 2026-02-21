@@ -13,6 +13,8 @@ const STATUS_COLORS: Record<HarvestStatus, string> = {
   active: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
   drying: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
   dried: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
+  trimming: "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300",
+  curing: "bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300",
   packaged: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
   closed: "bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400",
 }
