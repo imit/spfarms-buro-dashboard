@@ -1175,6 +1175,47 @@ export interface PlantEventData {
   created_at: string;
 }
 
+export type AuditEventType =
+  | "harvest_created"
+  | "harvest_plants_added"
+  | "harvest_wet_weight_recorded"
+  | "harvest_drying_started"
+  | "harvest_dry_weight_recorded"
+  | "harvest_drying_finished"
+  | "harvest_status_changed"
+  | "harvest_strain_weight_recorded"
+  | "harvest_waste_recorded"
+  | "harvest_updated"
+  | "batch_created"
+  | "note_added"
+
+export interface AuditEventData {
+  id: number
+  event_type: AuditEventType
+  trackable_type: string
+  trackable_id: number
+  trackable_name: string
+  metadata: Record<string, unknown>
+  notes: string | null
+  user: { id: number; full_name: string | null; email: string }
+  created_at: string
+}
+
+export const AUDIT_EVENT_LABELS: Record<AuditEventType, string> = {
+  harvest_created: "Harvest Created",
+  harvest_plants_added: "Plants Added",
+  harvest_wet_weight_recorded: "Wet Weight Recorded",
+  harvest_drying_started: "Drying Started",
+  harvest_dry_weight_recorded: "Dry Weight Recorded",
+  harvest_drying_finished: "Drying Finished",
+  harvest_status_changed: "Status Changed",
+  harvest_strain_weight_recorded: "Strain Weight Recorded",
+  harvest_waste_recorded: "Waste Recorded",
+  harvest_updated: "Harvest Updated",
+  batch_created: "Batch Created",
+  note_added: "Note Added",
+}
+
 export interface Plant {
   id: number;
   plant_uid: string;
@@ -3112,6 +3153,30 @@ export class ApiClient {
   async getPlantEvents(plantId: number): Promise<PlantEventData[]> {
     const res = await this.request<{ data: PlantEventData[] }>(`/api/v1/plants/${plantId}/events`);
     return res.data;
+  }
+
+  // ---- Audit Events ----
+
+  async getAuditEvents(opts?: {
+    trackable_type?: string
+    trackable_id?: number
+    limit?: number
+    offset?: number
+  }): Promise<{ data: AuditEventData[]; meta: { total: number } }> {
+    const params = new URLSearchParams()
+    if (opts?.trackable_type) params.set("trackable_type", opts.trackable_type)
+    if (opts?.trackable_id) params.set("trackable_id", String(opts.trackable_id))
+    if (opts?.limit) params.set("limit", String(opts.limit))
+    if (opts?.offset) params.set("offset", String(opts.offset))
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return this.request(`/api/v1/facility/audit_events${query}`)
+  }
+
+  async getHarvestAuditEvents(harvestId: number): Promise<AuditEventData[]> {
+    const res = await this.request<{ data: AuditEventData[] }>(
+      `/api/v1/facility/harvests/${harvestId}/audit_events`
+    )
+    return res.data
   }
 
   // ---- METRC Tags ----

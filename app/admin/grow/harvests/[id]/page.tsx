@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { apiClient, type Harvest, type Facility, type Plant, HARVEST_STATUS_LABELS, HARVEST_TYPE_LABELS, type HarvestStatus } from "@/lib/api"
+import { apiClient, type Harvest, type Facility, type Plant, type AuditEventData, HARVEST_STATUS_LABELS, HARVEST_TYPE_LABELS, type HarvestStatus } from "@/lib/api"
+import { AuditEventTimeline } from "@/components/audit-event-timeline"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -146,6 +147,7 @@ export default function HarvestDetailPage() {
   const [facility, setFacility] = useState<Facility | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
+  const [auditEvents, setAuditEvents] = useState<AuditEventData[]>([])
 
   const [isSaving, setIsSaving] = useState(false)
 
@@ -171,12 +173,14 @@ export default function HarvestDetailPage() {
     if (!isAuthenticated) return
     async function load() {
       try {
-        const [h, f] = await Promise.all([
+        const [h, f, evts] = await Promise.all([
           apiClient.getHarvest(id),
           apiClient.getFacility().catch(() => null),
+          apiClient.getHarvestAuditEvents(id).catch(() => []),
         ])
         setHarvest(h)
         setFacility(f)
+        setAuditEvents(evts)
       } catch {
         setError("Failed to load harvest")
       } finally {
@@ -653,6 +657,16 @@ export default function HarvestDetailPage() {
         <div className="space-y-1">
           <h2 className="text-lg font-medium">Notes</h2>
           <p className="text-sm text-muted-foreground">{harvest.notes}</p>
+        </div>
+      )}
+
+      {/* Activity Log */}
+      {auditEvents.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-medium">Activity Log</h2>
+          <div className="rounded-lg border p-3">
+            <AuditEventTimeline events={auditEvents} />
+          </div>
         </div>
       )}
 
