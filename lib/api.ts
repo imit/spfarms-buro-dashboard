@@ -172,6 +172,7 @@ export interface Company {
   locations: Location[];
   members: CompanyMember[];
   referred_by: CompanyReferrer | null;
+  comments_count: number;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -913,6 +914,25 @@ export interface NotificationRecipient {
   read_at: string | null;
   sent_at: string | null;
   created_at: string;
+}
+
+// ---- Comments ----
+
+export interface CommentAuthor {
+  id: number;
+  full_name: string | null;
+  email: string;
+  role: UserRole;
+}
+
+export interface Comment {
+  id: number;
+  body: string;
+  author: CommentAuthor;
+  commentable_type: string;
+  commentable_id: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateNotificationParams {
@@ -2726,6 +2746,32 @@ export class ApiClient {
     return this.request("/api/v1/public/partnership_registrations", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  // Comments
+
+  async getCompanyComments(slug: string): Promise<Comment[]> {
+    const res = await this.request<JsonApiCollectionResponse<Comment>>(
+      `/api/v1/companies/${slug}/comments`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createCompanyComment(slug: string, body: string): Promise<Comment> {
+    const res = await this.request<JsonApiResponse<Comment>>(
+      `/api/v1/companies/${slug}/comments`,
+      {
+        method: "POST",
+        body: JSON.stringify({ comment: { body } }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteCompanyComment(slug: string, commentId: number): Promise<void> {
+    await this.request(`/api/v1/companies/${slug}/comments/${commentId}`, {
+      method: "DELETE",
     });
   }
 }

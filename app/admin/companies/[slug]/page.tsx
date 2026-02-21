@@ -5,6 +5,7 @@ import { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { CompanyNotes } from "@/components/company-comments-sheet";
 import {
   apiClient,
   type Cart,
@@ -60,7 +61,6 @@ import {
   CheckCircle2Icon,
   ClipboardListIcon,
   DollarSignIcon,
-  GlobeIcon,
   ImageIcon,
   RefreshCwIcon,
   MailIcon,
@@ -517,96 +517,62 @@ export default function CompanyDetailPage({
         </div>
       </div>
 
-      {/* Cards */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Details */}
-        <div className="rounded-lg border bg-card p-5">
-          <h3 className="font-medium mb-3">Details</h3>
-          <Separator className="mb-1" />
-          <dl>
-            <DetailRow
-              label="Type"
-              value={COMPANY_TYPE_LABELS[company.company_type]}
-            />
-            <DetailRow label="License #" value={company.license_number} />
-            <DetailRow label="Slug" value={company.slug} />
-            <DetailRow
-              label="Referred by"
-              value={company.referred_by ? (
-                <Link
-                  href={`/admin/users/${company.referred_by.id}`}
-                  className="text-primary hover:underline"
-                >
-                  {company.referred_by.full_name || company.referred_by.email}
-                </Link>
-              ) : null}
-            />
-            <DetailRow
-              label="Created"
-              value={new Date(company.created_at).toLocaleDateString()}
-            />
-          </dl>
-        </div>
+      {/* Two-column layout: main content + notes */}
+      <div className="flex gap-6">
+        {/* Left column: main content */}
+        <div className="flex-1 min-w-0 space-y-6">
 
-        {/* Contact */}
-        <div className="rounded-lg border bg-card p-5">
-          <h3 className="font-medium mb-3">Contact</h3>
-          <Separator className="mb-3" />
-          <div className="space-y-3">
-            {company.email && (
-              <div className="flex items-center gap-2 text-sm">
-                <MailIcon className="size-4 text-muted-foreground shrink-0" />
-                <a
-                  href={`mailto:${company.email}`}
-                  className="text-primary hover:underline"
-                >
-                  {company.email}
-                </a>
-              </div>
-            )}
-            {company.phone_number && (
-              <div className="flex items-center gap-2 text-sm">
-                <PhoneIcon className="size-4 text-muted-foreground shrink-0" />
-                <span>{company.phone_number}</span>
-              </div>
-            )}
-            {company.website && (
-              <div className="flex items-center gap-2 text-sm">
-                <GlobeIcon className="size-4 text-muted-foreground shrink-0" />
-                <a
-                  href={company.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  {company.website}
-                </a>
-              </div>
-            )}
-            {!company.email && !company.phone_number && !company.website && (
-              <p className="text-sm text-muted-foreground">
-                No contact info added.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Social Media */}
-        {socialEntries.length > 0 && (
-          <div className="rounded-lg border bg-card p-5">
-            <h3 className="font-medium mb-3">Social Media</h3>
-            <Separator className="mb-1" />
-            <dl>
-              {socialEntries.map(([platform, handle]) => (
-                <DetailRow
-                  key={platform}
-                  label={platform.charAt(0).toUpperCase() + platform.slice(1)}
-                  value={handle}
-                />
-              ))}
-            </dl>
-          </div>
-        )}
+      {/* Details & Contact */}
+      <div className="rounded-lg border bg-card p-5">
+        <h3 className="font-medium mb-3">Details</h3>
+        <Separator className="mb-1" />
+        <dl>
+          <DetailRow
+            label="Type"
+            value={COMPANY_TYPE_LABELS[company.company_type]}
+          />
+          <DetailRow label="License #" value={company.license_number} />
+          <DetailRow label="Slug" value={company.slug} />
+          <DetailRow
+            label="Referred by"
+            value={company.referred_by ? (
+              <Link
+                href={`/admin/users/${company.referred_by.id}`}
+                className="text-primary hover:underline"
+              >
+                {company.referred_by.full_name || company.referred_by.email}
+              </Link>
+            ) : null}
+          />
+          <DetailRow
+            label="Created"
+            value={new Date(company.created_at).toLocaleDateString()}
+          />
+          <DetailRow
+            label="Email"
+            value={company.email ? (
+              <a href={`mailto:${company.email}`} className="text-primary hover:underline">
+                {company.email}
+              </a>
+            ) : null}
+          />
+          <DetailRow label="Phone" value={company.phone_number} />
+          <DetailRow
+            label="Website"
+            value={company.website ? (
+              <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                {company.website}
+              </a>
+            ) : null}
+          />
+          {socialEntries.map(([platform, handle]) => (
+            <DetailRow
+              key={platform}
+              label={platform.charAt(0).toUpperCase() + platform.slice(1)}
+              value={handle}
+            />
+          ))}
+        </dl>
       </div>
 
       {/* Members */}
@@ -1207,6 +1173,16 @@ export default function CompanyDetailPage({
         )}
       </div>
 
+        </div>{/* end left column */}
+
+        {/* Right column: notes */}
+        <div className="w-80 shrink-0 hidden lg:block">
+          <div className="sticky top-6">
+            <CompanyNotes slug={company.slug} />
+          </div>
+        </div>
+      </div>{/* end two-column layout */}
+
       {/* Invite modal */}
       <Dialog open={!!inviteModalMember} onOpenChange={(open) => { if (!open) { setInviteModalMember(null); setInviteCustomMessage(""); } }}>
         <DialogContent className="max-w-xl">
@@ -1284,6 +1260,7 @@ export default function CompanyDetailPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

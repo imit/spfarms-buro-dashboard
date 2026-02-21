@@ -16,7 +16,7 @@ import {
   REGION_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, AlertTriangleIcon } from "lucide-react";
+import { PlusIcon, AlertTriangleIcon, MessageSquareIcon } from "lucide-react";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   idle: "bg-slate-100 text-slate-700",
@@ -237,6 +237,12 @@ export default function CompaniesPage() {
                           </span>
                         )}
                         {c.name}
+                        {c.comments_count > 0 && (
+                          <span className="inline-flex items-center gap-0.5 text-muted-foreground text-[10px]" title={`${c.comments_count} note${c.comments_count !== 1 ? "s" : ""}`}>
+                            <MessageSquareIcon className="size-3" />
+                            {c.comments_count}
+                          </span>
+                        )}
                         {c.bulk_buyer && (
                           <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-1.5 py-0.5 text-[10px] font-semibold leading-none">
                             Bulk
