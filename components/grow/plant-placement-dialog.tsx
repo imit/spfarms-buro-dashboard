@@ -7,24 +7,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { apiClient, type Strain, type PlantBatch, GROWTH_PHASE_LABELS } from "@/lib/api"
+import { TagIcon } from "lucide-react"
 
 interface PlantPlacementDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  roomId: number
-  floor: number
-  row: number
-  col: number
+  trayId: number
+  trayName: string
+  rackName: string
   onPlaced: () => void
 }
 
 export function PlantPlacementDialog({
   open,
   onOpenChange,
-  roomId,
-  floor,
-  row,
-  col,
+  trayId,
+  trayName,
+  rackName,
   onPlaced,
 }: PlantPlacementDialogProps) {
   const [strains, setStrains] = useState<Strain[]>([])
@@ -32,7 +31,7 @@ export function PlantPlacementDialog({
   const [strainId, setStrainId] = useState("")
   const [batchId, setBatchId] = useState("")
   const [growthPhase, setGrowthPhase] = useState("immature")
-  const [customLabel, setCustomLabel] = useState("")
+  const [metrcLabel, setMetrcLabel] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
 
@@ -65,21 +64,18 @@ export function PlantPlacementDialog({
 
     try {
       await apiClient.createPlant({
-        room_id: roomId,
+        tray_id: trayId,
         strain_id: Number(strainId),
         plant_batch_id: batchId ? Number(batchId) : undefined,
-        floor,
-        row,
-        col,
         growth_phase: growthPhase,
-        custom_label: customLabel || undefined,
+        metrc_label: metrcLabel || undefined,
       })
       onPlaced()
       onOpenChange(false)
       setStrainId("")
       setBatchId("")
       setGrowthPhase("immature")
-      setCustomLabel("")
+      setMetrcLabel("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to place plant")
     } finally {
@@ -91,9 +87,10 @@ export function PlantPlacementDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            Place Plant at {String.fromCharCode(65 + col)}{row + 1}
-          </DialogTitle>
+          <DialogTitle>Place Plant</DialogTitle>
+          <p className="text-muted-foreground text-sm">
+            {rackName} &middot; {trayName}
+          </p>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
@@ -143,12 +140,16 @@ export function PlantPlacementDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Nickname (optional)</Label>
-            <Input
-              value={customLabel}
-              onChange={(e) => setCustomLabel(e.target.value)}
-              placeholder="e.g. Big Bertha"
-            />
+            <Label>METRC Tag <span className="text-muted-foreground">(optional)</span></Label>
+            <div className="flex items-center gap-1.5">
+              <TagIcon className="text-muted-foreground h-4 w-4 shrink-0" />
+              <Input
+                value={metrcLabel}
+                onChange={(e) => setMetrcLabel(e.target.value)}
+                placeholder="e.g. 1A40F00..."
+                className="font-mono"
+              />
+            </div>
           </div>
 
           {error && <p className="bg-destructive/10 text-destructive rounded-md p-2 text-sm">{error}</p>}

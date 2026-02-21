@@ -132,7 +132,7 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
           <div>
             <p className="text-muted-foreground text-xs">Location</p>
             <p className="text-sm font-medium">
-              {plant.room?.name} &middot; Floor {plant.floor} &middot; {String.fromCharCode(65 + plant.col)}{plant.row + 1}
+              {plant.room?.name} &middot; Floor {plant.rack?.floor} &middot; {plant.rack?.name || `Rack ${(plant.rack?.position ?? 0) + 1}`} &middot; {plant.tray?.name || "Tray"}
             </p>
           </div>
           <div>
@@ -157,12 +157,6 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-muted-foreground text-sm">Not tagged</p>
             )}
           </div>
-          {plant.custom_label && (
-            <div>
-              <p className="text-muted-foreground text-xs">Nickname</p>
-              <p className="text-sm italic">&ldquo;{plant.custom_label}&rdquo;</p>
-            </div>
-          )}
           <div>
             <p className="text-muted-foreground text-xs">Placed</p>
             <p className="text-sm">{new Date(plant.created_at).toLocaleDateString()}</p>
@@ -224,7 +218,7 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
           plantId={plant.id}
           plantUid={plant.plant_uid}
           currentRoomId={plant.room.id}
-          currentFloor={plant.floor}
+          currentFloor={plant.rack?.floor ?? 1}
           onMoved={load}
         />
       )}

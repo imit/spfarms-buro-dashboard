@@ -34,7 +34,7 @@ function formatEventDetail(event: PlantEventData): string {
   const m = event.metadata
   switch (event.event_type) {
     case "moved":
-      return `Moved from ${formatPos(m.from as Record<string, number>)} to ${formatPos(m.to as Record<string, number>)}`
+      return `Moved from ${formatLocation(m.from as Record<string, unknown>)} to ${formatLocation(m.to as Record<string, unknown>)}`
     case "phase_changed":
       return `${m.from} → ${m.to}`
     case "tagged":
@@ -46,9 +46,21 @@ function formatEventDetail(event: PlantEventData): string {
   }
 }
 
-function formatPos(pos: Record<string, number> | undefined): string {
-  if (!pos) return "?"
-  return `${String.fromCharCode(65 + (pos.col || 0))}${(pos.row || 0) + 1}`
+function formatLocation(loc: Record<string, unknown> | undefined): string {
+  if (!loc) return "?"
+  // New rack/tray format
+  if (loc.rack_name || loc.tray_name || loc.room_name) {
+    const parts: string[] = []
+    if (loc.room_name) parts.push(String(loc.room_name))
+    if (loc.rack_name) parts.push(String(loc.rack_name))
+    if (loc.tray_name) parts.push(String(loc.tray_name))
+    return parts.join(" > ")
+  }
+  // Legacy grid format fallback
+  if (typeof loc.col === "number" && typeof loc.row === "number") {
+    return `${String.fromCharCode(65 + loc.col)}${loc.row + 1}`
+  }
+  return "?"
 }
 
 export function PlantEventTimeline({ events }: { events: PlantEventData[] }) {
@@ -56,7 +68,7 @@ export function PlantEventTimeline({ events }: { events: PlantEventData[] }) {
     <div className="space-y-3">
       {events.map((event) => (
         <div key={event.id} className="flex gap-3">
-          <div className="text-muted-foreground mt-0.5 flex-shrink-0">
+          <div className="text-muted-foreground mt-0.5 shrink-0">
             {EVENT_ICONS[event.event_type]}
           </div>
           <div className="min-w-0 flex-1 space-y-0.5">

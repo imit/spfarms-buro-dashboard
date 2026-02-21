@@ -7,8 +7,7 @@ import {
   apiClient,
   type Room,
   type FloorView,
-  type GridZone,
-  type GridZonePlant,
+  type TrayView,
   ROOM_TYPE_LABELS,
   type RoomType,
   GROWTH_PHASE_LABELS,
@@ -16,10 +15,9 @@ import {
 } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { RoomGrid } from "@/components/grow/room-grid"
+import { FloorRackView } from "@/components/grow/floor-rack-view"
 import { FloorPicker } from "@/components/grow/floor-picker"
-import { PlantPlacementDialog } from "@/components/grow/plant-placement-dialog"
+import { PlantPlacementForm } from "@/components/grow/plant-placement-form"
 import { PlantMoveDialog } from "@/components/grow/plant-move-dialog"
 import { TagAssignDialog } from "@/components/grow/tag-assign-dialog"
 import { PhaseBadge } from "@/components/grow/phase-badge"
@@ -70,13 +68,16 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
   const [currentFloor, setCurrentFloor] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Zone drawer state
-  const [selectedZone, setSelectedZone] = useState<GridZone | null>(null)
+  // Tray drawer state
+  const [selectedTray, setSelectedTray] = useState<TrayView | null>(null)
+  const [selectedRackName, setSelectedRackName] = useState("")
   const [selectedPlantId, setSelectedPlantId] = useState<number | null>(null)
   const [movingPlantId, setMovingPlantId] = useState<number | null>(null)
 
+  // Inline add-plant form in drawer
+  const [showAddPlantForm, setShowAddPlantForm] = useState(false)
+
   // Dialogs
-  const [placementTarget, setPlacementTarget] = useState<{ row: number; col: number } | null>(null)
   const [moveDialogPlant, setMoveDialogPlant] = useState<{ id: number; uid: string; roomId: number; floor: number } | null>(null)
   const [tagDialogPlant, setTagDialogPlant] = useState<{ id: number; uid: string; currentTag: string | null } | null>(null)
   const [phaseDialogPlant, setPhaseDialogPlant] = useState<{ id: number; uid: string; currentPhase: GrowthPhase } | null>(null)
@@ -111,7 +112,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
 
   const handleFloorChange = async (floor: number) => {
     setCurrentFloor(floor)
-    setSelectedZone(null)
+    setSelectedTray(null)
     setSelectedPlantId(null)
     setMovingPlantId(null)
     if (room) await loadFloorView(room.id, floor)
@@ -122,14 +123,14 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
       const fv = await loadFloorView(room.id, currentFloor)
       const updatedRoom = await apiClient.getRoom(room.id)
       setRoom(updatedRoom)
-      // Update selected zone from fresh data
-      if (selectedZone) {
-        const key = `${selectedZone.row}-${selectedZone.col}`
-        const updatedZone = fv.grid[key]
-        if (updatedZone) {
-          setSelectedZone(updatedZone)
-        } else {
-          setSelectedZone(null)
+      // Update selected tray from fresh data
+      if (selectedTray) {
+        for (const rack of fv.racks) {
+          const updatedTray = rack.trays.find((t) => t.id === selectedTray.id)
+          if (updatedTray) {
+            setSelectedTray(updatedTray)
+            break
+          }
         }
       }
     }
@@ -137,19 +138,24 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     setMovingPlantId(null)
   }
 
-  const handlePlacePlant = (row: number, col: number) => {
-    setPlacementTarget({ row, col })
+  const handlePlacePlant = (trayId: number) => {
+    // Find tray/rack from floorView, open drawer with add form
+    if (!floorView) return
+    for (const rack of floorView.racks) {
+      const tray = rack.trays.find((t) => t.id === trayId)
+      if (tray) {
+        setSelectedTray(tray)
+        setSelectedRackName(rack.name || `Rack ${rack.position + 1}`)
+        setShowAddPlantForm(true)
+        return
+      }
+    }
   }
 
-  const handleMovePlant = async (targetRow: number, targetCol: number) => {
-    if (!movingPlantId || !room) return
+  const handleMovePlantToTray = async (targetTrayId: number) => {
+    if (!movingPlantId) return
     try {
-      await apiClient.movePlant(movingPlantId, {
-        room_id: room.id,
-        floor: currentFloor,
-        row: targetRow,
-        col: targetCol,
-      })
+      await apiClient.movePlant(movingPlantId, { tray_id: targetTrayId })
       toast.success("Plant moved")
       await refresh()
     } catch (err) {
@@ -157,10 +163,12 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  const handleSelectZone = (zone: GridZone) => {
-    setSelectedZone(zone)
+  const handleSelectTray = (tray: TrayView, rackName: string) => {
+    setSelectedTray(tray)
+    setSelectedRackName(rackName)
     setSelectedPlantId(null)
     setMovingPlantId(null)
+    setShowAddPlantForm(false)
   }
 
   const handleChangePhase = async (newPhase: string) => {
@@ -197,11 +205,6 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  const selectedZoneKey = selectedZone ? `${selectedZone.row}-${selectedZone.col}` : null
-  const selectedZoneLabel = selectedZone
-    ? `${String.fromCharCode(65 + selectedZone.col)}${selectedZone.row + 1}`
-    : ""
-
   if (authLoading || !isAuthenticated) return null
   if (isLoading) return <div className="p-6"><p className="text-muted-foreground">Loading...</p></div>
   if (!room || !floorView) return null
@@ -223,9 +226,28 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                 <Badge variant="outline">{ROOM_TYPE_LABELS[room.room_type as RoomType]}</Badge>
               )}
             </div>
-            <p className="text-muted-foreground text-sm">
-              {room.rows}x{room.cols} grid &middot; {floorView.total_plants}/{room.total_capacity} plants
-            </p>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-muted-foreground">
+                {room.rack_count} rack{room.rack_count !== 1 ? "s" : ""} &middot; {room.tray_count} tray{room.tray_count !== 1 ? "s" : ""} &middot; {floorView.total_plants}/{room.total_capacity} plants
+              </span>
+              <span className="text-muted-foreground/40">|</span>
+              <div className="flex items-center gap-1.5">
+                {(Object.entries(GROWTH_PHASE_LABELS) as [GrowthPhase, string][]).map(([phase, label]) => (
+                  <span
+                    key={phase}
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-medium leading-none ${
+                      phase === "immature"
+                        ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+                        : phase === "vegetative"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                          : "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                    }`}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
         <Button variant="outline" size="sm" asChild>
@@ -245,48 +267,49 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
         />
       )}
 
-      {/* Grid */}
-      <RoomGrid
+      {/* Rack/Tray View */}
+      <FloorRackView
         floorView={floorView}
         selectedPlantId={selectedPlantId}
-        selectedZoneKey={selectedZoneKey}
-        onSelectZone={handleSelectZone}
+        selectedTrayId={selectedTray?.id ?? null}
+        onSelectTray={handleSelectTray}
         onPlacePlant={handlePlacePlant}
-        onMovePlant={handleMovePlant}
+        onMovePlant={handleMovePlantToTray}
         movingPlantId={movingPlantId}
       />
 
       {movingPlantId && (
         <div className="bg-primary/10 text-primary flex items-center justify-between rounded-md p-3 text-sm">
-          <span>Click a zone to move the plant there</span>
+          <span>Click a tray to move the plant there</span>
           <Button variant="ghost" size="sm" onClick={() => setMovingPlantId(null)}>
             Cancel Move
           </Button>
         </div>
       )}
 
-      {/* Zone Detail Drawer */}
+      {/* Tray Detail Drawer */}
       <Sheet
-        open={!!selectedZone}
+        open={!!selectedTray}
         onOpenChange={(open) => {
           if (!open) {
-            setSelectedZone(null)
+            setSelectedTray(null)
             setSelectedPlantId(null)
+            setShowAddPlantForm(false)
           }
         }}
       >
         <SheetContent side="right" className="overflow-y-auto">
-          {selectedZone && (
+          {selectedTray && (
             <>
               <SheetHeader>
-                <SheetTitle>Zone {selectedZoneLabel}</SheetTitle>
+                <SheetTitle>{selectedRackName} &middot; {selectedTray.name || `Tray ${selectedTray.position + 1}`}</SheetTitle>
                 <SheetDescription>
-                  {selectedZone.plants.length}/{selectedZone.capacity} plants
+                  {selectedTray.plants.length}/{selectedTray.capacity} plants
                 </SheetDescription>
               </SheetHeader>
 
               <div className="space-y-3 px-4 pb-4">
-                {selectedZone.plants.map((plant) => (
+                {selectedTray.plants.map((plant) => (
                   <div
                     key={plant.id}
                     className={`rounded-lg border p-3 transition-colors ${
@@ -306,9 +329,6 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                         </div>
                         <PhaseBadge phase={plant.growth_phase} />
                       </div>
-                      {plant.custom_label && (
-                        <p className="text-muted-foreground mt-1 text-xs italic">&ldquo;{plant.custom_label}&rdquo;</p>
-                      )}
                       {plant.metrc_label && (
                         <div className="text-muted-foreground mt-1.5 flex items-center gap-1 text-xs">
                           <TagIcon className="h-3 w-3" />
@@ -325,11 +345,11 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                           size="sm"
                           className="text-xs"
                           onClick={() => {
-                            setSelectedZone(null)
+                            setSelectedTray(null)
                             setMovingPlantId(plant.id)
                           }}
                         >
-                          <MoveIcon className="mr-1 h-3 w-3" /> Move (grid)
+                          <MoveIcon className="mr-1 h-3 w-3" /> Move (visual)
                         </Button>
                         <Button
                           variant="outline"
@@ -390,7 +410,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                           className="text-destructive text-xs"
                           onClick={() => {
                             if (confirm("Remove this plant?")) {
-                              handleDestroyPlant(plant.id, "Removed from grid")
+                              handleDestroyPlant(plant.id, "Removed from tray")
                             }
                           }}
                         >
@@ -411,19 +431,26 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 ))}
 
-                {/* Add Plant button */}
-                {selectedZone.plants.length < selectedZone.capacity && (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      const zone = selectedZone
-                      setSelectedZone(null)
-                      handlePlacePlant(zone.row, zone.col)
-                    }}
-                  >
-                    <PlusIcon className="mr-2 h-4 w-4" /> Add Plant
-                  </Button>
+                {/* Add Plant */}
+                {selectedTray.plants.length < selectedTray.capacity && (
+                  showAddPlantForm ? (
+                    <PlantPlacementForm
+                      trayId={selectedTray.id}
+                      onPlaced={() => {
+                        toast.success("Plant placed")
+                        refresh()
+                      }}
+                      onCancel={() => setShowAddPlantForm(false)}
+                    />
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setShowAddPlantForm(true)}
+                    >
+                      <PlusIcon className="mr-2 h-4 w-4" /> Add Plant
+                    </Button>
+                  )
                 )}
               </div>
             </>
@@ -432,18 +459,6 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
       </Sheet>
 
       {/* Dialogs */}
-      {placementTarget && (
-        <PlantPlacementDialog
-          open={!!placementTarget}
-          onOpenChange={(open) => !open && setPlacementTarget(null)}
-          roomId={room.id}
-          floor={currentFloor}
-          row={placementTarget.row}
-          col={placementTarget.col}
-          onPlaced={refresh}
-        />
-      )}
-
       {moveDialogPlant && (
         <PlantMoveDialog
           open={!!moveDialogPlant}

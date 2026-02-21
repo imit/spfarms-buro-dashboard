@@ -19,6 +19,7 @@ interface BatchCreateDialogProps {
 export function BatchCreateDialog({ open, onOpenChange, onCreated }: BatchCreateDialogProps) {
   const [strains, setStrains] = useState<Strain[]>([])
   const [name, setName] = useState("")
+  const [nameManuallyEdited, setNameManuallyEdited] = useState(false)
   const [strainId, setStrainId] = useState("")
   const [batchType, setBatchType] = useState<string>("seed")
   const [initialCount, setInitialCount] = useState("10")
@@ -31,8 +32,19 @@ export function BatchCreateDialog({ open, onOpenChange, onCreated }: BatchCreate
     apiClient.getStrains().then(setStrains).catch(() => {})
   }, [open])
 
+  // Auto-generate name when strain or batch type changes (unless user edited manually)
+  useEffect(() => {
+    if (nameManuallyEdited) return
+    const strain = strains.find((s) => String(s.id) === strainId)
+    if (!strain) return
+    const month = new Date().toLocaleString("en-US", { month: "short", year: "numeric" })
+    const typeLabel = BATCH_TYPE_LABELS[batchType as BatchType] || batchType
+    setName(`${strain.name} ${typeLabel} ${month}`)
+  }, [strainId, batchType, strains, nameManuallyEdited])
+
   const reset = () => {
     setName("")
+    setNameManuallyEdited(false)
     setStrainId("")
     setBatchType("seed")
     setInitialCount("10")
@@ -75,8 +87,8 @@ export function BatchCreateDialog({ open, onOpenChange, onCreated }: BatchCreate
             <Label>Batch Name</Label>
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Wedding Cake Seeds Feb 2026"
+              onChange={(e) => { setName(e.target.value); setNameManuallyEdited(true) }}
+              placeholder="Auto-generated from strain + type"
             />
           </div>
 

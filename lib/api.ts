@@ -1035,15 +1035,13 @@ export interface RoomSummary {
   name: string;
   room_type: RoomType | null;
   floor_count: number;
-  rows: number;
-  cols: number;
-  default_zone_capacity: number;
-  zone_capacities: Record<string, number>;
   position: number;
+  rack_count: number;
+  tray_count: number;
   total_capacity: number;
   active_plant_count: number;
-  occupied_zone_count: number;
-  total_zone_count: number;
+  occupied_tray_count: number;
+  total_tray_count: number;
 }
 
 export interface Facility {
@@ -1059,22 +1057,63 @@ export interface Facility {
   updated_at: string;
 }
 
+export interface FloorSummary {
+  floor: number;
+  rack_count: number;
+  total_capacity: number;
+  active_plant_count: number;
+}
+
 export interface Room {
   id: number;
   name: string;
   room_type: RoomType | null;
   floor_count: number;
-  rows: number;
-  cols: number;
-  default_zone_capacity: number;
-  zone_capacities: Record<string, number>;
   position: number;
   facility_id: number;
+  rack_count: number;
+  tray_count: number;
   total_capacity: number;
   floor_numbers: number[];
   plant_counts_by_floor: Record<number, number>;
+  floors_summary: FloorSummary[];
   metrc_location_id_prefix: string | null;
   metrc_last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Rack {
+  id: number;
+  room_id: number;
+  floor: number;
+  position: number;
+  name: string | null;
+  display_name: string;
+  total_capacity: number;
+  active_plant_count: number;
+  trays: TraySummary[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TraySummary {
+  id: number;
+  position: number;
+  name: string;
+  capacity: number;
+  active_plant_count: number;
+}
+
+export interface Tray {
+  id: number;
+  rack_id: number;
+  position: number;
+  capacity: number;
+  name: string | null;
+  display_name: string;
+  active_plant_count: number;
+  available_slots: number;
   created_at: string;
   updated_at: string;
 }
@@ -1116,11 +1155,10 @@ export interface Plant {
   id: number;
   plant_uid: string;
   custom_label: string | null;
-  floor: number;
-  row: number;
-  col: number;
   growth_phase: GrowthPhase;
   status: PlantStatus;
+  tray: { id: number; name: string; capacity: number };
+  rack: { id: number; name: string; floor: number; position: number };
   room: { id: number; name: string };
   strain: { id: number; name: string; category: string | null };
   plant_batch: { id: number; name: string; batch_uid: string } | null;
@@ -1155,7 +1193,7 @@ export interface PlantBatch {
   updated_at: string;
 }
 
-export interface GridZonePlant {
+export interface TrayPlant {
   id: number;
   plant_uid: string;
   custom_label: string | null;
@@ -1167,11 +1205,21 @@ export interface GridZonePlant {
   created_at: string;
 }
 
-export interface GridZone {
-  row: number;
-  col: number;
+export interface TrayView {
+  id: number;
+  position: number;
+  name: string;
   capacity: number;
-  plants: GridZonePlant[];
+  plants: TrayPlant[];
+}
+
+export interface RackView {
+  id: number;
+  floor: number;
+  position: number;
+  name: string;
+  total_capacity: number;
+  trays: TrayView[];
 }
 
 export interface FloorView {
@@ -1179,9 +1227,7 @@ export interface FloorView {
   room_name: string;
   room_type: string | null;
   floor: number;
-  rows: number;
-  cols: number;
-  grid: Record<string, GridZone>;
+  racks: RackView[];
   total_plants: number;
   total_capacity: number;
 }
@@ -2588,13 +2634,19 @@ export class ApiClient {
 
   async createRoom(data: {
     name: string;
-    rows: number;
-    cols: number;
     floor_count?: number;
     room_type?: string;
-    default_zone_capacity?: number;
     position?: number;
-    zone_capacities?: Record<string, number>;
+    racks_attributes?: {
+      floor: number;
+      position: number;
+      name?: string;
+      trays_attributes?: {
+        position: number;
+        capacity: number;
+        name?: string;
+      }[];
+    }[];
   }): Promise<Room> {
     const res = await this.request<JsonApiResponse<Room>>("/api/v1/facility/rooms", {
       method: "POST",
@@ -2622,6 +2674,60 @@ export class ApiClient {
       `/api/v1/facility/rooms/${roomId}/floor_view?floor=${floor}`
     );
     return res.data;
+  }
+
+  // ---- Racks ----
+
+  async getRacks(roomId: number): Promise<Rack[]> {
+    const res = await this.request<JsonApiCollectionResponse<Rack>>(`/api/v1/facility/rooms/${roomId}/racks`);
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createRack(roomId: number, data: { floor: number; position: number; name?: string; trays_attributes?: { position: number; capacity: number; name?: string }[] }): Promise<Rack> {
+    const res = await this.request<JsonApiResponse<Rack>>(`/api/v1/facility/rooms/${roomId}/racks`, {
+      method: "POST",
+      body: JSON.stringify({ rack: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateRack(roomId: number, rackId: number, data: Record<string, unknown>): Promise<Rack> {
+    const res = await this.request<JsonApiResponse<Rack>>(`/api/v1/facility/rooms/${roomId}/racks/${rackId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ rack: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteRack(roomId: number, rackId: number): Promise<void> {
+    await this.request(`/api/v1/facility/rooms/${roomId}/racks/${rackId}`, { method: "DELETE" });
+  }
+
+  // ---- Trays ----
+
+  async getTrays(roomId: number, rackId: number): Promise<Tray[]> {
+    const res = await this.request<JsonApiCollectionResponse<Tray>>(`/api/v1/facility/rooms/${roomId}/racks/${rackId}/trays`);
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createTray(roomId: number, rackId: number, data: { position: number; capacity: number; name?: string }): Promise<Tray> {
+    const res = await this.request<JsonApiResponse<Tray>>(`/api/v1/facility/rooms/${roomId}/racks/${rackId}/trays`, {
+      method: "POST",
+      body: JSON.stringify({ tray: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateTray(roomId: number, rackId: number, trayId: number, data: Record<string, unknown>): Promise<Tray> {
+    const res = await this.request<JsonApiResponse<Tray>>(`/api/v1/facility/rooms/${roomId}/racks/${rackId}/trays/${trayId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ tray: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteTray(roomId: number, rackId: number, trayId: number): Promise<void> {
+    await this.request(`/api/v1/facility/rooms/${roomId}/racks/${rackId}/trays/${trayId}`, { method: "DELETE" });
   }
 
   // ---- Plant Batches ----
@@ -2667,6 +2773,8 @@ export class ApiClient {
   async getPlants(opts?: {
     room_id?: number;
     floor?: number;
+    rack_id?: number;
+    tray_id?: number;
     strain_id?: number;
     growth_phase?: string;
     plant_batch_id?: number;
@@ -2674,6 +2782,8 @@ export class ApiClient {
     const params = new URLSearchParams();
     if (opts?.room_id) params.set("room_id", String(opts.room_id));
     if (opts?.floor) params.set("floor", String(opts.floor));
+    if (opts?.rack_id) params.set("rack_id", String(opts.rack_id));
+    if (opts?.tray_id) params.set("tray_id", String(opts.tray_id));
     if (opts?.strain_id) params.set("strain_id", String(opts.strain_id));
     if (opts?.growth_phase) params.set("growth_phase", opts.growth_phase);
     if (opts?.plant_batch_id) params.set("plant_batch_id", String(opts.plant_batch_id));
@@ -2688,14 +2798,12 @@ export class ApiClient {
   }
 
   async createPlant(data: {
-    room_id: number;
+    tray_id: number;
     strain_id: number;
     plant_batch_id?: number;
-    floor: number;
-    row: number;
-    col: number;
     growth_phase?: string;
     custom_label?: string;
+    metrc_label?: string;
   }): Promise<Plant> {
     const res = await this.request<JsonApiResponse<Plant>>("/api/v1/plants", {
       method: "POST",
@@ -2706,14 +2814,14 @@ export class ApiClient {
 
   async bulkCreatePlants(
     plantBatchId: number,
-    positions: { room_id: number; floor: number; row: number; col: number }[]
+    positions: { tray_id: number }[]
   ): Promise<{
     created_count: number;
     error_count: number;
-    errors: { position: string; errors: string[] }[];
+    errors: { tray_id: number; errors: string[] }[];
   }> {
     const res = await this.request<{
-      data: { created_count: number; error_count: number; errors: { position: string; errors: string[] }[] };
+      data: { created_count: number; error_count: number; errors: { tray_id: number; errors: string[] }[] };
     }>("/api/v1/plants/bulk_create", {
       method: "POST",
       body: JSON.stringify({ plant_batch_id: plantBatchId, positions }),
@@ -2730,10 +2838,7 @@ export class ApiClient {
   }
 
   async movePlant(id: number, data: {
-    room_id: number;
-    floor: number;
-    row: number;
-    col: number;
+    tray_id: number;
   }): Promise<Plant> {
     const res = await this.request<JsonApiResponse<Plant>>(`/api/v1/plants/${id}/move`, {
       method: "POST",

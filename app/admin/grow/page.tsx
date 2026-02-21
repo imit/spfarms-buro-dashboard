@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { FacilitySetupForm } from "@/components/grow/facility-setup-form"
 import { BatchCreateDialog } from "@/components/grow/batch-create-dialog"
-import { PlusIcon, LayoutGridIcon, TagIcon, SproutIcon, LayersIcon } from "lucide-react"
+import { PlusIcon, TagIcon, SproutIcon, LayersIcon, BoxIcon } from "lucide-react"
 import Link from "next/link"
 
 export default function GrowPage() {
@@ -157,7 +157,7 @@ export default function GrowPage() {
           {facility.rooms.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center">
-                <LayoutGridIcon className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
+                <BoxIcon className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
                 <p className="text-muted-foreground text-sm">No rooms yet. Add your first grow room to get started.</p>
                 <Button className="mt-4" asChild>
                   <Link href="/admin/grow/rooms/new">
@@ -181,7 +181,7 @@ export default function GrowPage() {
                           <div>
                             <p className="font-medium">{room.name}</p>
                             <p className="text-muted-foreground text-xs">
-                              {room.rows} x {room.cols} grid &middot; {room.total_capacity} capacity
+                              {room.rack_count} rack{room.rack_count !== 1 ? "s" : ""} &middot; {room.tray_count} tray{room.tray_count !== 1 ? "s" : ""} &middot; {room.total_capacity} capacity
                             </p>
                           </div>
                           {room.room_type && (
@@ -191,23 +191,19 @@ export default function GrowPage() {
                           )}
                         </div>
 
-                        {/* Mini grid preview */}
-                        {(() => {
-                          const totalCells = room.rows * room.cols
-                          const displayCells = Math.min(totalCells, 48)
-                          const occupiedRatio = totalCells > 0 ? room.occupied_zone_count / totalCells : 0
-                          const filledCount = Math.round(displayCells * occupiedRatio)
-
-                          return (
-                            <div
-                              className="mt-3 grid gap-0.5"
-                              style={{ gridTemplateColumns: `repeat(${Math.min(room.cols, 12)}, minmax(0, 1fr))` }}
-                            >
-                              {Array.from({ length: displayCells }, (_, i) => (
+                        {/* Tray occupancy preview */}
+                        {room.tray_count > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-0.5">
+                            {Array.from({ length: Math.min(room.tray_count, 48) }, (_, i) => {
+                              const filledRatio = room.total_tray_count > 0
+                                ? room.occupied_tray_count / room.total_tray_count
+                                : 0
+                              const isFilled = i < Math.round(Math.min(room.tray_count, 48) * filledRatio)
+                              return (
                                 <div
                                   key={i}
-                                  className={`aspect-square rounded-sm ${
-                                    i < filledCount
+                                  className={`h-2.5 w-4 rounded-sm ${
+                                    isFilled
                                       ? occupancyPct >= 90
                                         ? "bg-red-500/25 border border-red-500/40"
                                         : occupancyPct >= 60
@@ -216,10 +212,10 @@ export default function GrowPage() {
                                       : "bg-muted/60 border border-dashed border-transparent"
                                   }`}
                                 />
-                              ))}
-                            </div>
-                          )
-                        })()}
+                              )
+                            })}
+                          </div>
+                        )}
 
                         {/* Stats row */}
                         <div className="mt-2.5 flex items-center justify-between text-[10px]">
@@ -228,10 +224,9 @@ export default function GrowPage() {
                               <SproutIcon className="mr-0.5 inline h-3 w-3" />
                               <span className="text-foreground tabular-nums font-medium">{room.active_plant_count}</span> plant{room.active_plant_count !== 1 ? "s" : ""}
                             </span>
-                            <span>
-                              <LayoutGridIcon className="mr-0.5 inline h-3 w-3" />
-                              <span className="text-foreground tabular-nums font-medium">{room.occupied_zone_count}</span>/{room.total_zone_count} zones
-                            </span>
+                            {room.floor_count > 1 && (
+                              <span>{room.floor_count} floors</span>
+                            )}
                           </div>
                           <span className="text-muted-foreground tabular-nums">
                             {occupancyPct}% full

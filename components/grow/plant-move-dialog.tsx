@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { apiClient, type Room } from "@/lib/api"
+import { apiClient, type Room, type FloorView, type RackView, type TrayView } from "@/lib/api"
 
 interface PlantMoveDialogProps {
   open: boolean
@@ -29,9 +29,11 @@ export function PlantMoveDialog({
   const [rooms, setRooms] = useState<Room[]>([])
   const [targetRoomId, setTargetRoomId] = useState(String(currentRoomId))
   const [targetFloor, setTargetFloor] = useState(String(currentFloor))
-  const [targetRow, setTargetRow] = useState("")
-  const [targetCol, setTargetCol] = useState("")
+  const [floorView, setFloorView] = useState<FloorView | null>(null)
+  const [targetRackId, setTargetRackId] = useState("")
+  const [targetTrayId, setTargetTrayId] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingFloor, setIsLoadingFloor] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
@@ -45,6 +47,19 @@ export function PlantMoveDialog({
 
   const selectedRoom = rooms.find((r) => String(r.id) === targetRoomId)
 
+  // Load floor view when room or floor changes
+  useEffect(() => {
+    if (!selectedRoom) return
+    setIsLoadingFloor(true)
+    setTargetRackId("")
+    setTargetTrayId("")
+    apiClient
+      .getFloorView(selectedRoom.id, Number(targetFloor))
+      .then((fv) => setFloorView(fv))
+      .catch(() => setFloorView(null))
+      .finally(() => setIsLoadingFloor(false))
+  }, [targetRoomId, targetFloor, selectedRoom])
+
   // Reset floor when room changes
   useEffect(() => {
     if (selectedRoom && Number(targetFloor) > selectedRoom.floor_count) {
@@ -52,17 +67,27 @@ export function PlantMoveDialog({
     }
   }, [targetRoomId, selectedRoom, targetFloor])
 
+  // Reset tray when rack changes
+  useEffect(() => {
+    setTargetTrayId("")
+  }, [targetRackId])
+
+  const selectedRack: RackView | undefined = floorView?.racks.find(
+    (r) => String(r.id) === targetRackId
+  )
+
+  const availableTrays: TrayView[] = selectedRack
+    ? selectedRack.trays.filter((t) => t.plants.length < t.capacity)
+    : []
+
   const handleSubmit = async () => {
-    if (!targetRow || !targetCol) return
+    if (!targetTrayId) return
     setIsSubmitting(true)
     setError("")
 
     try {
       await apiClient.movePlant(plantId, {
-        room_id: Number(targetRoomId),
-        floor: Number(targetFloor),
-        row: Number(targetRow),
-        col: Number(targetCol),
+        tray_id: Number(targetTrayId),
       })
       onMoved()
       onOpenChange(false)
@@ -81,7 +106,7 @@ export function PlantMoveDialog({
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Target Room</Label>
+            <Label>Room</Label>
             <Select value={targetRoomId} onValueChange={setTargetRoomId}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -106,38 +131,57 @@ export function PlantMoveDialog({
             </div>
           )}
 
-          {selectedRoom && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Row</Label>
-                <Select value={targetRow} onValueChange={setTargetRow}>
-                  <SelectTrigger><SelectValue placeholder="Row" /></SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: selectedRoom.rows }, (_, i) => (
-                      <SelectItem key={i} value={String(i)}>{i + 1}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Column</Label>
-                <Select value={targetCol} onValueChange={setTargetCol}>
-                  <SelectTrigger><SelectValue placeholder="Col" /></SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: selectedRoom.cols }, (_, i) => (
-                      <SelectItem key={i} value={String(i)}>{String.fromCharCode(65 + i)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          {floorView && !isLoadingFloor && (
+            <div className="space-y-2">
+              <Label>Rack</Label>
+              <Select value={targetRackId} onValueChange={setTargetRackId}>
+                <SelectTrigger><SelectValue placeholder="Select rack..." /></SelectTrigger>
+                <SelectContent>
+                  {floorView.racks.map((rack) => {
+                    const available = rack.trays.filter((t) => t.plants.length < t.capacity).length
+                    return (
+                      <SelectItem key={rack.id} value={String(rack.id)} disabled={available === 0}>
+                        {rack.name || `Rack ${rack.position + 1}`}
+                        {available > 0
+                          ? ` (${available} tray${available !== 1 ? "s" : ""} available)`
+                          : " (full)"}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
             </div>
+          )}
+
+          {selectedRack && (
+            <div className="space-y-2">
+              <Label>Tray</Label>
+              {availableTrays.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No available trays in this rack.</p>
+              ) : (
+                <Select value={targetTrayId} onValueChange={setTargetTrayId}>
+                  <SelectTrigger><SelectValue placeholder="Select tray..." /></SelectTrigger>
+                  <SelectContent>
+                    {availableTrays.map((tray) => (
+                      <SelectItem key={tray.id} value={String(tray.id)}>
+                        {tray.name || `Tray ${tray.position + 1}`} ({tray.plants.length}/{tray.capacity})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
+          {isLoadingFloor && (
+            <p className="text-muted-foreground text-sm">Loading racks...</p>
           )}
 
           {error && <p className="bg-destructive/10 text-destructive rounded-md p-2 text-sm">{error}</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!targetRow || !targetCol || isSubmitting}>
+          <Button onClick={handleSubmit} disabled={!targetTrayId || isSubmitting}>
             {isSubmitting ? "Moving..." : "Move Plant"}
           </Button>
         </DialogFooter>
