@@ -645,6 +645,7 @@ export type OrderStatus =
   | "pending"
   | "confirmed"
   | "processing"
+  | "fulfilled"
   | "shipped"
   | "delivered"
   | "cancelled";
@@ -653,6 +654,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Pending",
   confirmed: "Confirmed",
   processing: "Processing",
+  fulfilled: "Fulfilled",
   shipped: "Shipped",
   delivered: "Delivered",
   cancelled: "Cancelled",
@@ -1189,6 +1191,7 @@ export type AuditEventType =
   | "harvest_trimming_started"
   | "harvest_trimming_finished"
   | "harvest_curing_finished"
+  | "harvest_admin_reviewed"
   | "batch_created"
   | "note_added"
 
@@ -1218,6 +1221,7 @@ export const AUDIT_EVENT_LABELS: Record<AuditEventType, string> = {
   harvest_trimming_started: "Trimming Started",
   harvest_trimming_finished: "Trimming Finished",
   harvest_curing_finished: "Curing Finished",
+  harvest_admin_reviewed: "Admin Reviewed",
   batch_created: "Batch Created",
   note_added: "Note Added",
 }
@@ -1340,6 +1344,8 @@ export interface Harvest {
   metrc_id: string | null;
   metrc_tag: string | null;
   metrc_last_synced_at: string | null;
+  admin_reviewed_at: string | null;
+  admin_reviewed_by: { id: number; full_name: string | null; email: string } | null;
   created_at: string;
   updated_at: string;
 }
@@ -2615,6 +2621,14 @@ export class ApiClient {
     return res.blob();
   }
 
+  async markProcessingDone(id: number): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${id}/mark_processing_done`,
+      { method: "POST" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   // Sample Batches
 
   async getSampleBatches(): Promise<SampleBatch[]> {
@@ -3076,6 +3090,20 @@ export class ApiClient {
 
   async finishCuring(id: number): Promise<Harvest> {
     const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/finish_curing`, {
+      method: "POST",
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async adminReviewHarvest(id: number): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/admin_review`, {
+      method: "POST",
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async closeHarvest(id: number): Promise<Harvest> {
+    const res = await this.request<JsonApiResponse<Harvest>>(`/api/v1/facility/harvests/${id}/close`, {
       method: "POST",
     });
     return { ...res.data.attributes, id: Number(res.data.id) };

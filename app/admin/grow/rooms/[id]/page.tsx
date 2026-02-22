@@ -19,6 +19,7 @@ import { FloorRackView } from "@/components/grow/floor-rack-view"
 import { FloorPicker } from "@/components/grow/floor-picker"
 import { PlantPlacementForm } from "@/components/grow/plant-placement-form"
 import { PlantMoveDialog } from "@/components/grow/plant-move-dialog"
+import { PlantDetailDialog } from "@/components/grow/plant-detail-dialog"
 import { TagAssignDialog } from "@/components/grow/tag-assign-dialog"
 import { PhaseBadge } from "@/components/grow/phase-badge"
 import {
@@ -83,6 +84,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
   const [phaseDialogPlant, setPhaseDialogPlant] = useState<{ id: number; uid: string; currentPhase: GrowthPhase } | null>(null)
   const [noteDialogPlant, setNoteDialogPlant] = useState<{ id: number; uid: string } | null>(null)
   const [noteText, setNoteText] = useState("")
+  const [detailDialogPlantId, setDetailDialogPlantId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/")
@@ -420,11 +422,9 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                           variant="ghost"
                           size="sm"
                           className="text-xs"
-                          asChild
+                          onClick={() => setDetailDialogPlantId(plant.id)}
                         >
-                          <Link href={`/admin/grow/plants/${plant.id}`}>
-                            <ExternalLinkIcon className="mr-1 h-3 w-3" /> Details
-                          </Link>
+                          <ExternalLinkIcon className="mr-1 h-3 w-3" /> Details
                         </Button>
                       </div>
                     )}
@@ -534,6 +534,15 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Plant Detail Dialog */}
+      {detailDialogPlantId && (
+        <PlantDetailDialog
+          open={!!detailDialogPlantId}
+          onOpenChange={(open) => !open && setDetailDialogPlantId(null)}
+          plantId={detailDialogPlantId}
+        />
       )}
     </div>
   )

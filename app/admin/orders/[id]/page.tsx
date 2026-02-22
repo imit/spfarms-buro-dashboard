@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, DownloadIcon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon } from "lucide-react";
 import { apiClient, type Order, type OrderStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
@@ -48,6 +48,7 @@ export default function AdminOrderDetailPage({
   const [internalNotes, setInternalNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [showDoneConfirm, setShowDoneConfirm] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -101,6 +102,17 @@ export default function AdminOrderDetailPage({
       URL.revokeObjectURL(url);
     } catch {
       toast.error("Failed to download invoice");
+    }
+  };
+
+  const markProcessingDone = async () => {
+    try {
+      const updated = await apiClient.markProcessingDone(Number(id));
+      setOrder(updated);
+      setShowDoneConfirm(false);
+      toast.success("Order marked as fulfilled");
+    } catch {
+      toast.error("Failed to mark as fulfilled");
     }
   };
 
@@ -160,6 +172,12 @@ export default function AdminOrderDetailPage({
             <DownloadIcon className="mr-1.5 size-4" />
             Invoice
           </Button>
+          {order.status === "processing" && (
+            <Button size="sm" onClick={() => setShowDoneConfirm(true)}>
+              <CheckCircleIcon className="mr-1.5 size-4" />
+              Mark Done
+            </Button>
+          )}
         </div>
       </div>
 
@@ -358,8 +376,12 @@ export default function AdminOrderDetailPage({
               This will change the status from{" "}
               <strong>{ORDER_STATUS_LABELS[order.status]}</strong> to{" "}
               <strong>{ORDER_STATUS_LABELS[pendingStatus as OrderStatus]}</strong>.
-              An email notification will be sent to all members of{" "}
-              <strong>{order.company?.name ?? "the company"}</strong>.
+              {pendingStatus === "fulfilled" ? (
+                <> This is an internal status — no email will be sent to the customer.</>
+              ) : (
+                <> An email notification will be sent to all members of{" "}
+                <strong>{order.company?.name ?? "the company"}</strong>.</>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -371,6 +393,25 @@ export default function AdminOrderDetailPage({
               }
             }}>
               Confirm &amp; Notify
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDoneConfirm} onOpenChange={setShowDoneConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as fulfilled?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark order <strong>{order.order_number}</strong> as
+              fulfilled and ready for delivery. No email will be sent to the
+              customer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={markProcessingDone}>
+              Mark Fulfilled
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

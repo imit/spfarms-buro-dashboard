@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StrainAvatar } from "@/components/grow/strain-avatar"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeftIcon, TagIcon, ScaleIcon, DropletIcon, TrashIcon, WindIcon, CheckCircleIcon, PlusIcon, ScissorsIcon, PackageIcon, Flower as FlowerIcon } from "lucide-react"
+import { ArrowLeftIcon, TagIcon, ScaleIcon, DropletIcon, TrashIcon, WindIcon, CheckCircleIcon, PlusIcon, ScissorsIcon, PackageIcon, Flower as FlowerIcon, ShieldCheckIcon } from "lucide-react"
 import Link from "next/link"
 
 function gToLbs(grams: number): string {
@@ -174,7 +174,8 @@ function StrainWeightsSection({ harvest, onUpdate }: { harvest: Harvest; onUpdat
 }
 
 export default function HarvestDetailPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth()
+  const isAdmin = user?.role === "admin"
   const router = useRouter()
   const params = useParams()
   const id = Number(params.id)
@@ -370,14 +371,27 @@ export default function HarvestDetailPage() {
     }
   }
 
-  const handleStatusChange = async (newStatus: string) => {
+  const handleAdminReview = async () => {
     setIsSaving(true)
     setError("")
     try {
-      const h = await apiClient.updateHarvest(id, { status: newStatus })
+      const h = await apiClient.adminReviewHarvest(id)
       setHarvest(h)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status")
+      setError(err instanceof Error ? err.message : "Failed to review harvest")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleCloseHarvest = async () => {
+    setIsSaving(true)
+    setError("")
+    try {
+      const h = await apiClient.closeHarvest(id)
+      setHarvest(h)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to close harvest")
     } finally {
       setIsSaving(false)
     }
@@ -767,12 +781,40 @@ export default function HarvestDetailPage() {
             <PackageIcon className="h-4 w-4 text-purple-500" />
             <span className="text-sm font-medium">Packaged</span>
           </div>
-          <p className="text-muted-foreground text-xs mb-3">
-            Harvest is packaged and ready to close.
-          </p>
-          <Button size="sm" variant="outline" onClick={() => handleStatusChange("closed")} disabled={isSaving}>
-            {isSaving ? "Closing..." : "Close Harvest"}
-          </Button>
+
+          {harvest.admin_reviewed_at ? (
+            <>
+              <div className="flex items-center gap-2 mb-3 text-xs text-green-600 dark:text-green-400">
+                <ShieldCheckIcon className="h-3.5 w-3.5" />
+                <span>
+                  Reviewed by {harvest.admin_reviewed_by?.full_name || harvest.admin_reviewed_by?.email} on{" "}
+                  {new Date(harvest.admin_reviewed_at).toLocaleDateString()}
+                </span>
+              </div>
+              {isAdmin && (
+                <Button size="sm" variant="outline" onClick={handleCloseHarvest} disabled={isSaving}>
+                  {isSaving ? "Closing..." : "Close Harvest"}
+                </Button>
+              )}
+              {!isAdmin && (
+                <p className="text-muted-foreground text-xs">Waiting for an admin to close this harvest.</p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground text-xs mb-3">
+                An admin must review and approve this harvest before it can be closed.
+              </p>
+              {isAdmin ? (
+                <Button size="sm" onClick={handleAdminReview} disabled={isSaving}>
+                  <ShieldCheckIcon className="mr-1.5 h-3.5 w-3.5" />
+                  {isSaving ? "Reviewing..." : "Approve & Review"}
+                </Button>
+              ) : (
+                <p className="text-xs text-amber-600 dark:text-amber-400">Waiting for admin review.</p>
+              )}
+            </>
+          )}
         </div>
       )}
 

@@ -19,6 +19,12 @@ export const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string; dot:
     dot: "bg-violet-500",
     border: "border-violet-200 dark:border-violet-800",
   },
+  fulfilled: {
+    bg: "bg-teal-50 dark:bg-teal-950/30",
+    text: "text-teal-700 dark:text-teal-400",
+    dot: "bg-teal-500",
+    border: "border-teal-200 dark:border-teal-800",
+  },
   shipped: {
     bg: "bg-cyan-50 dark:bg-cyan-950/30",
     text: "text-cyan-700 dark:text-cyan-400",
@@ -48,6 +54,7 @@ export const TIMELINE_STEPS: { key: OrderStatus; label: string }[] = [
   { key: "pending", label: "Order Received" },
   { key: "confirmed", label: "Confirmed" },
   { key: "processing", label: "Fulfilling Order" },
+  { key: "fulfilled", label: "Ready for Delivery" },
   { key: "shipped", label: "In Transit" },
   { key: "delivered", label: "Delivered" },
 ];
