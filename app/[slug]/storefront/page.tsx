@@ -90,7 +90,7 @@ export default function StorefrontPage({
     if (!company) return;
     try {
       const updated = await apiClient.addToCart(company.id, productId, quantity);
-      setCart(updated);
+      setCartPreservingOrder(updated);
       window.dispatchEvent(new CustomEvent("cart:updated"));
       const product = products.find((p) => p.id === productId);
       posthog.capture("product_added_to_cart", {
@@ -106,11 +106,25 @@ export default function StorefrontPage({
     }
   };
 
+  // Preserve existing item order when updating cart state
+  const setCartPreservingOrder = useCallback((updated: Cart) => {
+    setCart((prev) => {
+      if (!prev) return updated;
+      const orderMap = new Map(prev.items.map((item, idx) => [item.id, idx]));
+      const sorted = [...updated.items].sort((a, b) => {
+        const ai = orderMap.get(a.id) ?? Infinity;
+        const bi = orderMap.get(b.id) ?? Infinity;
+        return ai - bi;
+      });
+      return { ...updated, items: sorted };
+    });
+  }, []);
+
   const updateQuantity = async (itemId: number, newQuantity: number) => {
     if (!company) return;
     try {
       const updated = await apiClient.updateCartItem(company.id, itemId, newQuantity);
-      setCart(updated);
+      setCartPreservingOrder(updated);
       window.dispatchEvent(new CustomEvent("cart:updated"));
     } catch {
       toast.error("Failed to update quantity");
@@ -121,7 +135,7 @@ export default function StorefrontPage({
     if (!company) return;
     try {
       const updated = await apiClient.removeCartItem(company.id, itemId);
-      setCart(updated);
+      setCartPreservingOrder(updated);
       window.dispatchEvent(new CustomEvent("cart:updated"));
     } catch {
       toast.error("Failed to remove item");
@@ -193,7 +207,16 @@ export default function StorefrontPage({
         <Button variant="ghost" size="icon" className="size-7" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
           <MinusIcon className="size-3" />
         </Button>
-        <span className="w-6 text-center text-xs font-medium">{item.quantity}</span>
+        <input
+          type="number"
+          min={1}
+          value={item.quantity}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            if (!isNaN(v) && v >= 1) updateQuantity(item.id, v);
+          }}
+          className="h-7 w-8 border-x bg-background text-center text-xs font-medium tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
         <Button variant="ghost" size="icon" className="size-7" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
           <PlusIcon className="size-3" />
         </Button>
@@ -392,10 +415,14 @@ export default function StorefrontPage({
                   </Button>
                 </div>
                 {!company.license_number && (
-                  <p className="flex items-center gap-1.5 text-xs text-amber-600">
-                    <AlertTriangleIcon className="size-3.5" />
-                    No license number on file
-                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+                    onClick={() => router.push(`/${slug}/settings`)}
+                  >
+                    <AlertTriangleIcon className="mr-2 size-4" />
+                    No license number — Update Profile
+                  </Button>
                 )}
                 {company.locations.length > 0 && (
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -431,10 +458,15 @@ export default function StorefrontPage({
                     )}
                   </h1>
                   {!company.license_number && (
-                    <p className="flex items-center gap-1.5 text-xs text-amber-600">
-                      <AlertTriangleIcon className="size-3.5" />
-                      No license number on file
-                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                      onClick={() => router.push(`/${slug}/settings`)}
+                    >
+                      <AlertTriangleIcon className="mr-1.5 size-3.5" />
+                      No license number — Update Profile
+                    </Button>
                   )}
                   {company.locations.length > 0 && (
                     <p className="flex items-center gap-1.5 text-sm text-muted-foreground">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ShoppingCartIcon, FileTextIcon, WeightIcon, ClockIcon } from "lucide-react";
+import { ShoppingCartIcon, FileTextIcon, WeightIcon, ClockIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { type Product, type Strain, type CartDiscount } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -124,12 +124,12 @@ export function ProductCard({
         <div className="flex-1 min-w-0 space-y-0.5">
           <Link
             href={`/${slug}/storefront/${product.slug}`}
-            className="font-medium text-sm leading-tight hover:underline line-clamp-1"
+            className="font-medium leading-tight hover:underline line-clamp-1"
           >
             {product.name}
           </Link>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
             {weightLabel && <span>{weightLabel}</span>}
             {hasCannabinoids && (
               <>
@@ -145,7 +145,7 @@ export function ProductCard({
               href={coaPdfUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+              className="inline-flex items-center gap-1 text-[13px] text-primary hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
               <FileTextIcon className="size-3" />
@@ -168,15 +168,32 @@ export function ProductCard({
           </div>
 
           {!product.bulk && (
-            <select
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              className="h-9 rounded-md border bg-background px-2 text-sm font-medium tabular-nums"
-            >
-              <option value={1}>1</option>
-              <option value={3}>3</option>
-              <option value={6}>6</option>
-            </select>
+            <div className="flex items-center rounded-md border">
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="flex size-9 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <MinusIcon className="size-3.5" />
+              </button>
+              <input
+                type="number"
+                min={1}
+                value={quantity}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (!isNaN(v) && v >= 1) setQuantity(v);
+                }}
+                className="h-9 w-10 border-x bg-background text-center text-sm font-medium tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => q + 1)}
+                className="flex size-9 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <PlusIcon className="size-3.5" />
+              </button>
+            </div>
           )}
 
           <Button
@@ -202,38 +219,55 @@ export function ProductCard({
       </div>
 
       {/* Mobile bottom row */}
-      <div className="flex items-center justify-between mt-2 sm:hidden">
+      <div className="flex items-center justify-between mt-2 gap-2 sm:hidden">
         <div className="whitespace-nowrap">
           {priceDisplay}
         </div>
 
         <div className="flex items-center gap-2">
           {!product.bulk && (
-            <select
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              className="h-8 rounded-md border bg-background px-1.5 text-sm font-medium tabular-nums"
-            >
-              <option value={1}>1</option>
-              <option value={3}>3</option>
-              <option value={6}>6</option>
-            </select>
+            <div className="flex items-center rounded-md border">
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="flex size-10 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <MinusIcon className="size-4" />
+              </button>
+              <input
+                type="number"
+                min={1}
+                value={quantity}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (!isNaN(v) && v >= 1) setQuantity(v);
+                }}
+                className="h-10 w-10 border-x bg-background text-center text-sm font-medium tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => q + 1)}
+                className="flex size-10 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <PlusIcon className="size-4" />
+              </button>
+            </div>
           )}
 
           <Button
-            size="sm"
             variant={product.coming_soon ? "outline" : "default"}
             onClick={handleAdd}
             disabled={adding}
+            className="h-10 px-5 text-sm font-semibold"
           >
             {product.coming_soon ? (
               <>
-                <ClockIcon className="mr-1 size-3.5" />
+                <ClockIcon className="mr-1.5 size-4" />
                 {adding ? "..." : product.bulk ? "Pre-order" : `Pre-order (${quantity})`}
               </>
             ) : (
               <>
-                <ShoppingCartIcon className="mr-1 size-3.5" />
+                <ShoppingCartIcon className="mr-1.5 size-4" />
                 {adding ? "..." : product.bulk ? "Add" : `Add (${quantity})`}
               </>
             )}
