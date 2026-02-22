@@ -9,6 +9,8 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/auth-context";
+import { ADMIN_LAYOUT_ROLES } from "@/lib/roles";
+import type { UserRole } from "@/lib/api";
 
 export default function DashboardLayout({
   children,
@@ -24,8 +26,7 @@ export default function DashboardLayout({
       router.push("/");
       return;
     }
-    // Only admin, editor, and sales can access the dashboard
-    if (user && !["admin", "editor", "sales"].includes(user.role)) {
+    if (user && !ADMIN_LAYOUT_ROLES.includes(user.role as UserRole)) {
       const redirectTo = user.company_slug ? `/${user.company_slug}` : "/";
       router.push(redirectTo);
     }
@@ -33,7 +34,7 @@ export default function DashboardLayout({
 
   if (isLoading) return null;
   if (!isAuthenticated) return null;
-  if (user && !["admin", "editor", "sales"].includes(user.role)) return null;
+  if (user && !ADMIN_LAYOUT_ROLES.includes(user.role as UserRole)) return null;
 
   return (
     <SidebarProvider

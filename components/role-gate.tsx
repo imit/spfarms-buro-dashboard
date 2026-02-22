@@ -1,7 +1,8 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { useAuth, type UserRole } from "@/contexts/auth-context";
+import { useAuth } from "@/contexts/auth-context";
+import type { UserRole } from "@/lib/api";
 
 interface RoleGateProps {
   allowed: UserRole[];

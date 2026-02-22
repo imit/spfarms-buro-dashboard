@@ -19,13 +19,15 @@ import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Set
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
+import { canAccess, type Resource } from "@/lib/roles"
+import type { UserRole } from "@/lib/api"
 import Link from "next/link"
 
 interface NavItem {
   title: string
   url: string
   icon: React.ReactNode
-  roles?: string[]
+  resource?: Resource
 }
 
 const navOps: NavItem[] = [
@@ -33,24 +35,25 @@ const navOps: NavItem[] = [
     title: "Strains",
     url: "/admin/strains",
     icon: <ChartBarIcon />,
-    roles: ["admin", "editor"],
+    resource: "strains",
   },
   {
     title: "Grow",
     url: "/admin/grow",
     icon: <SproutIcon />,
-    roles: ["admin", "editor"],
+    resource: "grow",
   },
   {
     title: "Samples",
     url: "/admin/samples",
     icon: <FlaskConicalIcon />,
+    resource: "samples",
   },
   {
     title: "Projects",
     url: "/admin/projects",
     icon: <FolderIcon />,
-    roles: ["admin", "editor"],
+    resource: "projects",
   },
 ]
 
@@ -59,40 +62,43 @@ const navSales: NavItem[] = [
     title: "Companies",
     url: "/admin/companies",
     icon: <ListIcon />,
+    resource: "companies",
   },
   {
     title: "Users",
     url: "/admin/users",
     icon: <UsersIcon />,
-    roles: ["admin", "editor", "sales"],
+    resource: "users",
   },
   {
     title: "Orders",
     url: "/admin/orders",
     icon: <ClipboardListIcon />,
+    resource: "orders_list",
   },
   {
     title: "Fulfilment",
     url: "/admin/fulfilment",
     icon: <PackageCheckIcon />,
+    resource: "fulfilment",
   },
   {
     title: "Carts",
     url: "/admin/carts",
     icon: <ShoppingCartIcon />,
-    roles: ["admin", "editor"],
+    resource: "carts",
   },
   {
     title: "Products",
     url: "/admin/products",
     icon: <BoxIcon />,
-    roles: ["admin", "editor"],
+    resource: "products",
   },
   {
     title: "Notifications",
     url: "/admin/notifications",
     icon: <BellIcon />,
-    roles: ["admin", "editor"],
+    resource: "notifications",
   },
 ]
 
@@ -101,7 +107,7 @@ const navSecondary: NavItem[] = [
     title: "Settings",
     url: "/admin/settings",
     icon: <Settings2Icon />,
-    roles: ["admin"],
+    resource: "settings",
   },
   {
     title: "Get Help",
@@ -115,17 +121,18 @@ const navSecondary: NavItem[] = [
   },
 ]
 
-function filterByRole(items: NavItem[], role: string | undefined) {
-  return items.filter((item) => !item.roles || (role && item.roles.includes(role)))
+function filterByAccess(items: NavItem[], role: UserRole | undefined) {
+  return items.filter((item) => !item.resource || canAccess(item.resource, role))
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, logout } = useAuth()
-  const role = user?.role
+  const role = user?.role as UserRole | undefined
 
-  const filteredOps = filterByRole(navOps, role)
-  const filteredSales = filterByRole(navSales, role)
-  const filteredSecondary = filterByRole(navSecondary, role)
+  const filteredOps = filterByAccess(navOps, role)
+  const filteredSales = filterByAccess(navSales, role)
+  const filteredSecondary = filterByAccess(navSecondary, role)
+  const showQuickOnboard = canAccess("quick_onboard", role)
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -140,20 +147,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain label="Dashboard" items={[{ title: "Dashboard", url: "/admin", icon: <LayoutDashboardIcon /> }]} />
-        <NavMain label="Ops" items={filteredOps} />
-        <NavMain label="Sales" items={filteredSales} />
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <div className="px-2 pt-1">
-              <Button className="w-full" size="sm" asChild>
-                <Link href="/admin/onboard">
-                  <UserPlusIcon className="mr-2 h-4 w-4" />
-                  Quick Onboard
-                </Link>
-              </Button>
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {filteredOps.length > 0 && <NavMain label="Ops" items={filteredOps} />}
+        {filteredSales.length > 0 && <NavMain label="Sales" items={filteredSales} />}
+        {showQuickOnboard && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <div className="px-2 pt-1">
+                <Button className="w-full" size="sm" asChild>
+                  <Link href="/admin/onboard">
+                    <UserPlusIcon className="mr-2 h-4 w-4" />
+                    Quick Onboard
+                  </Link>
+                </Button>
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         <NavSecondary items={filteredSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

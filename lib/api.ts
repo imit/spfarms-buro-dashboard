@@ -16,13 +16,29 @@ export interface MagicLinkError extends Error {
   expired?: boolean;
 }
 
-export type UserRole = "admin" | "editor" | "account" | "sales";
+export type UserRole =
+  | "admin"
+  | "editor"
+  | "account"
+  | "sales"
+  | "observer_admin"
+  | "cultivator"
+  | "processing"
+  | "delivery"
+  | "default"
+  | "user";
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Admin",
-  sales: "Sales",
+  observer_admin: "Observer Admin",
   editor: "Editor",
+  cultivator: "Cultivator",
+  processing: "Processing",
+  delivery: "Delivery",
+  sales: "Sales",
   account: "Account",
+  default: "Default",
+  user: "User",
 };
 
 export interface UserCompanyMembership {

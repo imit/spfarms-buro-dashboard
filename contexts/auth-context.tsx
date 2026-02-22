@@ -4,10 +4,10 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { useRouter, usePathname } from "next/navigation";
 import posthog from "posthog-js";
 import { apiClient, type User } from "@/lib/api";
+import { ADMIN_LAYOUT_ROLES } from "@/lib/roles";
+import type { UserRole } from "@/lib/api";
 
 const PUBLIC_ROUTES = ["/", "/auth/invitation", "/auth/verify", "/wholesale"];
-
-export type UserRole = "admin" | "editor" | "account" | "sales";
 
 interface AuthContextType {
   user: User | null;
@@ -25,7 +25,13 @@ function getRedirectPath(user: User): string {
   if (user.role === "account" && user.company_slug) {
     return `/${user.company_slug}`;
   }
-  return "/admin";
+  if (user.role === "user") {
+    return "/";
+  }
+  if (ADMIN_LAYOUT_ROLES.includes(user.role as UserRole)) {
+    return "/admin";
+  }
+  return "/";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
