@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import posthog from "posthog-js";
 import { apiClient, type Product, type Strain } from "@/lib/api";
 import { Logo } from "@/components/shared/logo";
 import { PandaSymbol } from "@/components/shared/panda-symbol";
@@ -20,7 +21,8 @@ export default function BulkPage() {
           apiClient.getPublicStrains(),
           apiClient.getPublicSettings(),
         ]);
-        setProducts(productData.filter((p) => p.bulk));
+        const bulkProducts = productData.filter((p) => p.bulk);
+        setProducts(bulkProducts);
         setBulkPhone(settings.bulk_sales_phone || "");
 
         const map: Record<number, Strain> = {};
@@ -28,6 +30,11 @@ export default function BulkPage() {
           map[strain.id] = strain;
         }
         setStrainMap(map);
+
+        posthog.capture("bulk_page_viewed", {
+          product_count: bulkProducts.length,
+          product_names: bulkProducts.map((p) => p.name),
+        });
       } catch (err) {
         console.error("Failed to load bulk products:", err);
       } finally {
