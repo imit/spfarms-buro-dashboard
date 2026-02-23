@@ -201,7 +201,7 @@ export default function BulkPage() {
               <MapPinIcon className="size-5 text-muted-foreground shrink-0" />
               <div>
                 <p className="text-sm font-medium">Location</p>
-                <p className="text-sm text-muted-foreground">New York</p>
+                <p className="text-sm text-muted-foreground">Catskills, New York</p>
               </div>
             </div>
           </div>
