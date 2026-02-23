@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { apiClient, type Product, type Strain } from "@/lib/api";
 import { Logo } from "@/components/shared/logo";
 import { PandaSymbol } from "@/components/shared/panda-symbol";
-import { PhoneIcon, MailIcon, MapPinIcon } from "lucide-react";
+import { PhoneIcon, MailIcon, MapPinIcon, FileTextIcon } from "lucide-react";
 
 export default function BulkPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -81,6 +81,7 @@ export default function BulkPage() {
                   <th className="px-4 py-3 text-left font-medium hidden sm:table-cell">Strain</th>
                   <th className="px-4 py-3 text-center font-medium hidden sm:table-cell">THC</th>
                   <th className="px-4 py-3 text-right font-medium">Price</th>
+                  <th className="px-4 py-3 text-center font-medium hidden sm:table-cell">COA</th>
                 </tr>
               </thead>
               <tbody>
@@ -89,6 +90,7 @@ export default function BulkPage() {
                   const thc = (strain?.total_thc && parseFloat(strain.total_thc) > 0)
                     ? strain.total_thc
                     : (p.thc_content && parseFloat(p.thc_content) > 0 ? p.thc_content : null);
+                  const coaUrl = strain?.current_coa?.pdf_url;
 
                   return (
                     <tr key={p.id} className="border-b last:border-0">
@@ -108,6 +110,12 @@ export default function BulkPage() {
                             <div className="text-xs text-muted-foreground sm:hidden">
                               {p.strain_name || ""}
                               {thc ? ` · THC ${thc}%` : ""}
+                              {coaUrl && (
+                                <>
+                                  {" · "}
+                                  <a href={coaUrl} target="_blank" rel="noopener noreferrer" className="text-green-600 font-medium">COA</a>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -121,6 +129,21 @@ export default function BulkPage() {
                       <td className="px-4 py-3 text-right font-semibold text-amber-600">
                         TBD
                       </td>
+                      <td className="px-4 py-3 text-center hidden sm:table-cell">
+                        {coaUrl ? (
+                          <a
+                            href={coaUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-green-600 hover:text-green-700 font-medium text-xs"
+                          >
+                            <FileTextIcon className="size-3.5" />
+                            View
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -129,8 +152,24 @@ export default function BulkPage() {
           </div>
         )}
 
-        {/* Contact section */}
+        {/* Cultivation & Quality */}
         <div className="mt-10 rounded-lg border bg-card p-8">
+          <h2 className="text-lg font-semibold mb-2">Cultivation &amp; Quality</h2>
+          <div className="text-sm text-muted-foreground space-y-2 leading-relaxed">
+            <p>
+              All SPFarms flower is cultivated <strong className="text-foreground">indoors</strong> using{" "}
+              <strong className="text-foreground">living soil methodology</strong> with proprietary genetics developed in-house.
+              Our controlled environment produces consistent cannabinoid profiles and terpene expression across harvests.
+            </p>
+            <p>
+              Every harvest is <strong className="text-foreground">hand-trimmed</strong> and slow-cured to preserve trichome integrity and maximize shelf appeal.
+              All batches are third-party lab tested with full COA documentation available per strain.
+            </p>
+          </div>
+        </div>
+
+        {/* Contact section */}
+        <div className="mt-6 rounded-lg border bg-card p-8">
           <h2 className="text-lg font-semibold mb-1">Interested in bulk pricing?</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Reach out to us for current pricing, availability, and to place an order.
