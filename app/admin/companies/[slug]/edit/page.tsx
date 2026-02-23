@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { apiClient, type Company } from "@/lib/api";
 import { CompanyForm } from "@/components/company-form";
+import { ErrorAlert } from "@/components/ui/error-alert";
 
 export default function EditCompanyPage({
   params,
@@ -34,7 +35,7 @@ export default function EditCompanyPage({
         setCompany(data);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load company"
+          err instanceof Error ? err.message : "We couldn't load the company"
         );
       } finally {
         setIsLoading(false);
@@ -53,9 +54,7 @@ export default function EditCompanyPage({
   if (error || !company) {
     return (
       <div className="px-10">
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error || "Company not found"}
-        </div>
+        <ErrorAlert message={error || "Company not found"} />
       </div>
     );
   }

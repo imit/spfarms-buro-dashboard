@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { PlusIcon, TagIcon, QrCodeIcon, LayoutGridIcon } from "lucide-react";
 
 type Tab = "labels" | "qr-codes" | "sheet-layouts";
@@ -48,7 +49,7 @@ export default function ProjectsPage() {
         setQrCodes(qrData);
         setSheetLayouts(layoutsData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load data");
+        setError(err instanceof Error ? err.message : "We couldn't load data");
       } finally {
         setIsLoading(false);
       }
@@ -88,11 +89,7 @@ export default function ProjectsPage() {
         </Link>
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-lg border bg-muted/30 p-1">

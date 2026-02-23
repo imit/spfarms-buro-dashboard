@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient, type SheetLayout } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -91,7 +92,7 @@ export function SheetLayoutForm({
       setError(
         err instanceof Error
           ? err.message
-          : `Failed to ${isEdit ? "update" : "create"} sheet layout`
+          : `We couldn't ${isEdit ? "update" : "create"} the sheet layout`
       );
     } finally {
       setIsSubmitting(false);
@@ -100,11 +101,7 @@ export function SheetLayoutForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Form fields */}

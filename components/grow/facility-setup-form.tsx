@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { ErrorAlert } from "@/components/ui/error-alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -32,7 +33,7 @@ export function FacilitySetupForm({ facility, onSaved }: FacilitySetupFormProps)
       })
       onSaved(saved)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save facility")
+      setError(err instanceof Error ? err.message : "We couldn't save the facility")
     } finally {
       setIsSubmitting(false)
     }
@@ -70,7 +71,7 @@ export function FacilitySetupForm({ facility, onSaved }: FacilitySetupFormProps)
         />
       </div>
 
-      {error && <p className="bg-destructive/10 text-destructive rounded-md p-2 text-sm">{error}</p>}
+      {error && <ErrorAlert message={error} />}
 
       <Button type="submit" disabled={!name || isSubmitting}>
         {isSubmitting ? "Saving..." : facility ? "Update Facility" : "Create Facility"}

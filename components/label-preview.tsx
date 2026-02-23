@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { cn } from "@/lib/utils";
 
 interface LabelPreviewProps {
@@ -21,7 +22,7 @@ export function LabelPreview({ slug, className }: LabelPreviewProps) {
         setSvgPreview(svg);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load preview"
+          err instanceof Error ? err.message : "We couldn't load the preview"
         );
       } finally {
         setIsLoading(false);
@@ -52,7 +53,7 @@ export function LabelPreview({ slug, className }: LabelPreviewProps) {
           className
         )}
       >
-        <p className="text-sm text-destructive">{error}</p>
+        <ErrorAlert message={error} />
       </div>
     );
   }

@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { PlusIcon } from "lucide-react";
 
 type TypeFilter = "all" | "cannabis" | "promo" | "bulk";
@@ -62,7 +63,7 @@ export default function ProductsPage() {
         setProducts(data);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load products"
+          err instanceof Error ? err.message : "We couldn't load products"
         );
       } finally {
         setIsLoading(false);
@@ -101,11 +102,7 @@ export default function ProductsPage() {
         </Button>
       </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {!isLoading && products.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">

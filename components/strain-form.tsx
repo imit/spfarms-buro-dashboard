@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -136,7 +137,7 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
       setError(
         err instanceof Error
           ? err.message
-          : `Failed to ${isEdit ? "update" : "create"} strain`
+          : `We couldn't ${isEdit ? "update" : "create"} the strain`
       );
     } finally {
       setIsSubmitting(false);
@@ -145,11 +146,7 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {/* Basic Info */}
       <section className="space-y-4">

@@ -20,6 +20,7 @@ import {
   TruckIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,7 +118,7 @@ export default function FulfilmentPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Failed to download invoice");
+      showError("download the invoice");
     }
   }
 
@@ -201,7 +202,7 @@ export default function FulfilmentPage() {
       setConfirmOrder(null);
       toast.success(`${order.order_number} marked as fulfilled`);
     } catch {
-      toast.error("Failed to mark as processing done");
+      showError("update the processing status");
     }
   }
 

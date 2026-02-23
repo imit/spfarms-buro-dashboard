@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { ErrorAlert } from "@/components/ui/error-alert"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { apiClient } from "@/lib/api"
@@ -42,7 +43,7 @@ export function TagImportDialog({ open, onOpenChange, onImported }: TagImportDia
         }, 1500)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to import tags")
+      setError(err instanceof Error ? err.message : "We couldn't import the tags")
     } finally {
       setIsSubmitting(false)
     }
@@ -79,7 +80,7 @@ export function TagImportDialog({ open, onOpenChange, onImported }: TagImportDia
             </div>
           )}
 
-          {error && <p className="bg-destructive/10 text-destructive rounded-md p-2 text-sm">{error}</p>}
+          {error && <ErrorAlert message={error} />}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

@@ -136,7 +136,7 @@ export default function DashboardPage() {
       <div className="space-y-6 px-10">
         <h2 className="text-2xl font-semibold">Dashboard</h2>
         <p className="text-sm text-muted-foreground">
-          Failed to load dashboard data.
+          We couldn&apos;t load the dashboard. Please try again or contact info@spfarmsny.com for help.
         </p>
       </div>
     );

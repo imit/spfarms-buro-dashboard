@@ -11,6 +11,7 @@ import { LabelForm } from "@/components/label-form";
 import { LabelOverlayPanel } from "@/components/label-overlay-panel";
 import { MetrcLabelSetPanel } from "@/components/metrc-label-set-panel";
 import { ArrowLeftIcon, RefreshCwIcon } from "lucide-react";
+import { ErrorAlert } from "@/components/ui/error-alert";
 
 export default function EditLabelPage({
   params,
@@ -37,7 +38,7 @@ export default function EditLabelPage({
       setLabel(data);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to load label"
+        err instanceof Error ? err.message : "We couldn't load the label"
       );
     } finally {
       setIsLoading(false);
@@ -72,8 +73,8 @@ export default function EditLabelPage({
 
   if (error) {
     return (
-      <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm mx-10">
-        {error}
+      <div className="mx-10">
+        <ErrorAlert message={error} />
       </div>
     );
   }

@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { apiClient, type Strain, CATEGORY_LABELS } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { PlusIcon } from "lucide-react";
 import { StrainAvatar } from "@/components/grow/strain-avatar";
 
@@ -31,7 +32,7 @@ export default function StrainsPage() {
         const data = await apiClient.getStrains();
         setStrains(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load strains");
+        setError(err instanceof Error ? err.message : "We couldn't load strains");
       } finally {
         setIsLoading(false);
       }
@@ -59,11 +60,7 @@ export default function StrainsPage() {
         </Button>
       </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { ErrorAlert } from "@/components/ui/error-alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -70,7 +71,7 @@ export function BatchCreateDialog({ open, onOpenChange, onCreated }: BatchCreate
       onCreated()
       onOpenChange(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create batch")
+      setError(err instanceof Error ? err.message : "We couldn't create the batch")
     } finally {
       setIsSubmitting(false)
     }
@@ -137,7 +138,7 @@ export function BatchCreateDialog({ open, onOpenChange, onCreated }: BatchCreate
             />
           </div>
 
-          {error && <p className="bg-destructive/10 text-destructive rounded-md p-2 text-sm">{error}</p>}
+          {error && <ErrorAlert message={error} />}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { onOpenChange(false); reset() }}>Cancel</Button>

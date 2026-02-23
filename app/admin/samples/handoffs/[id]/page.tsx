@@ -13,6 +13,7 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { ArrowLeftIcon, CheckCircleIcon, Trash2Icon } from "lucide-react";
 
 export default function HandoffDetailPage({
@@ -47,7 +48,7 @@ export default function HandoffDetailPage({
       .then(setHandoff)
       .catch((err) =>
         setError(
-          err instanceof Error ? err.message : "Failed to load handoff"
+          err instanceof Error ? err.message : "We couldn't load handoff"
         )
       )
       .finally(() => setIsLoading(false));
@@ -61,7 +62,7 @@ export default function HandoffDetailPage({
       setHandoff(updated);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to confirm drop"
+        err instanceof Error ? err.message : "We couldn't confirm drop"
       );
     } finally {
       setIsConfirming(false);
@@ -76,7 +77,7 @@ export default function HandoffDetailPage({
       await apiClient.deleteSampleHandoff(Number(id));
       router.push("/admin/samples");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete");
+      setError(err instanceof Error ? err.message : "We couldn't delete handoff");
       setIsDeleting(false);
     }
   }
@@ -90,9 +91,7 @@ export default function HandoffDetailPage({
   if (error || !handoff) {
     return (
       <div className="px-10">
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error || "Handoff not found"}
-        </div>
+        <ErrorAlert message={error || "Handoff not found"} />
       </div>
     );
   }
@@ -146,11 +145,7 @@ export default function HandoffDetailPage({
         </div>
       </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {/* Handoff Info */}
       <div className="rounded-lg border bg-card p-5 shadow-xs ring-1 ring-foreground/10">

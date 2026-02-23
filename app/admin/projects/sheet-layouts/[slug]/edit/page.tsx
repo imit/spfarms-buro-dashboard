@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { apiClient, type SheetLayout } from "@/lib/api";
 import { SheetLayoutForm } from "@/components/sheet-layout-form";
+import { ErrorAlert } from "@/components/ui/error-alert";
 
 export default function EditSheetLayoutPage({
   params,
@@ -34,7 +35,7 @@ export default function EditSheetLayoutPage({
         setLayout(data);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load sheet layout"
+          err instanceof Error ? err.message : "We couldn't load the sheet layout"
         );
       } finally {
         setIsLoading(false);
@@ -52,8 +53,8 @@ export default function EditSheetLayoutPage({
 
   if (error) {
     return (
-      <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm mx-10">
-        {error}
+      <div className="mx-10">
+        <ErrorAlert message={error} />
       </div>
     );
   }

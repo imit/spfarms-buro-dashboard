@@ -21,6 +21,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ArrowLeftIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { SheetLayoutGridPreview } from "@/components/sheet-layout-grid-preview";
 
 function DetailRow({
@@ -67,7 +68,7 @@ export default function SheetLayoutDetailPage({
         setLayout(data);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load sheet layout"
+          err instanceof Error ? err.message : "We couldn't load the sheet layout"
         );
       } finally {
         setIsLoading(false);
@@ -85,7 +86,7 @@ export default function SheetLayoutDetailPage({
       router.push("/admin/projects");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to delete sheet layout"
+        err instanceof Error ? err.message : "We couldn't delete the sheet layout"
       );
       setIsDeleting(false);
     }
@@ -100,9 +101,7 @@ export default function SheetLayoutDetailPage({
   if (error) {
     return (
       <div className="space-y-4 px-10">
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
+        <ErrorAlert message={error} />
         <Button variant="outline" asChild>
           <Link href="/admin/projects">
             <ArrowLeftIcon className="mr-2 size-4" />

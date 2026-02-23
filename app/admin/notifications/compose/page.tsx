@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 const MANUAL_TYPES = Object.entries(NOTIFICATION_TYPE_LABELS).filter(
   ([key]) => key !== "order_status"
@@ -77,7 +78,7 @@ export default function ComposeNotificationPage() {
       toast.success("Notification sent!");
       router.push("/admin/notifications");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send notification");
+      showError("send the notification", err);
     } finally {
       setSending(false);
     }

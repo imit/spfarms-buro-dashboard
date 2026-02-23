@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { ArrowLeftIcon, PencilIcon, Trash2Icon, PackageIcon, AlertTriangleIcon } from "lucide-react";
 
 function DetailRow({
@@ -89,7 +90,7 @@ export default function ProductDetailPage({
         setProduct(data);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load product"
+          err instanceof Error ? err.message : "We couldn't load this product"
         );
       } finally {
         setIsLoading(false);
@@ -107,7 +108,7 @@ export default function ProductDetailPage({
       router.push("/admin/products");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to delete product"
+        err instanceof Error ? err.message : "We couldn't delete this product"
       );
       setIsDeleting(false);
     }
@@ -122,9 +123,7 @@ export default function ProductDetailPage({
   if (error) {
     return (
       <div className="space-y-4 px-10">
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
+        <ErrorAlert message={error} />
         <Button variant="outline" asChild>
           <Link href="/admin/products">
             <ArrowLeftIcon className="mr-2 size-4" />

@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 import { SendIcon, Trash2Icon, MessageSquareIcon } from "lucide-react";
 
 function getInitials(name: string | null, email: string): string {
@@ -51,7 +52,7 @@ export function PostComments({ postId }: { postId: number }) {
         const data = await apiClient.getPostComments(postId);
         setComments(data);
       } catch {
-        toast.error("Failed to load comments");
+        showError("load comments");
       } finally {
         setIsLoading(false);
       }
@@ -70,7 +71,7 @@ export function PostComments({ postId }: { postId: number }) {
       setComments((prev) => [comment, ...prev]);
       setNewComment("");
     } catch {
-      toast.error("Failed to post comment");
+      showError("post your comment");
     } finally {
       setIsSubmitting(false);
     }
@@ -82,7 +83,7 @@ export function PostComments({ postId }: { postId: number }) {
       setComments((prev) => prev.filter((c) => c.id !== commentId));
       toast.success("Comment deleted");
     } catch {
-      toast.error("Failed to delete comment");
+      showError("delete the comment");
     }
   }
 

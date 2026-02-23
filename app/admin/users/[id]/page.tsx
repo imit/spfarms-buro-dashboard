@@ -20,8 +20,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { ArrowLeftIcon, KeyIcon, Loader2Icon, PencilIcon, SendIcon, Trash2Icon, XCircleIcon } from "lucide-react";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 function DetailRow({
   label,
@@ -74,7 +76,7 @@ export default function UserDetailPage({
         setUser(data);
         setTokens(tokenData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load user");
+        setError(err instanceof Error ? err.message : "We couldn't load this user");
       } finally {
         setIsLoading(false);
       }
@@ -90,7 +92,7 @@ export default function UserDetailPage({
       await apiClient.deleteUser(user.id);
       router.push("/admin/users");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete user");
+      setError(err instanceof Error ? err.message : "We couldn't delete this user");
       setIsDeleting(false);
     }
   }
@@ -103,7 +105,7 @@ export default function UserDetailPage({
       setUser(updated);
       toast.success(`Welcome email sent to ${user.email}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send email");
+      showError("send the email", err);
     } finally {
       setIsSendingEmail(false);
     }
@@ -119,7 +121,7 @@ export default function UserDetailPage({
       ));
       toast.success("Token revoked");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to revoke token");
+      showError("revoke the token", err);
     } finally {
       setRevokingTokenId(null);
     }
@@ -135,7 +137,7 @@ export default function UserDetailPage({
       ));
       toast.success("All tokens revoked");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to revoke tokens");
+      showError("revoke the tokens", err);
     } finally {
       setIsRevokingAll(false);
     }
@@ -146,8 +148,8 @@ export default function UserDetailPage({
     return <p className="text-muted-foreground px-10">Loading...</p>;
   if (error)
     return (
-      <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm mx-10">
-        {error}
+      <div className="mx-10">
+        <ErrorAlert message={error} />
       </div>
     );
   if (!user) return null;

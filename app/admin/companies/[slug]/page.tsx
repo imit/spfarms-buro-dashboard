@@ -55,7 +55,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { ErrorAlert } from "@/components/ui/error-alert";
+import { showError } from "@/lib/errors";
 import {
   ArrowLeftIcon,
   CheckCircle2Icon,
@@ -177,7 +178,7 @@ export default function CompanyDetailPage({
         }
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load company"
+          err instanceof Error ? err.message : "We couldn't load this company"
         );
       } finally {
         setIsLoading(false);
@@ -195,7 +196,7 @@ export default function CompanyDetailPage({
       router.push("/admin/companies");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to delete company"
+        err instanceof Error ? err.message : "We couldn't delete this company"
       );
       setIsDeleting(false);
     }
@@ -208,7 +209,7 @@ export default function CompanyDetailPage({
       setCompany(updated);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to update status"
+        err instanceof Error ? err.message : "We couldn't update status"
       );
     }
   }
@@ -254,7 +255,7 @@ export default function CompanyDetailPage({
       setMemberLookup(null);
       setMemberDialogOpen(false);
     } catch (err) {
-      setMemberError(err instanceof Error ? err.message : "Failed to add member");
+      setMemberError(err instanceof Error ? err.message : "We couldn't add member");
     } finally {
       setMemberSubmitting(false);
     }
@@ -268,7 +269,7 @@ export default function CompanyDetailPage({
       const updated = await apiClient.getCompany(slug);
       setCompany(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove member");
+      setError(err instanceof Error ? err.message : "We couldn't remove member");
     } finally {
       setRemovingMemberId(null);
     }
@@ -284,7 +285,7 @@ export default function CompanyDetailPage({
       setInviteModalMember(null);
       setInviteCustomMessage("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send invite");
+      setError(err instanceof Error ? err.message : "We couldn't send the invite");
     } finally {
       setSendingInviteId(null);
     }
@@ -296,7 +297,7 @@ export default function CompanyDetailPage({
       const updated = await apiClient.updateCompany(company.slug, { active: true });
       setCompany(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to approve company");
+      setError(err instanceof Error ? err.message : "We couldn't approve this company");
     }
   }
 
@@ -306,7 +307,7 @@ export default function CompanyDetailPage({
       const updated = await apiClient.addCartDiscount(company.id, discountId);
       setCart(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add discount");
+      setError(err instanceof Error ? err.message : "We couldn't add discount");
     }
   }
 
@@ -316,7 +317,7 @@ export default function CompanyDetailPage({
       const updated = await apiClient.removeCartDiscount(company.id, discountId);
       setCart(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove discount");
+      setError(err instanceof Error ? err.message : "We couldn't remove discount");
     }
   }
 
@@ -328,7 +329,7 @@ export default function CompanyDetailPage({
       setCartReminderOpen(false);
       setCartReminderMessage("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send cart reminder");
+      setError(err instanceof Error ? err.message : "We couldn't send the cart reminder");
     } finally {
       setSendingCartReminder(false);
     }
@@ -346,7 +347,7 @@ export default function CompanyDetailPage({
       setFollowupOpen(false);
       setFollowupForm({ notification_type: "feedback_request", subject: "", body: "" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send follow-up");
+      setError(err instanceof Error ? err.message : "We couldn't send the follow-up");
     } finally {
       setSendingFollowup(false);
     }
@@ -359,7 +360,7 @@ export default function CompanyDetailPage({
       const updated = await apiClient.fetchCompanyLogo(company.slug);
       setCompany(updated);
     } catch {
-      toast.error("Couldn't find a logo on this website");
+      showError("find a logo on this website");
     } finally {
       setFetchingLogo(false);
     }
@@ -374,9 +375,7 @@ export default function CompanyDetailPage({
   if (error) {
     return (
       <div className="space-y-4">
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
+        <ErrorAlert message={error} />
         <Button variant="outline" asChild>
           <Link href="/admin/companies">
             <ArrowLeftIcon className="mr-2 size-4" />
@@ -653,9 +652,7 @@ export default function CompanyDetailPage({
                     onChange={(e) => setMemberForm((f) => ({ ...f, company_title: e.target.value }))}
                   />
                 </div>
-                {memberError && (
-                  <p className="text-sm text-destructive">{memberError}</p>
-                )}
+                {memberError && <ErrorAlert message={memberError} />}
                 <DialogFooter>
                   <Button type="submit" disabled={memberSubmitting || !!memberLookup?.already_member}>
                     {memberSubmitting ? "Adding..." : memberLookup && !memberLookup.already_member ? "Add Existing User" : "Add Member"}

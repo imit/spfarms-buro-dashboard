@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 interface LocationForm {
   id?: number;
@@ -128,9 +129,7 @@ export default function SettingsPage({
       setCompany(updated);
       toast.success("Company updated");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to update company"
-      );
+      showError("update the company info", err);
     } finally {
       setSavingCompany(false);
     }
@@ -145,9 +144,7 @@ export default function SettingsPage({
       setCompany(updated);
       toast.success("Logo updated");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to upload logo"
-      );
+      showError("upload the logo", err);
     } finally {
       setUploadingLogo(false);
     }
@@ -163,9 +160,7 @@ export default function SettingsPage({
       updateUser(updated);
       toast.success("Profile updated");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to update profile"
-      );
+      showError("update your profile", err);
     } finally {
       setSavingProfile(false);
     }
@@ -216,9 +211,7 @@ export default function SettingsPage({
       }
       toast.success(isNew ? "Address added" : "Address updated");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to save address"
-      );
+      showError("save the address", err);
     } finally {
       setSavingLocation(false);
     }
@@ -263,9 +256,7 @@ export default function SettingsPage({
       setInviteLookup(null);
       toast.success(inviteLookup ? `${inviteEmail} added to this company` : `Invitation sent to ${inviteEmail}`);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to invite member"
-      );
+      showError("invite this member", err);
     } finally {
       setSendingInvite(false);
     }

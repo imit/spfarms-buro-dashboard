@@ -68,6 +68,7 @@ import {
   CircleDashedIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 const POST_TYPE_COLORS: Record<PostType, string> = {
   task: "bg-blue-100 text-blue-700",
@@ -204,7 +205,7 @@ export default function PostDetailPage({
       setEditOpen(false);
       toast.success("Post updated");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update");
+      showError("save the changes", err);
     } finally {
       setIsUpdating(false);
     }
@@ -218,7 +219,7 @@ export default function PostDetailPage({
       setPost(updated);
       toast.success(`Status changed to ${POST_STATUS_LABELS[status]}`);
     } catch {
-      toast.error("Failed to update status");
+      showError("update the status");
     }
   }
 
@@ -228,7 +229,7 @@ export default function PostDetailPage({
       toast.success("Post deleted");
       router.push("/admin/posts");
     } catch {
-      toast.error("Failed to delete post");
+      showError("delete the post");
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { ErrorAlert } from "@/components/ui/error-alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -64,7 +65,7 @@ export function PlantPlacementForm({ trayId, onPlaced, onCancel }: PlantPlacemen
       setError("")
       onPlaced()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to place plant")
+      setError(err instanceof Error ? err.message : "We couldn't place the plant")
     } finally {
       setIsSubmitting(false)
     }
@@ -133,7 +134,7 @@ export function PlantPlacementForm({ trayId, onPlaced, onCancel }: PlantPlacemen
         </div>
       </div>
 
-      {error && <p className="bg-destructive/10 text-destructive rounded-md p-2 text-xs">{error}</p>}
+      {error && <ErrorAlert message={error} />}
 
       <div className="flex gap-2">
         <Button size="sm" onClick={handleSubmit} disabled={!strainId || isSubmitting} className="flex-1">

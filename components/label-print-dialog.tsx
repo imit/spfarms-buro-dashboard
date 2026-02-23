@@ -8,6 +8,7 @@ import {
   type MetrcLabelSetSummary,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
@@ -64,7 +65,7 @@ export function LabelPrintDialog({
           setSelectedLayoutSlug(data[0].slug);
         }
       } catch {
-        setError("Failed to load sheet layouts");
+        setError("We couldn't load the sheet layouts");
       }
     }
 
@@ -116,7 +117,7 @@ export function LabelPrintDialog({
       onOpenChange(false);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to generate print PDF"
+        err instanceof Error ? err.message : "We couldn't generate the print PDF"
       );
     } finally {
       setIsPrinting(false);
@@ -136,11 +137,7 @@ export function LabelPrintDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {error && (
-          <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-            {error}
-          </div>
-        )}
+        {error && <ErrorAlert message={error} />}
 
         <FieldGroup>
           <Field>

@@ -19,6 +19,7 @@ import { TagImportDialog } from "@/components/grow/tag-import-dialog"
 import { ArrowLeftIcon, PlusIcon, TagIcon, BanIcon } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
+import { showError } from "@/lib/errors"
 
 const STATUS_COLORS: Record<MetrcTagStatus, string> = {
   available: "bg-green-100 text-green-800",
@@ -67,7 +68,7 @@ export default function MetrcTagsPage() {
       toast.success("Tag voided")
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to void tag")
+      showError("void the tag", err)
     }
   }
 

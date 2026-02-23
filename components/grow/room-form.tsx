@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { ErrorAlert } from "@/components/ui/error-alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -196,7 +197,7 @@ export function RoomForm({ room }: RoomFormProps) {
         router.push(`/admin/grow/rooms/${created.id}`)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save room")
+      setError(err instanceof Error ? err.message : "We couldn't save the room")
     } finally {
       setIsSubmitting(false)
     }
@@ -367,7 +368,7 @@ export function RoomForm({ room }: RoomFormProps) {
         {totalCapacity} plant capacity
       </div>
 
-      {error && <p className="bg-destructive/10 text-destructive rounded-md p-2 text-sm">{error}</p>}
+      {error && <ErrorAlert message={error} />}
 
       <div className="flex gap-2">
         <Button type="submit" disabled={!name || isSubmitting}>

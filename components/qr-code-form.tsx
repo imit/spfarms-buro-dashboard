@@ -10,6 +10,7 @@ import {
   QR_DATA_TYPE_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -98,7 +99,7 @@ export function QrCodeForm({ qrCode, mode = "create" }: QrCodeFormProps) {
       setError(
         err instanceof Error
           ? err.message
-          : `Failed to ${isEdit ? "update" : "create"} QR code`
+          : `We couldn't ${isEdit ? "update" : "create"} the QR code`
       );
     } finally {
       setIsSubmitting(false);
@@ -107,11 +108,7 @@ export function QrCodeForm({ qrCode, mode = "create" }: QrCodeFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       <section className="space-y-4">
         <h3 className="text-lg font-medium">QR Code Details</h3>

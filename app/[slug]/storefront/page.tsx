@@ -21,6 +21,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 export default function StorefrontPage({
   params,
@@ -106,7 +107,7 @@ export default function StorefrontPage({
       });
       toast.success("Added to cart");
     } catch {
-      toast.error("Failed to add to cart");
+      showError("add this item to your cart");
     }
   };
 
@@ -131,7 +132,7 @@ export default function StorefrontPage({
       setCartPreservingOrder(updated);
       window.dispatchEvent(new CustomEvent("cart:updated"));
     } catch {
-      toast.error("Failed to update quantity");
+      showError("update the quantity");
     }
   };
 
@@ -142,7 +143,7 @@ export default function StorefrontPage({
       setCartPreservingOrder(updated);
       window.dispatchEvent(new CustomEvent("cart:updated"));
     } catch {
-      toast.error("Failed to remove item");
+      showError("remove that item");
     }
   };
 

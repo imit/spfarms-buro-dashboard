@@ -36,6 +36,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
+import { showError } from "@/lib/errors"
 
 export default function PlantDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -84,7 +85,7 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
       setShowPhaseDialog(false)
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed")
+      showError("complete the action", err)
     }
   }
 
@@ -97,7 +98,7 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
       setNoteText("")
       load()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed")
+      showError("complete the action", err)
     }
   }
 

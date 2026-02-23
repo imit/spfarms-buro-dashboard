@@ -30,6 +30,7 @@ import {
   FileTextIcon,
   Trash2Icon,
 } from "lucide-react";
+import { ErrorAlert } from "@/components/ui/error-alert";
 
 function DetailRow({
   label,
@@ -80,7 +81,7 @@ export default function QrCodeDetailPage({
         setSvgContent(svg);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load QR code"
+          err instanceof Error ? err.message : "We couldn't load the QR code"
         );
       } finally {
         setIsLoading(false);
@@ -98,7 +99,7 @@ export default function QrCodeDetailPage({
       router.push("/admin/projects");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to delete QR code"
+        err instanceof Error ? err.message : "We couldn't delete the QR code"
       );
       setIsDeleting(false);
     }
@@ -131,7 +132,7 @@ export default function QrCodeDetailPage({
       URL.revokeObjectURL(url);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to download PDF"
+        err instanceof Error ? err.message : "We couldn't download the PDF"
       );
     }
   }
@@ -145,9 +146,7 @@ export default function QrCodeDetailPage({
   if (error) {
     return (
       <div className="space-y-4 px-10">
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
+        <ErrorAlert message={error} />
         <Button variant="outline" asChild>
           <Link href="/admin/projects">
             <ArrowLeftIcon className="mr-2 size-4" />

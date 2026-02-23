@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { ArrowLeftIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -59,7 +60,7 @@ export default function EditUserPage({
         setPhoneNumber(data.phone_number || "");
         setRole(data.role);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load user");
+        setError(err instanceof Error ? err.message : "We couldn't load this user");
       } finally {
         setIsLoading(false);
       }
@@ -83,7 +84,7 @@ export default function EditUserPage({
       toast.success("User updated");
       router.push(`/admin/users/${userId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update user");
+      setError(err instanceof Error ? err.message : "We couldn't update this user");
     } finally {
       setIsSaving(false);
     }
@@ -105,8 +106,8 @@ export default function EditUserPage({
       </div>
 
       {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm max-w-md">
-          {error}
+        <div className="max-w-md">
+          <ErrorAlert message={error} />
         </div>
       )}
 

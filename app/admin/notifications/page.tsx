@@ -27,8 +27,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { PlusIcon, TrashIcon, CheckIcon } from "lucide-react";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 const TYPE_COLORS: Record<NotificationType, string> = {
   order_status: "bg-blue-100 text-blue-800",
@@ -61,7 +63,7 @@ export default function AdminNotificationsPage() {
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       toast.success("Notification deleted");
     } catch {
-      toast.error("Failed to delete notification");
+      showError("delete the notification");
     } finally {
       setDeletingId(null);
     }
@@ -75,7 +77,7 @@ export default function AdminNotificationsPage() {
         const data = await apiClient.getNotifications();
         setNotifications(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load notifications");
+        setError(err instanceof Error ? err.message : "We couldn't load notifications");
       } finally {
         setIsLoading(false);
       }
@@ -103,11 +105,7 @@ export default function AdminNotificationsPage() {
         </Button>
       </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>

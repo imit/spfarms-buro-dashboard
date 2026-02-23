@@ -43,6 +43,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import {
   ArrowLeftIcon,
   FileTextIcon,
@@ -121,7 +122,7 @@ export default function StrainDetailPage({
         setCoas(coasData);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load strain"
+          err instanceof Error ? err.message : "We couldn't load this strain"
         );
       } finally {
         setIsLoading(false);
@@ -139,7 +140,7 @@ export default function StrainDetailPage({
       router.push("/admin/strains");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to delete strain"
+        err instanceof Error ? err.message : "We couldn't delete this strain"
       );
       setIsDeleting(false);
     }
@@ -154,7 +155,7 @@ export default function StrainDetailPage({
       const updated = await apiClient.updateStrain(strain.id, formData);
       setStrain(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status");
+      setError(err instanceof Error ? err.message : "We couldn't update status");
     } finally {
       setTogglingStatus(false);
     }
@@ -228,7 +229,7 @@ export default function StrainDetailPage({
       setPdfFile(null);
       if (pdfInputRef.current) pdfInputRef.current.value = "";
     } catch (err) {
-      setCoaError(err instanceof Error ? err.message : "Failed to upload COA");
+      setCoaError(err instanceof Error ? err.message : "We couldn't upload the COA");
     } finally {
       setCoaSubmitting(false);
     }
@@ -241,7 +242,7 @@ export default function StrainDetailPage({
       const updatedStrain = await apiClient.getStrain(strainId);
       setStrain(updatedStrain);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete COA");
+      setError(err instanceof Error ? err.message : "We couldn't delete the COA");
     }
   }
 
@@ -254,9 +255,7 @@ export default function StrainDetailPage({
   if (error && !strain) {
     return (
       <div className="space-y-4 px-10">
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
+        <ErrorAlert message={error} />
         <Button variant="outline" asChild>
           <Link href="/admin/strains">
             <ArrowLeftIcon className="mr-2 size-4" />
@@ -271,11 +270,7 @@ export default function StrainDetailPage({
 
   return (
     <div className="space-y-6 px-10">
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -434,11 +429,7 @@ export default function StrainDetailPage({
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCoaSubmit} className="space-y-4">
-                {coaError && (
-                  <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-                    {coaError}
-                  </div>
-                )}
+                {coaError && <ErrorAlert message={coaError} />}
 
                 {/* Drag & Drop PDF Zone */}
                 {pdfFile ? (

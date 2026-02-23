@@ -58,6 +58,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
+import { showError } from "@/lib/errors"
 
 export default function RoomDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -161,7 +162,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
       toast.success("Plant moved")
       await refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to move plant")
+      showError("move the plant", err)
     }
   }
 
@@ -181,7 +182,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
       setPhaseDialogPlant(null)
       await refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to change phase")
+      showError("change the phase", err)
     }
   }
 
@@ -191,7 +192,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
       toast.success("Plant removed")
       await refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to remove plant")
+      showError("remove the plant", err)
     }
   }
 
@@ -203,7 +204,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
       setNoteDialogPlant(null)
       setNoteText("")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to add note")
+      showError("add the note", err)
     }
   }
 

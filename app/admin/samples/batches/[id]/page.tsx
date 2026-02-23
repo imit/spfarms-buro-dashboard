@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SampleLabelPrintDialog } from "@/components/sample-label-print-dialog";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { ArrowLeftIcon, PrinterIcon, Trash2Icon } from "lucide-react";
 
 export default function BatchDetailPage({
@@ -46,7 +47,7 @@ export default function BatchDetailPage({
       .getSampleBatch(Number(id))
       .then(setBatch)
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load batch")
+        setError(err instanceof Error ? err.message : "We couldn't load batch")
       )
       .finally(() => setIsLoading(false));
   }, [isAuthenticated, id]);
@@ -58,7 +59,7 @@ export default function BatchDetailPage({
       await apiClient.deleteSampleBatch(Number(id));
       router.push("/admin/samples");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete");
+      setError(err instanceof Error ? err.message : "We couldn't delete batch");
       setIsDeleting(false);
     }
   }
@@ -72,9 +73,7 @@ export default function BatchDetailPage({
   if (error || !batch) {
     return (
       <div className="px-10">
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error || "Batch not found"}
-        </div>
+        <ErrorAlert message={error || "Batch not found"} />
       </div>
     );
   }

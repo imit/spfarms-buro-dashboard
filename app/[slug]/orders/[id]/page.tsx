@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OrderTimeline } from "@/components/order-timeline";
-import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 function formatPrice(amount: string | number | null) {
   if (amount === null || amount === undefined) return "$0.00";
@@ -65,7 +65,7 @@ export default function OrderDetailPage({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Failed to download invoice");
+      showError("download the invoice");
     }
   };
 

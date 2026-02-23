@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SampleLabelPrintDialog } from "@/components/sample-label-print-dialog";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
 
@@ -82,7 +83,7 @@ export default function PrepareSamplesPage() {
       setPrintOpen(true);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to create sample batch"
+        err instanceof Error ? err.message : "We couldn't create sample batch"
       );
     } finally {
       setIsSubmitting(false);
@@ -108,11 +109,7 @@ export default function PrepareSamplesPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-            {error}
-          </div>
-        )}
+        {error && <ErrorAlert message={error} />}
 
         <FieldGroup>
           <Field>

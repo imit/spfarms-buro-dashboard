@@ -6,6 +6,7 @@ import { apiClient, type Product, type Strain } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { ProductCard } from "@/components/storefront/product-card";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 export default function BulkStorefrontPage({
   params,
@@ -61,7 +62,7 @@ export default function BulkStorefrontPage({
       window.dispatchEvent(new CustomEvent("cart:updated"));
       toast.success("Added to cart");
     } catch {
-      toast.error("Failed to add to cart");
+      showError("add this item to your cart");
     }
   }, [companyId]);
 

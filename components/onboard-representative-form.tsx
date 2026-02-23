@@ -9,6 +9,7 @@ import {
   useGooglePlacesAutocomplete,
 } from "@/hooks/use-google-places-autocomplete";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -191,7 +192,7 @@ export function OnboardRepresentativeForm() {
       setDispensaryMode("existing");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to onboard representative"
+        err instanceof Error ? err.message : "We couldn't onboard the representative"
       );
     } finally {
       setIsSubmitting(false);
@@ -232,11 +233,7 @@ export function OnboardRepresentativeForm() {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-3xl space-y-10">
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-base">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {/* Section 1: Dispensary */}
       <section className="space-y-4">

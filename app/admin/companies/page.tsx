@@ -16,6 +16,7 @@ import {
   REGION_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { PlusIcon, AlertTriangleIcon, MessageSquareIcon } from "lucide-react";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
@@ -68,7 +69,7 @@ export default function CompaniesPage() {
       .getCompanies(showDeleted ? { include_deleted: true } : undefined)
       .then(setCompanies)
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load companies")
+        setError(err instanceof Error ? err.message : "We couldn't load companies")
       )
       .finally(() => setIsLoading(false));
   }, [isAuthenticated, showDeleted]);
@@ -180,11 +181,7 @@ export default function CompaniesPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>

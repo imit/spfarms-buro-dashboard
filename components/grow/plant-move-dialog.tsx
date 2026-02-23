@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { ErrorAlert } from "@/components/ui/error-alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { apiClient, type Room, type FloorView, type RackView, type TrayView } from "@/lib/api"
@@ -92,7 +93,7 @@ export function PlantMoveDialog({
       onMoved()
       onOpenChange(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to move plant")
+      setError(err instanceof Error ? err.message : "We couldn't move the plant")
     } finally {
       setIsSubmitting(false)
     }
@@ -177,7 +178,7 @@ export function PlantMoveDialog({
             <p className="text-muted-foreground text-sm">Loading racks...</p>
           )}
 
-          {error && <p className="bg-destructive/10 text-destructive rounded-md p-2 text-sm">{error}</p>}
+          {error && <ErrorAlert message={error} />}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

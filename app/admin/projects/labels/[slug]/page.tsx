@@ -33,6 +33,7 @@ import {
   DownloadIcon,
   PrinterIcon,
 } from "lucide-react";
+import { ErrorAlert } from "@/components/ui/error-alert";
 
 function DetailRow({
   label,
@@ -90,7 +91,7 @@ export default function LabelDetailPage({
       setLabel(data);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to load label"
+        err instanceof Error ? err.message : "We couldn't load the label"
       );
     } finally {
       setIsLoading(false);
@@ -124,7 +125,7 @@ export default function LabelDetailPage({
       router.push("/admin/projects/labels");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to delete label"
+        err instanceof Error ? err.message : "We couldn't delete the label"
       );
       setIsDeleting(false);
     }
@@ -157,7 +158,7 @@ export default function LabelDetailPage({
       URL.revokeObjectURL(url);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to download PDF"
+        err instanceof Error ? err.message : "We couldn't download the PDF"
       );
     }
   }
@@ -171,9 +172,7 @@ export default function LabelDetailPage({
   if (error) {
     return (
       <div className="space-y-4 px-10">
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
+        <ErrorAlert message={error} />
         <Button variant="outline" asChild>
           <Link href="/admin/projects/labels">
             <ArrowLeftIcon className="mr-2 size-4" />

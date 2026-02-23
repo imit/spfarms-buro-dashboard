@@ -11,6 +11,7 @@ import {
   LABEL_STATUS_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -324,7 +325,7 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
       setError(
         err instanceof Error
           ? err.message
-          : `Failed to ${isEdit ? "update" : "create"} label`
+          : `We couldn't ${isEdit ? "update" : "create"} the label`
       );
     } finally {
       setIsSubmitting(false);
@@ -333,11 +334,7 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {/* Basic Info */}
       <section className="space-y-4">

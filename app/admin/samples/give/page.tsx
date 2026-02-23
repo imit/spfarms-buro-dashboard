@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
 
@@ -115,7 +116,7 @@ export default function GiveSamplesPage() {
       router.push(`/admin/samples/handoffs/${handoff.id}`);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to create handoff"
+        err instanceof Error ? err.message : "We couldn't create handoff"
       );
     } finally {
       setIsSubmitting(false);
@@ -141,11 +142,7 @@ export default function GiveSamplesPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        {error && (
-          <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-            {error}
-          </div>
-        )}
+        {error && <ErrorAlert message={error} />}
 
         <FieldGroup>
           <Field>

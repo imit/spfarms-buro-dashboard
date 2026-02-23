@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -191,7 +192,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       setError(
         err instanceof Error
           ? err.message
-          : `Failed to ${isEdit ? "update" : "create"} product`
+          : `We couldn't ${isEdit ? "update" : "create"} the product`
       );
     } finally {
       setIsSubmitting(false);
@@ -200,11 +201,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {/* Basic Info */}
       <section className="space-y-4">

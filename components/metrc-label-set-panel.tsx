@@ -7,6 +7,7 @@ import {
   type MetrcLabelSetSummary,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -77,7 +78,7 @@ export function MetrcLabelSetPanel({
       onUpdated();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to import METRC PDF"
+        err instanceof Error ? err.message : "We couldn't import the METRC PDF"
       );
     } finally {
       setIsImporting(false);
@@ -106,7 +107,7 @@ export function MetrcLabelSetPanel({
       onUpdated();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to import METRC tags"
+        err instanceof Error ? err.message : "We couldn't import the METRC tags"
       );
     } finally {
       setIsImporting(false);
@@ -119,7 +120,7 @@ export function MetrcLabelSetPanel({
       onUpdated();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to delete METRC label set"
+        err instanceof Error ? err.message : "We couldn't delete the METRC label set"
       );
     }
   }
@@ -138,11 +139,7 @@ export function MetrcLabelSetPanel({
         </Button>
       </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {showForm && (
         <div className="rounded-lg border bg-card p-4 space-y-4">

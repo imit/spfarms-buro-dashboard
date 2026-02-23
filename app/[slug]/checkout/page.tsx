@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { BoxProgress, useMinimumOrderMet } from "@/components/storefront/box-progress";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 function formatPrice(amount: string | number | null) {
   if (amount === null || amount === undefined) return "$0.00";
@@ -192,7 +193,7 @@ export default function CheckoutPage({
       toast.success(isPreorder ? "Pre-order placed successfully!" : "Order placed successfully!");
       router.push(`/${slug}/orders/${order.id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to place order");
+      showError("place your order", err);
     } finally {
       setSubmitting(false);
     }

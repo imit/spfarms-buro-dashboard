@@ -47,6 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 export default function SettingsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -136,7 +137,7 @@ export default function SettingsPage() {
       setEditingTax(false);
       toast.success("Tax rate updated");
     } catch {
-      toast.error("Failed to update tax rate");
+      showError("update the tax rate");
     } finally {
       setSavingTax(false);
     }
@@ -157,7 +158,7 @@ export default function SettingsPage() {
       setEditingBank(false);
       toast.success("Bank information updated");
     } catch {
-      toast.error("Failed to update bank information");
+      showError("update the bank information");
     } finally {
       setSavingBank(false);
     }
@@ -205,7 +206,7 @@ export default function SettingsPage() {
       }
       setPtDialogOpen(false);
     } catch {
-      toast.error("Failed to save payment term");
+      showError("save the payment term");
     } finally {
       setPtSaving(false);
     }
@@ -218,7 +219,7 @@ export default function SettingsPage() {
       setPaymentTerms((prev) => prev.filter((p) => p.id !== ptDeleting.id));
       toast.success("Payment term deleted");
     } catch {
-      toast.error("Failed to delete payment term");
+      showError("delete the payment term");
     } finally {
       setPtDeleting(null);
     }
@@ -264,7 +265,7 @@ export default function SettingsPage() {
       }
       setDiscDialogOpen(false);
     } catch {
-      toast.error("Failed to save discount");
+      showError("save the discount");
     } finally {
       setDiscSaving(false);
     }
@@ -277,7 +278,7 @@ export default function SettingsPage() {
       setDiscounts((prev) => prev.filter((d) => d.id !== discDeleting.id));
       toast.success("Discount deleted");
     } catch {
-      toast.error("Failed to delete discount");
+      showError("delete the discount");
     } finally {
       setDiscDeleting(null);
     }

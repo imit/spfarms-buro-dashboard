@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 function formatPrice(price: string | null) {
   if (!price) return "—";
@@ -90,7 +91,7 @@ export default function ProductDetailPage({
       toast.success("Added to cart");
       setQuantity(1);
     } catch {
-      toast.error("Failed to add to cart");
+      showError("add this item to your cart");
     } finally {
       setAdding(false);
     }

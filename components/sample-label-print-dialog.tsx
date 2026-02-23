@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiClient, type SheetLayout } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
   Dialog,
@@ -53,7 +54,7 @@ export function SampleLabelPrintDialog({
           setSelectedLayoutSlug(data[0].slug);
         }
       } catch {
-        setError("Failed to load sheet layouts");
+        setError("We couldn't load the sheet layouts");
       }
     }
 
@@ -86,7 +87,7 @@ export function SampleLabelPrintDialog({
       onOpenChange(false);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to generate labels PDF"
+        err instanceof Error ? err.message : "We couldn't generate the labels PDF"
       );
     } finally {
       setIsPrinting(false);
@@ -105,11 +106,7 @@ export function SampleLabelPrintDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {error && (
-          <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-            {error}
-          </div>
-        )}
+        {error && <ErrorAlert message={error} />}
 
         <FieldGroup>
           <Field>

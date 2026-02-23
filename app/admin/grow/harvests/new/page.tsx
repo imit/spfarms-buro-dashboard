@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { StrainAvatar } from "@/components/grow/strain-avatar"
+import { ErrorAlert } from "@/components/ui/error-alert"
 import { ArrowLeftIcon, ScissorsIcon, TagIcon } from "lucide-react"
 import Link from "next/link"
 
@@ -50,7 +51,7 @@ export default function NewHarvestPage() {
         setPlants(p)
         setFacility(f)
       } catch {
-        setError("Failed to load plants")
+        setError("We couldn't load plants")
       } finally {
         setIsLoading(false)
       }
@@ -120,7 +121,7 @@ export default function NewHarvestPage() {
       })
       router.push(`/admin/grow/harvests/${harvest.id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create harvest")
+      setError(err instanceof Error ? err.message : "We couldn't create harvest")
     } finally {
       setIsSubmitting(false)
     }
@@ -306,7 +307,7 @@ export default function NewHarvestPage() {
             </p>
           </div>
 
-          {error && <p className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">{error}</p>}
+          {error && <ErrorAlert message={error} />}
 
           <div className="flex gap-3">
             <Button onClick={handleSubmit} disabled={isSubmitting}>

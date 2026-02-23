@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useGooglePlacesAutocomplete } from "@/hooks/use-google-places-autocomplete";
 import { UserCombobox } from "@/components/user-combobox";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -168,7 +169,7 @@ export function CompanyForm({ company, mode = "create", redirectPath, cancelPath
         router.push(redirectPath || "/admin/companies");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to ${isEdit ? "update" : "create"} company`);
+      setError(err instanceof Error ? err.message : `We couldn't ${isEdit ? "update" : "create"} the company`);
     } finally {
       setIsSubmitting(false);
     }
@@ -176,11 +177,7 @@ export function CompanyForm({ company, mode = "create", redirectPath, cancelPath
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
        {/* Location */}
        <section className="space-y-4 bg-amber-50 p-4 rounded-lg">

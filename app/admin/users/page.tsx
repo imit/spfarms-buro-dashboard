@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { PlusIcon, SendIcon } from "lucide-react";
 
 type RoleFilter = "all" | UserRole;
@@ -63,7 +64,7 @@ export default function UsersPage() {
       .getUsers(showDeleted ? { include_deleted: true } : undefined)
       .then(setUsers)
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load users")
+        setError(err instanceof Error ? err.message : "We couldn't load users")
       )
       .finally(() => setIsLoading(false));
   }, [isAuthenticated, showDeleted]);
@@ -81,7 +82,7 @@ export default function UsersPage() {
       setInviteRole("account");
     } catch (err) {
       setInviteError(
-        err instanceof Error ? err.message : "Failed to send invitation"
+        err instanceof Error ? err.message : "We couldn't send the invitation"
       );
     } finally {
       setInviteLoading(false);
@@ -134,8 +135,8 @@ export default function UsersPage() {
                 </DialogHeader>
                 <div className="py-4">
                   {inviteError && (
-                    <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm mb-4">
-                      {inviteError}
+                    <div className="mb-4">
+                      <ErrorAlert message={inviteError} />
                     </div>
                   )}
                   {inviteSuccess && (
@@ -193,11 +194,7 @@ export default function UsersPage() {
         )}
       </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {!isLoading && users.length > 0 && (
         <div className="flex flex-wrap items-center gap-4">

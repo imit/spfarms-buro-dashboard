@@ -87,6 +87,7 @@ import {
   MenuIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 const POST_TYPE_COLORS: Record<PostType, string> = {
   task: "bg-blue-100 text-blue-700",
@@ -193,7 +194,7 @@ export default function PostsPage() {
       });
       setPosts(data);
     } catch {
-      toast.error("Failed to load tasks");
+      showError("load tasks");
     }
   }, [selectedChannel, typeFilter, statusFilter, assignedToMe]);
 
@@ -216,7 +217,7 @@ export default function PostsPage() {
           setNewPostChannel(channelsData[0].id);
         }
       })
-      .catch(() => toast.error("Failed to load data"))
+      .catch(() => showError("load data"))
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
@@ -250,7 +251,7 @@ export default function PostsPage() {
       resetNewPostForm();
       fetchPosts();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create task");
+      showError("create the task", err);
     } finally {
       setIsSubmitting(false);
     }
@@ -288,7 +289,7 @@ export default function PostsPage() {
       setNewChannelPrivate(false);
       toast.success("Channel created");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create channel");
+      showError("create the channel", err);
     } finally {
       setIsCreatingChannel(false);
     }
@@ -308,7 +309,7 @@ export default function PostsPage() {
       const data = await apiClient.getPost(postId);
       setDrawerPost(data);
     } catch {
-      toast.error("Failed to load task");
+      showError("load the task");
       setDrawerOpen(false);
     } finally {
       setDrawerLoading(false);
@@ -323,7 +324,7 @@ export default function PostsPage() {
       setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, status: updated.status } : p)));
       toast.success(`Status changed to ${POST_STATUS_LABELS[status]}`);
     } catch {
-      toast.error("Failed to update status");
+      showError("update the status");
     }
   }
 
@@ -371,7 +372,7 @@ export default function PostsPage() {
       fetchPosts();
       toast.success("Task updated");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update");
+      showError("save the changes", err);
     } finally {
       setIsUpdating(false);
     }
@@ -386,7 +387,7 @@ export default function PostsPage() {
       fetchPosts();
       toast.success("Task deleted");
     } catch {
-      toast.error("Failed to delete task");
+      showError("delete the task");
     }
   }
 

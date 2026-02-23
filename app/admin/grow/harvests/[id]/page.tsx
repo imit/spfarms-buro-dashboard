@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { StrainAvatar } from "@/components/grow/strain-avatar"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ErrorAlert } from "@/components/ui/error-alert"
 import { ArrowLeftIcon, TagIcon, ScaleIcon, DropletIcon, TrashIcon, WindIcon, CheckCircleIcon, PlusIcon, ScissorsIcon, PackageIcon, Flower as FlowerIcon, ShieldCheckIcon } from "lucide-react"
 import Link from "next/link"
 
@@ -73,7 +74,7 @@ function StrainWeightsSection({ harvest, onUpdate }: { harvest: Harvest; onUpdat
       onUpdate(h)
       setEditingStrain(null)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Failed to save")
+      setErr(e instanceof Error ? e.message : "We couldn't save weights")
     } finally {
       setSaving(false)
     }
@@ -162,7 +163,7 @@ function StrainWeightsSection({ harvest, onUpdate }: { harvest: Harvest; onUpdat
                       Cancel
                     </Button>
                   </div>
-                  {err && <p className="text-destructive text-xs">{err}</p>}
+                  {err && <ErrorAlert message={err} />}
                 </div>
               )}
             </div>
@@ -224,7 +225,7 @@ export default function HarvestDetailPage() {
         setFacility(f)
         setAuditEvents(evts)
       } catch {
-        setError("Failed to load harvest")
+        setError("We couldn't load harvest")
       } finally {
         setIsLoading(false)
       }
@@ -269,7 +270,7 @@ export default function HarvestDetailPage() {
       setStrainWetInputs({})
       setStrainWasteInputs({})
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start drying")
+      setError(err instanceof Error ? err.message : "We couldn't start drying")
     } finally {
       setIsSaving(false)
     }
@@ -307,7 +308,7 @@ export default function HarvestDetailPage() {
       setShowFinishDryingForm(false)
       setStrainDryInputs({})
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to finish drying")
+      setError(err instanceof Error ? err.message : "We couldn't finish drying")
     } finally {
       setIsSaving(false)
     }
@@ -320,7 +321,7 @@ export default function HarvestDetailPage() {
       const h = await apiClient.startTrimming(id)
       setHarvest(h)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start trimming")
+      setError(err instanceof Error ? err.message : "We couldn't start trimming")
     } finally {
       setIsSaving(false)
     }
@@ -352,7 +353,7 @@ export default function HarvestDetailPage() {
       setStrainShakeInputs({})
       setStrainTrimWasteInputs({})
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to finish trimming")
+      setError(err instanceof Error ? err.message : "We couldn't finish trimming")
     } finally {
       setIsSaving(false)
     }
@@ -365,7 +366,7 @@ export default function HarvestDetailPage() {
       const h = await apiClient.finishCuring(id)
       setHarvest(h)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to finish curing")
+      setError(err instanceof Error ? err.message : "We couldn't finish curing")
     } finally {
       setIsSaving(false)
     }
@@ -378,7 +379,7 @@ export default function HarvestDetailPage() {
       const h = await apiClient.adminReviewHarvest(id)
       setHarvest(h)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to review harvest")
+      setError(err instanceof Error ? err.message : "We couldn't review harvest")
     } finally {
       setIsSaving(false)
     }
@@ -391,7 +392,7 @@ export default function HarvestDetailPage() {
       const h = await apiClient.closeHarvest(id)
       setHarvest(h)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to close harvest")
+      setError(err instanceof Error ? err.message : "We couldn't close harvest")
     } finally {
       setIsSaving(false)
     }
@@ -407,7 +408,7 @@ export default function HarvestDetailPage() {
       const existingIds = new Set(harvest?.harvest_plants.map((hp) => hp.plant_id) ?? [])
       setAvailablePlants(plants.filter((p) => !existingIds.has(p.id)))
     } catch {
-      setError("Failed to load available plants")
+      setError("We couldn't load available plants")
     } finally {
       setLoadingPlants(false)
     }
@@ -424,7 +425,7 @@ export default function HarvestDetailPage() {
       setAddPlantIds(new Set())
       setAvailablePlants([])
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add plants")
+      setError(err instanceof Error ? err.message : "We couldn't add plants")
     } finally {
       setIsSaving(false)
     }
@@ -983,7 +984,7 @@ export default function HarvestDetailPage() {
         {harvest.metrc_tag && <p>METRC Tag: {harvest.metrc_tag}</p>}
       </div>
 
-      {error && <p className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">{error}</p>}
+      {error && <ErrorAlert message={error} />}
     </div>
   )
 }

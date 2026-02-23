@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { apiClient, type Strain } from "@/lib/api";
 import { StrainForm } from "@/components/strain-form";
+import { ErrorAlert } from "@/components/ui/error-alert";
 
 export default function EditStrainPage({
   params,
@@ -35,7 +36,7 @@ export default function EditStrainPage({
         setStrain(data);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load strain"
+          err instanceof Error ? err.message : "We couldn't load this strain"
         );
       } finally {
         setIsLoading(false);
@@ -54,9 +55,7 @@ export default function EditStrainPage({
   if (error || !strain) {
     return (
       <div className="px-10">
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error || "Strain not found"}
-        </div>
+        <ErrorAlert message={error || "Strain not found"} />
       </div>
     );
   }

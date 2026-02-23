@@ -9,7 +9,7 @@ import { apiClient, type Cart, type Company } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { BoxProgress, useMinimumOrderMet } from "@/components/storefront/box-progress";
-import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 function formatPrice(amount: string | number | null) {
   if (amount === null || amount === undefined) return "$0.00";
@@ -54,7 +54,7 @@ export default function CartPage({
       setCart(updated);
       window.dispatchEvent(new CustomEvent("cart:updated"));
     } catch {
-      toast.error("Failed to update quantity");
+      showError("update the quantity");
     }
   };
 
@@ -65,7 +65,7 @@ export default function CartPage({
       setCart(updated);
       window.dispatchEvent(new CustomEvent("cart:updated"));
     } catch {
-      toast.error("Failed to remove item");
+      showError("remove that item");
     }
   };
 

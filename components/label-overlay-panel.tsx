@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { apiClient, type Label, type LabelOverlayData } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
@@ -108,7 +109,7 @@ export function LabelOverlayPanel({ label, onUpdated }: LabelOverlayPanelProps) 
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to add overlay"
+        err instanceof Error ? err.message : "We couldn't add the overlay"
       );
     }
   }
@@ -129,7 +130,7 @@ export function LabelOverlayPanel({ label, onUpdated }: LabelOverlayPanelProps) 
       onUpdated(updated);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to update overlay"
+        err instanceof Error ? err.message : "We couldn't update the overlay"
       );
     }
   }
@@ -141,7 +142,7 @@ export function LabelOverlayPanel({ label, onUpdated }: LabelOverlayPanelProps) 
       onUpdated(updated);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to delete overlay"
+        err instanceof Error ? err.message : "We couldn't delete the overlay"
       );
     }
   }
@@ -161,11 +162,7 @@ export function LabelOverlayPanel({ label, onUpdated }: LabelOverlayPanelProps) 
         </Button>
       </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {/* Add new overlay form */}
       {isAdding && (

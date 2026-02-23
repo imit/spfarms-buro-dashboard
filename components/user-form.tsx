@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient, type UserRole, ROLE_LABELS } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
@@ -33,7 +34,7 @@ export function UserForm() {
       await apiClient.createUser({ email, role });
       router.push("/admin/users");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create user");
+      setError(err instanceof Error ? err.message : "We couldn't create the user");
     } finally {
       setIsSubmitting(false);
     }
@@ -41,11 +42,7 @@ export function UserForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       <FieldGroup>
         <Field>

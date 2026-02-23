@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { showError } from "@/lib/errors";
 
 function formatPrice(amount: string | number | null) {
   if (amount === null || amount === undefined) return "$0.00";
@@ -74,7 +75,7 @@ export default function AdminOrderDetailPage({
       setOrder(updated);
       toast.success("Status updated");
     } catch {
-      toast.error("Failed to update status");
+      showError("update the order status");
     }
   };
 
@@ -85,7 +86,7 @@ export default function AdminOrderDetailPage({
       setOrder(updated);
       toast.success("Notes saved");
     } catch {
-      toast.error("Failed to save notes");
+      showError("save the notes");
     } finally {
       setSaving(false);
     }
@@ -101,7 +102,7 @@ export default function AdminOrderDetailPage({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Failed to download invoice");
+      showError("download the invoice");
     }
   };
 
@@ -112,7 +113,7 @@ export default function AdminOrderDetailPage({
       setShowDoneConfirm(false);
       toast.success("Order marked as fulfilled");
     } catch {
-      toast.error("Failed to mark as fulfilled");
+      showError("mark the order as fulfilled");
     }
   };
 

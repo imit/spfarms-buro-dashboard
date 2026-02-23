@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiClient } from "@/lib/api";
+import { SUPPORT_EMAIL } from "@/lib/errors";
 import { useAuth } from "@/contexts/auth-context";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -45,7 +46,7 @@ function AcceptInvitationContent() {
         setError(
           err instanceof Error
             ? err.message
-            : "Failed to accept invitation. The link may have expired."
+            : `We couldn't accept this invitation — the link may have expired. Please contact ${SUPPORT_EMAIL} for help.`
         );
         setIsAccepting(false);
       }

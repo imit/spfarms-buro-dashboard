@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { apiClient } from "@/lib/api"
+import { SUPPORT_EMAIL } from "@/lib/errors"
 
 type LoginMode = "password" | "magic_link"
 
@@ -32,7 +33,7 @@ export function LoginForm() {
     try {
       await login(email, password)
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Login failed"
+      const message = err instanceof Error ? err.message : "We couldn't log you in"
       setError(message)
       posthog.capture("login_failed", { method: "password", error: message })
     } finally {
@@ -51,7 +52,7 @@ export function LoginForm() {
       setSuccess(result.message)
       posthog.capture("magic_link_requested", { source: "login_page" })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to send login link"
+      const message = err instanceof Error ? err.message : "We couldn't send the login link"
       setError(message)
       posthog.capture("login_failed", { method: "magic_link", error: message })
     } finally {
@@ -80,7 +81,8 @@ export function LoginForm() {
       >
         {error && (
           <div className="bg-red-100 text-red-800 rounded-xl p-3 text-sm text-center">
-            {error}
+            <p>{error}</p>
+            <p className="mt-1 text-xs opacity-70">Need help? Contact {SUPPORT_EMAIL}</p>
           </div>
         )}
         {success && (

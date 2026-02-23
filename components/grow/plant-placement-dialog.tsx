@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { ErrorAlert } from "@/components/ui/error-alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -77,7 +78,7 @@ export function PlantPlacementDialog({
       setGrowthPhase("immature")
       setMetrcLabel("")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to place plant")
+      setError(err instanceof Error ? err.message : "We couldn't place the plant")
     } finally {
       setIsSubmitting(false)
     }
@@ -152,7 +153,7 @@ export function PlantPlacementDialog({
             </div>
           </div>
 
-          {error && <p className="bg-destructive/10 text-destructive rounded-md p-2 text-sm">{error}</p>}
+          {error && <ErrorAlert message={error} />}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

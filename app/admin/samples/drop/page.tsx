@@ -6,6 +6,7 @@ import Link from "next/link";
 import { apiClient, type SampleHandoff } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@/components/ui/error-alert";
 import { ArrowLeftIcon, CheckCircleIcon } from "lucide-react";
 
 export default function DropSamplesPage() {
@@ -44,7 +45,7 @@ export default function DropSamplesPage() {
       setHandoffs((prev) => prev.filter((h) => h.id !== handoffId));
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to confirm drop"
+        err instanceof Error ? err.message : "We couldn't confirm drop"
       );
     } finally {
       setConfirmingId(null);
@@ -69,11 +70,7 @@ export default function DropSamplesPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert message={error} />}
 
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>
