@@ -84,6 +84,7 @@ import {
   CircleCheckIcon,
   CircleDashedIcon,
   ExternalLinkIcon,
+  MenuIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -147,6 +148,9 @@ export default function PostsPage() {
   const [newChannelDescription, setNewChannelDescription] = useState("");
   const [newChannelPrivate, setNewChannelPrivate] = useState(false);
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
+
+  // Mobile channel sheet
+  const [mobileChannelsOpen, setMobileChannelsOpen] = useState(false);
 
   // Drawer detail
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -395,8 +399,8 @@ export default function PostsPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
-      {/* Channel sidebar */}
-      <div className="w-56 shrink-0 border-r bg-muted/30 flex flex-col">
+      {/* Channel sidebar — hidden on mobile */}
+      <div className="hidden md:flex w-56 shrink-0 border-r bg-muted/30 flex-col">
         <div className="p-3 border-b flex items-center justify-between">
           <h2 className="font-semibold text-sm">Channels</h2>
           {writable && (
@@ -508,21 +512,83 @@ export default function PostsPage() {
         </div>
       </div>
 
+      {/* Mobile channel picker */}
+      <Sheet open={mobileChannelsOpen} onOpenChange={setMobileChannelsOpen}>
+        <SheetContent side="left" className="w-64 p-0" showCloseButton={false}>
+          <SheetHeader className="p-3 border-b">
+            <SheetTitle className="text-sm">Channels</SheetTitle>
+            <SheetDescription className="sr-only">Select a channel</SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+            <button
+              type="button"
+              onClick={() => { handleChannelSelect(null); setMobileChannelsOpen(false); }}
+              className={`w-full flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm cursor-pointer transition-colors ${
+                selectedChannel === null
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              }`}
+            >
+              <HashIcon className="size-3.5 shrink-0" />
+              All Channels
+            </button>
+
+            {channels.map((channel) => (
+              <button
+                key={channel.id}
+                type="button"
+                onClick={() => { handleChannelSelect(channel.slug); setMobileChannelsOpen(false); }}
+                className={`w-full flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm cursor-pointer transition-colors ${
+                  selectedChannel === channel.slug
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                }`}
+              >
+                {channel.private ? (
+                  <LockIcon className="size-3.5 shrink-0" />
+                ) : (
+                  <span
+                    className="size-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: channel.color }}
+                  />
+                )}
+                <span className="truncate">{channel.title}</span>
+                {channel.posts_count > 0 && (
+                  <span className="ml-auto text-xs text-muted-foreground/70">
+                    {channel.posts_count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="p-4 border-b flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-semibold">
-              {currentChannel
-                ? `# ${currentChannel.title}`
-                : "All Tasks"}
-            </h1>
-            {currentChannel?.description && (
-              <p className="text-sm text-muted-foreground">
-                {currentChannel.description}
-              </p>
-            )}
+        <div className="p-3 md:p-4 border-b flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="md:hidden shrink-0"
+              onClick={() => setMobileChannelsOpen(true)}
+            >
+              <MenuIcon className="size-4" />
+            </Button>
+            <div className="min-w-0">
+              <h1 className="text-base md:text-lg font-semibold truncate">
+                {currentChannel
+                  ? `# ${currentChannel.title}`
+                  : "All Tasks"}
+              </h1>
+              {currentChannel?.description && (
+                <p className="text-sm text-muted-foreground truncate hidden md:block">
+                  {currentChannel.description}
+                </p>
+              )}
+            </div>
           </div>
 
           {writable && (
@@ -840,14 +906,14 @@ export default function PostsPage() {
         </div>
 
         {/* Filters */}
-        <div className="px-4 py-2.5 border-b flex flex-wrap items-center gap-3 text-sm">
-          <div className="flex items-center gap-1.5">
+        <div className="px-3 md:px-4 py-2.5 border-b flex items-center gap-3 text-sm overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5 shrink-0">
             {(["all", ...Object.keys(POST_TYPE_LABELS)] as (PostType | "all")[]).map((val) => (
               <button
                 key={val}
                 type="button"
                 onClick={() => setTypeFilter(val)}
-                className={`rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-all ${
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-all whitespace-nowrap ${
                   typeFilter === val
                     ? "bg-foreground text-background"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -860,13 +926,13 @@ export default function PostsPage() {
 
           <div className="h-4 w-px bg-border" />
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             {(["all", ...Object.keys(POST_STATUS_LABELS)] as (PostStatus | "all")[]).map((val) => (
               <button
                 key={val}
                 type="button"
                 onClick={() => setStatusFilter(val)}
-                className={`rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-all ${
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-all whitespace-nowrap ${
                   statusFilter === val
                     ? "bg-foreground text-background"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -911,13 +977,13 @@ export default function PostsPage() {
               )}
             </div>
           ) : (
-            <div className="p-3 space-y-1.5">
+            <div className="p-2 sm:p-3 space-y-1 sm:space-y-1.5">
               {posts.map((post) => (
                 <button
                   key={post.id}
                   type="button"
                   onClick={() => openDrawer(post.id)}
-                  className="group w-full text-left flex items-start gap-3 rounded-lg border border-transparent bg-card px-4 py-3 shadow-xs hover:shadow-md hover:border-border/60 hover:bg-accent/40 active:scale-[0.995] transition-all duration-150 cursor-pointer"
+                  className="group w-full text-left flex items-start gap-2 sm:gap-3 rounded-lg border border-transparent bg-card px-3 sm:px-4 py-2.5 sm:py-3 shadow-xs hover:shadow-md hover:border-border/60 hover:bg-accent/40 active:scale-[0.995] transition-all duration-150 cursor-pointer"
                 >
                   {/* Channel color bar */}
                   <div
@@ -961,7 +1027,7 @@ export default function PostsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0 text-muted-foreground text-xs opacity-60 group-hover:opacity-100 transition-opacity duration-150">
+                  <div className="hidden md:flex items-center gap-3 shrink-0 text-muted-foreground text-xs opacity-60 group-hover:opacity-100 transition-opacity duration-150">
                     {post.assignees.length > 0 && (
                       <span className="flex items-center gap-1.5">
                         <UserIcon className="size-3" />
@@ -993,6 +1059,27 @@ export default function PostsPage() {
                       {post.author.full_name?.split(" ")[0] || post.author.email.split("@")[0]}
                     </span>
                   </div>
+                  {/* Mobile compact meta */}
+                  <div className="flex md:hidden items-center gap-2 shrink-0 text-muted-foreground text-xs">
+                    {post.due_date && (
+                      <span className="flex items-center gap-1">
+                        <CalendarIcon className="size-3" />
+                        {new Date(post.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </span>
+                    )}
+                    {post.assignees.length > 0 && (
+                      <span className="flex items-center gap-1">
+                        <UserIcon className="size-3" />
+                        {post.assignees.length}
+                      </span>
+                    )}
+                    {post.comments_count > 0 && (
+                      <span className="flex items-center gap-1">
+                        <MessageSquareIcon className="size-3" />
+                        {post.comments_count}
+                      </span>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
@@ -1002,12 +1089,12 @@ export default function PostsPage() {
 
       {/* Task Detail Drawer */}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent className="sm:max-w-2xl w-full overflow-y-auto p-0" showCloseButton={false}>
+        <SheetContent className="sm:max-w-2xl w-[90vw] overflow-y-auto p-0" showCloseButton={false}>
           {drawerLoading ? (
             <div className="p-8 text-center text-muted-foreground">Loading...</div>
           ) : drawerPost ? (
             <>
-              <SheetHeader className="p-5 pb-0">
+              <SheetHeader className="p-4 sm:p-5 pb-0">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                   <span
                     className="inline-block size-2 rounded-full"
@@ -1064,7 +1151,7 @@ export default function PostsPage() {
 
               {/* Actions */}
               {writable && (
-                <div className="px-5 pt-4 flex items-center gap-2">
+                <div className="px-4 sm:px-5 pt-3 sm:pt-4 flex items-center gap-2 flex-wrap">
                   {drawerPost.status === "done" ? (
                     <Button variant="outline" size="sm" onClick={() => handleDrawerStatusChange("open")}>
                       <CircleDashedIcon className="size-3.5 mr-1.5" />
@@ -1105,7 +1192,7 @@ export default function PostsPage() {
                 </div>
               )}
 
-              <div className="p-5 space-y-5">
+              <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
                 {/* Body */}
                 {drawerPost.body && (
                   <div className="rounded-lg border bg-card p-4">
@@ -1177,8 +1264,8 @@ export default function PostsPage() {
                     </h3>
                     <div className="space-y-4">
                       {drawerPost.companies.map((company) => (
-                        <div key={company.id} className="rounded-lg border p-4 space-y-3">
-                          <div className="flex items-center justify-between">
+                        <div key={company.id} className="rounded-lg border p-3 sm:p-4 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
                             <Link
                               href={`/admin/companies/${company.slug}`}
                               className="font-semibold text-lg hover:underline"
@@ -1188,22 +1275,22 @@ export default function PostsPage() {
                             <Badge variant="outline" className="text-xs">{company.company_type}</Badge>
                           </div>
 
-                          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-sm text-muted-foreground">
                             {company.phone_number && (
                               <a href={`tel:${company.phone_number}`} className="flex items-center gap-1.5 hover:text-foreground text-base font-medium">
-                                <PhoneIcon className="size-4" />
+                                <PhoneIcon className="size-4 shrink-0" />
                                 {company.phone_number}
                               </a>
                             )}
                             {company.email && (
-                              <a href={`mailto:${company.email}`} className="flex items-center gap-1.5 hover:text-foreground">
-                                <MailIcon className="size-4" />
-                                {company.email}
+                              <a href={`mailto:${company.email}`} className="flex items-center gap-1.5 hover:text-foreground truncate">
+                                <MailIcon className="size-4 shrink-0" />
+                                <span className="truncate">{company.email}</span>
                               </a>
                             )}
                             {company.locations.length > 0 && company.locations[0].city && (
                               <span className="flex items-center gap-1.5">
-                                <MapPinIcon className="size-4" />
+                                <MapPinIcon className="size-4 shrink-0" />
                                 {[company.locations[0].city, company.locations[0].state].filter(Boolean).join(", ")}
                               </span>
                             )}
@@ -1213,20 +1300,20 @@ export default function PostsPage() {
                             <div className="pt-2 space-y-1.5">
                               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Contacts</p>
                               {company.members.map((member) => (
-                                <div key={member.id} className="flex items-center justify-between text-sm py-1.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium">{member.full_name || member.email}</span>
+                                <div key={member.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm py-1.5 gap-1 sm:gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="font-medium truncate">{member.full_name || member.email}</span>
                                     {member.company_title && (
-                                      <span className="text-muted-foreground">{member.company_title}</span>
+                                      <span className="text-muted-foreground truncate hidden sm:inline">{member.company_title}</span>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-3 text-muted-foreground">
+                                  <div className="flex items-center gap-3 text-muted-foreground text-xs sm:text-sm shrink-0">
                                     {member.phone_number && (
                                       <a href={`tel:${member.phone_number}`} className="hover:text-foreground font-medium">
                                         {member.phone_number}
                                       </a>
                                     )}
-                                    <a href={`mailto:${member.email}`} className="hover:text-foreground">
+                                    <a href={`mailto:${member.email}`} className="hover:text-foreground truncate">
                                       {member.email}
                                     </a>
                                   </div>
@@ -1280,7 +1367,7 @@ export default function PostsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label>Type</Label>
                   <Select value={editType} onValueChange={(v) => setEditType(v as PostType)}>
