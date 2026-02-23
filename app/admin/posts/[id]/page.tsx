@@ -473,42 +473,42 @@ export default function PostDetailPage({
               </h3>
               <div className="space-y-4">
                 {post.companies.map((company) => (
-                  <div key={company.id} className="rounded-lg border p-3 space-y-2">
+                  <div key={company.id} className="rounded-lg border p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <Link
                         href={`/admin/companies/${company.slug}`}
-                        className="font-medium text-sm hover:underline"
+                        className="font-semibold text-lg hover:underline"
                       >
                         {company.name}
                       </Link>
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-xs">
                         {company.company_type}
                       </Badge>
                     </div>
 
                     {/* Contact info */}
-                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                       {company.phone_number && (
                         <a
                           href={`tel:${company.phone_number}`}
-                          className="flex items-center gap-1 hover:text-foreground"
+                          className="flex items-center gap-1.5 hover:text-foreground text-base font-medium"
                         >
-                          <PhoneIcon className="size-3" />
+                          <PhoneIcon className="size-4" />
                           {company.phone_number}
                         </a>
                       )}
                       {company.email && (
                         <a
                           href={`mailto:${company.email}`}
-                          className="flex items-center gap-1 hover:text-foreground"
+                          className="flex items-center gap-1.5 hover:text-foreground"
                         >
-                          <MailIcon className="size-3" />
+                          <MailIcon className="size-4" />
                           {company.email}
                         </a>
                       )}
                       {company.locations.length > 0 && company.locations[0].city && (
-                        <span className="flex items-center gap-1">
-                          <MapPinIcon className="size-3" />
+                        <span className="flex items-center gap-1.5">
+                          <MapPinIcon className="size-4" />
                           {[company.locations[0].city, company.locations[0].state]
                             .filter(Boolean)
                             .join(", ")}
@@ -518,14 +518,14 @@ export default function PostDetailPage({
 
                     {/* Members */}
                     {company.members.length > 0 && (
-                      <div className="pt-1 space-y-1">
-                        <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">
+                      <div className="pt-2 space-y-1.5">
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
                           Contacts
                         </p>
                         {company.members.map((member) => (
                           <div
                             key={member.id}
-                            className="flex items-center justify-between text-xs py-1"
+                            className="flex items-center justify-between text-sm py-1.5"
                           >
                             <div className="flex items-center gap-2">
                               <span className="font-medium">
@@ -537,11 +537,11 @@ export default function PostDetailPage({
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-muted-foreground">
+                            <div className="flex items-center gap-3 text-muted-foreground">
                               {member.phone_number && (
                                 <a
                                   href={`tel:${member.phone_number}`}
-                                  className="hover:text-foreground"
+                                  className="hover:text-foreground font-medium"
                                 >
                                   {member.phone_number}
                                 </a>
