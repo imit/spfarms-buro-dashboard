@@ -8,6 +8,7 @@ export type Resource =
   | "grow"
   | "samples"
   | "projects"
+  | "posts"
   | "companies"
   | "users"
   | "orders_list"
@@ -27,6 +28,7 @@ export const ROLE_ACCESS: RoleAccessMap = {
   grow:          { admin: "full", observer_admin: "read", editor: "full", cultivator: "full", processing: "full" },
   samples:       { admin: "full", observer_admin: "read", editor: "full", cultivator: "full", processing: "full" },
   projects:      { admin: "full", observer_admin: "read", editor: "full" },
+  posts:         { admin: "full", observer_admin: "read", editor: "full", cultivator: "full", processing: "full", delivery: "read", sales: "full", default: "read" },
   companies:     { admin: "full", observer_admin: "read", editor: "full", sales: "full" },
   users:         { admin: "full", observer_admin: "read", editor: "full", sales: "full" },
   orders_list:   { admin: "full", observer_admin: "read", editor: "full", sales: "full" },

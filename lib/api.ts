@@ -171,6 +171,7 @@ export interface CompanyMember {
   id: number;
   full_name: string | null;
   email: string;
+  phone_number: string | null;
   role: UserRole;
   company_title: string | null;
   invitation_sent_at: string | null;
@@ -1433,6 +1434,165 @@ export interface MetrcTagStats {
   used: number;
   voided: number;
   total: number;
+}
+
+// --- Posts & Channels ---
+
+export type PostType = "task" | "plan" | "announcement" | "discussion";
+
+export const POST_TYPE_LABELS: Record<PostType, string> = {
+  task: "Task",
+  plan: "Plan",
+  announcement: "Announcement",
+  discussion: "Discussion",
+};
+
+export type PostStatus = "open" | "in_progress" | "done" | "closed";
+
+export const POST_STATUS_LABELS: Record<PostStatus, string> = {
+  open: "Open",
+  in_progress: "In Progress",
+  done: "Done",
+  closed: "Closed",
+};
+
+export type PostPriority = "low" | "normal" | "high" | "urgent";
+
+export const POST_PRIORITY_LABELS: Record<PostPriority, string> = {
+  low: "Low",
+  normal: "Normal",
+  high: "High",
+  urgent: "Urgent",
+};
+
+export interface ChannelCreator {
+  id: number;
+  full_name: string | null;
+  email: string;
+}
+
+export interface ChannelMember {
+  id: number;
+  full_name: string | null;
+  email: string;
+  role: UserRole;
+}
+
+export interface Channel {
+  id: number;
+  title: string;
+  slug: string;
+  color: string;
+  description: string | null;
+  private: boolean;
+  position: number;
+  created_by: ChannelCreator | null;
+  posts_count: number;
+  members: ChannelMember[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PostAuthor {
+  id: number;
+  full_name: string | null;
+  email: string;
+  role: UserRole;
+}
+
+export interface PostAssignee {
+  id: number;
+  full_name: string | null;
+  email: string;
+  role: UserRole;
+}
+
+export interface PostCompanyLocation {
+  id: number;
+  name: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+}
+
+export interface PostCompanyMember {
+  id: number;
+  full_name: string | null;
+  email: string;
+  phone_number: string | null;
+  role: UserRole;
+  company_title: string | null;
+}
+
+export interface PostCompanyDetail {
+  id: number;
+  name: string;
+  slug: string;
+  company_type: CompanyType;
+  email: string | null;
+  phone_number: string | null;
+  locations: PostCompanyLocation[];
+  members: PostCompanyMember[];
+}
+
+export interface PostChannel {
+  id: number;
+  title: string;
+  slug: string;
+  color: string;
+}
+
+export interface Post {
+  id: number;
+  title: string;
+  body: string | null;
+  post_type: PostType;
+  status: PostStatus;
+  priority: PostPriority;
+  scheduled_date: string | null;
+  due_date: string | null;
+  pinned: boolean;
+  channel: PostChannel;
+  author: PostAuthor;
+  assignees: PostAssignee[];
+  companies: PostCompanyDetail[];
+  comments_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePostParams {
+  post: {
+    title: string;
+    body?: string;
+    post_type: PostType;
+    status?: PostStatus;
+    priority?: PostPriority;
+    channel_id: number;
+    scheduled_date?: string;
+    due_date?: string;
+    pinned?: boolean;
+  };
+  assignee_ids?: number[];
+  company_ids?: number[];
+  notify?: boolean;
+}
+
+export interface UpdatePostParams {
+  post: {
+    title?: string;
+    body?: string;
+    post_type?: PostType;
+    status?: PostStatus;
+    priority?: PostPriority;
+    scheduled_date?: string | null;
+    due_date?: string | null;
+    pinned?: boolean;
+  };
+  assignee_ids?: number[];
+  company_ids?: number[];
+  notify?: boolean;
 }
 
 export class ApiClient {
@@ -3348,6 +3508,144 @@ export class ApiClient {
 
   async deleteCompanyComment(slug: string, commentId: number): Promise<void> {
     await this.request(`/api/v1/companies/${slug}/comments/${commentId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // --- Channels ---
+
+  async getChannels(): Promise<Channel[]> {
+    const res = await this.request<JsonApiCollectionResponse<Channel>>(
+      "/api/v1/channels"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getChannel(idOrSlug: string): Promise<Channel> {
+    const res = await this.request<JsonApiResponse<Channel>>(
+      `/api/v1/channels/${idOrSlug}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createChannel(channel: { title: string; color?: string; description?: string; private?: boolean; position?: number }): Promise<Channel> {
+    const res = await this.request<JsonApiResponse<Channel>>(
+      "/api/v1/channels",
+      {
+        method: "POST",
+        body: JSON.stringify({ channel }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateChannel(idOrSlug: string, channel: Partial<{ title: string; color: string; description: string; private: boolean; position: number }>): Promise<Channel> {
+    const res = await this.request<JsonApiResponse<Channel>>(
+      `/api/v1/channels/${idOrSlug}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ channel }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteChannel(idOrSlug: string): Promise<void> {
+    await this.request(`/api/v1/channels/${idOrSlug}`, {
+      method: "DELETE",
+    });
+  }
+
+  async addChannelMember(channelSlug: string, userId: number): Promise<ChannelMember> {
+    const res = await this.request<{ data: ChannelMember }>(
+      `/api/v1/channels/${channelSlug}/members`,
+      {
+        method: "POST",
+        body: JSON.stringify({ user_id: userId }),
+      }
+    );
+    return res.data;
+  }
+
+  async removeChannelMember(channelSlug: string, userId: number): Promise<void> {
+    await this.request(`/api/v1/channels/${channelSlug}/members/${userId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // --- Posts ---
+
+  async getPosts(opts?: { channel_slug?: string; post_type?: PostType; status?: PostStatus; priority?: PostPriority; assigned_to_me?: boolean }): Promise<Post[]> {
+    const params = new URLSearchParams();
+    if (opts?.channel_slug) params.set("channel_slug", opts.channel_slug);
+    if (opts?.post_type) params.set("post_type", opts.post_type);
+    if (opts?.status) params.set("status", opts.status);
+    if (opts?.priority) params.set("priority", opts.priority);
+    if (opts?.assigned_to_me) params.set("assigned_to_me", "true");
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const res = await this.request<JsonApiCollectionResponse<Post>>(
+      `/api/v1/posts${query}`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getPost(id: number): Promise<Post> {
+    const res = await this.request<JsonApiResponse<Post>>(
+      `/api/v1/posts/${id}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createPost(data: CreatePostParams): Promise<Post> {
+    const res = await this.request<JsonApiResponse<Post>>(
+      "/api/v1/posts",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updatePost(id: number, data: UpdatePostParams): Promise<Post> {
+    const res = await this.request<JsonApiResponse<Post>>(
+      `/api/v1/posts/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deletePost(id: number): Promise<void> {
+    await this.request(`/api/v1/posts/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // --- Post Comments ---
+
+  async getPostComments(postId: number): Promise<Comment[]> {
+    const res = await this.request<JsonApiCollectionResponse<Comment>>(
+      `/api/v1/posts/${postId}/comments`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createPostComment(postId: number, body: string): Promise<Comment> {
+    const res = await this.request<JsonApiResponse<Comment>>(
+      `/api/v1/posts/${postId}/comments`,
+      {
+        method: "POST",
+        body: JSON.stringify({ comment: { body } }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deletePostComment(postId: number, commentId: number): Promise<void> {
+    await this.request(`/api/v1/posts/${postId}/comments/${commentId}`, {
       method: "DELETE",
     });
   }

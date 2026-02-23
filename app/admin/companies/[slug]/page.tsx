@@ -678,6 +678,7 @@ export default function CompanyDetailPage({
                 <tr className="border-b bg-muted/50">
                   <th className="px-4 py-3 text-left font-medium">Name</th>
                   <th className="px-4 py-3 text-left font-medium">Title</th>
+                  <th className="px-4 py-3 text-left font-medium">Contact</th>
                   <th className="px-4 py-3 text-left font-medium">Role</th>
                   <th className="px-4 py-3 text-left font-medium">Invite</th>
                   <th className="px-4 py-3 w-10"></th>
@@ -709,6 +710,20 @@ export default function CompanyDetailPage({
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {member.company_title || "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                        {member.phone_number && (
+                          <a href={`tel:${member.phone_number}`} className="flex items-center gap-1.5 hover:text-foreground transition-colors">
+                            <PhoneIcon className="size-3 shrink-0" />
+                            {member.phone_number}
+                          </a>
+                        )}
+                        <a href={`mailto:${member.email}`} className="flex items-center gap-1.5 hover:text-foreground transition-colors">
+                          <MailIcon className="size-3 shrink-0" />
+                          {member.email}
+                        </a>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant="outline">
