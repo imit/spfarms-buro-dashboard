@@ -187,7 +187,11 @@ export default function ProductDetailPage({
           </div>
 
           <div className="text-3xl font-bold">
-            {formatPrice(product.default_price)}
+            {product.price_tbd ? (
+              <span className="text-amber-600">TBD</span>
+            ) : (
+              formatPrice(product.default_price)
+            )}
           </div>
 
           {product.description && (

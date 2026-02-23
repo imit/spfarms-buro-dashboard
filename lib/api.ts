@@ -321,6 +321,7 @@ export interface Product {
   cannabis: boolean;
   bulk: boolean;
   coming_soon: boolean;
+  price_tbd: boolean;
   product_type: ProductType;
   product_uid: string | null;
   strain_id: number | null;

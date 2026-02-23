@@ -73,7 +73,9 @@ export function ProductCard({
   const cbg = nonZero(strain?.cbg);
   const hasCannabinoids = thc || cbd || cbg;
 
-  const priceDisplay = discountedPrice !== null ? (
+  const priceDisplay = product.price_tbd ? (
+    <span className="text-sm sm:text-base font-semibold text-amber-600">TBD</span>
+  ) : discountedPrice !== null ? (
     <div className="flex items-center gap-1.5">
       <span className="text-xs text-muted-foreground line-through">
         {formatPrice(product.default_price)}

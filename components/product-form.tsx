@@ -59,6 +59,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
     barcode: product?.barcode ?? "",
     unit_weight: product?.unit_weight ?? "",
     minimum_order_quantity: product?.minimum_order_quantity?.toString() ?? "16",
+    price_tbd: product?.price_tbd ?? false,
     default_price: product?.default_price ?? "",
     inventory_count: product?.inventory_count?.toString() ?? "0",
     track_inventory: product?.track_inventory ?? true,
@@ -143,6 +144,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       formData.append("product[cannabis]", String(form.cannabis));
       formData.append("product[bulk]", String(form.bulk));
       formData.append("product[coming_soon]", String(form.coming_soon));
+      formData.append("product[price_tbd]", String(form.price_tbd));
       formData.append("product[product_type]", form.product_type);
       formData.append("product[status]", form.status);
       formData.append("product[active]", String(form.active));
@@ -406,19 +408,39 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       <section className="space-y-4">
         <h3 className="text-lg font-medium">Pricing</h3>
         <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="default_price">Price ($)</FieldLabel>
-            <Input
-              id="default_price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.default_price}
-              onChange={(e) => updateField("default_price", e.target.value)}
-              placeholder="29.99"
-              disabled={isSubmitting}
-            />
-          </Field>
+          {form.bulk && (
+            <div className="flex items-center gap-2 mb-2">
+              <Checkbox
+                id="price_tbd"
+                checked={form.price_tbd}
+                onCheckedChange={(checked) =>
+                  updateField("price_tbd", checked === true)
+                }
+                disabled={isSubmitting}
+              />
+              <label htmlFor="price_tbd" className="text-sm font-medium">
+                Price TBD
+              </label>
+              <span className="text-xs text-muted-foreground">
+                Show &quot;TBD&quot; instead of a price on the storefront
+              </span>
+            </div>
+          )}
+          {!form.price_tbd && (
+            <Field>
+              <FieldLabel htmlFor="default_price">Price ($)</FieldLabel>
+              <Input
+                id="default_price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.default_price}
+                onChange={(e) => updateField("default_price", e.target.value)}
+                placeholder="29.99"
+                disabled={isSubmitting}
+              />
+            </Field>
+          )}
         </FieldGroup>
       </section>
 
