@@ -48,6 +48,7 @@ export default function ProductsPage() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/");
@@ -216,7 +217,11 @@ export default function ProductsPage() {
                     {p.strain_name || "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {formatPrice(p.default_price)}
+                    {p.price_tbd ? (
+                      <span className="text-amber-600 font-medium">TBD</span>
+                    ) : (
+                      formatPrice(p.default_price)
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={statusVariant(p.status)}>
@@ -229,6 +234,7 @@ export default function ProductsPage() {
           </table>
         </div>
       )}
+
     </div>
   );
 }

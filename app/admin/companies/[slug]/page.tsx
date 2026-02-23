@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { CompanyNotes } from "@/components/company-comments-sheet";
 import {
@@ -149,6 +150,9 @@ export default function CompanyDetailPage({
   const [followupOpen, setFollowupOpen] = useState(false);
   const [followupForm, setFollowupForm] = useState<{ notification_type: NotificationType; subject: string; body: string }>({ notification_type: "feedback_request", subject: "", body: "" });
   const [sendingFollowup, setSendingFollowup] = useState(false);
+  const [bulkListOpen, setBulkListOpen] = useState(false);
+  const [bulkListMessage, setBulkListMessage] = useState("");
+  const [sendingBulkList, setSendingBulkList] = useState(false);
   const [fetchingLogo, setFetchingLogo] = useState(false);
 
   useEffect(() => {
@@ -350,6 +354,21 @@ export default function CompanyDetailPage({
       setError(err instanceof Error ? err.message : "We couldn't send the follow-up");
     } finally {
       setSendingFollowup(false);
+    }
+  }
+
+  async function handleSendBulkList() {
+    if (!company) return;
+    setSendingBulkList(true);
+    try {
+      const result = await apiClient.sendBulkFlowerList(company.slug, bulkListMessage.trim() || undefined);
+      setBulkListOpen(false);
+      setBulkListMessage("");
+      toast.success(result.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We couldn't send the bulk flower list");
+    } finally {
+      setSendingBulkList(false);
     }
   }
 
@@ -1040,6 +1059,38 @@ export default function CompanyDetailPage({
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            {company?.bulk_buyer && (
+              <Dialog open={bulkListOpen} onOpenChange={(open) => { setBulkListOpen(open); if (!open) setBulkListMessage(""); }}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <PackageIcon className="mr-1.5 size-3.5" />
+                    Send Bulk List
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-xl">
+                  <DialogHeader>
+                    <DialogTitle>Send Bulk Flower List</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Email the current bulk flower availability with a PDF attachment to all members of <span className="font-medium text-foreground">{company?.name}</span>.
+                    </p>
+                    <Textarea
+                      placeholder="Add a custom message (optional)..."
+                      value={bulkListMessage}
+                      onChange={(e) => setBulkListMessage(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleSendBulkList} disabled={sendingBulkList} className="w-full">
+                      <SendIcon className="mr-2 size-4" />
+                      {sendingBulkList ? "Sending..." : "Send Bulk List"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
         <div className="rounded-lg border bg-card p-6 text-center">

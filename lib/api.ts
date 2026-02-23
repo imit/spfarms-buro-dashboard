@@ -614,6 +614,11 @@ export interface DiscountRecord {
 export interface AppSettings {
   tax_rate: string;
   bank_info: string;
+  bulk_sales_phone: string;
+}
+
+export interface PublicSettings {
+  bulk_sales_phone: string;
 }
 
 // ---- Checkout Preview ----
@@ -2095,6 +2100,22 @@ export class ApiClient {
     });
   }
 
+  async sendBulkFlowerList(
+    companySlug: string,
+    customMessage?: string
+  ): Promise<{ message: string }> {
+    const res = await this.request<{ data: { message: string } }>(
+      `/api/v1/companies/${companySlug}/send_bulk_list`,
+      {
+        method: "POST",
+        body: JSON.stringify(
+          customMessage ? { custom_message: customMessage } : {}
+        ),
+      }
+    );
+    return res.data;
+  }
+
   // COAs
 
   async getStrainCoas(strainId: number): Promise<Coa[]> {
@@ -3479,6 +3500,11 @@ export class ApiClient {
   async getPublicStrains(): Promise<Strain[]> {
     const res = await this.request<JsonApiCollectionResponse<Strain>>("/api/v1/public/strains");
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getPublicSettings(): Promise<PublicSettings> {
+    const res = await this.request<{ data: PublicSettings }>("/api/v1/public/settings");
+    return res.data;
   }
 
   async registerPartnership(data: PartnershipRegistrationParams): Promise<{ status: { code: number; message: string } }> {

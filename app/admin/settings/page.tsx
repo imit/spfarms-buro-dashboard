@@ -68,6 +68,11 @@ export default function SettingsPage() {
   const [bankValue, setBankValue] = useState("");
   const [savingBank, setSavingBank] = useState(false);
 
+  // Bulk sales phone editing
+  const [editingBulkPhone, setEditingBulkPhone] = useState(false);
+  const [bulkPhoneValue, setBulkPhoneValue] = useState("");
+  const [savingBulkPhone, setSavingBulkPhone] = useState(false);
+
   // Payment term dialog
   const [ptDialogOpen, setPtDialogOpen] = useState(false);
   const [ptEditing, setPtEditing] = useState<PaymentTerm | null>(null);
@@ -161,6 +166,27 @@ export default function SettingsPage() {
       showError("update the bank information");
     } finally {
       setSavingBank(false);
+    }
+  };
+
+  // --- Bulk Sales Phone ---
+
+  const startEditBulkPhone = () => {
+    setBulkPhoneValue(settings?.bulk_sales_phone || "");
+    setEditingBulkPhone(true);
+  };
+
+  const saveBulkPhone = async () => {
+    setSavingBulkPhone(true);
+    try {
+      const updated = await apiClient.updateSettings({ bulk_sales_phone: bulkPhoneValue });
+      setSettings(updated);
+      setEditingBulkPhone(false);
+      toast.success("Bulk sales phone updated");
+    } catch {
+      showError("update the bulk sales phone");
+    } finally {
+      setSavingBulkPhone(false);
     }
   };
 
@@ -394,6 +420,52 @@ export default function SettingsPage() {
           <p className="text-sm whitespace-pre-wrap">{settings.bank_info}</p>
         ) : (
           <p className="text-sm text-muted-foreground">No bank information set</p>
+        )}
+      </div>
+
+      {/* Bulk Sales Phone */}
+      <div className="rounded-lg border p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="font-semibold">Bulk Sales Phone</h3>
+            <p className="text-sm text-muted-foreground">
+              Shown on the public bulk page and PDF attachments
+            </p>
+          </div>
+          {!editingBulkPhone && (
+            <Button variant="outline" size="sm" onClick={startEditBulkPhone}>
+              <PencilIcon className="mr-1.5 size-3.5" />
+              Edit
+            </Button>
+          )}
+        </div>
+
+        {editingBulkPhone ? (
+          <div className="flex items-center gap-2">
+            <Input
+              type="tel"
+              value={bulkPhoneValue}
+              onChange={(e) => setBulkPhoneValue(e.target.value)}
+              placeholder="(917) 254-7061"
+              className="w-64"
+            />
+            <Button size="sm" onClick={saveBulkPhone} disabled={savingBulkPhone}>
+              <CheckIcon className="mr-1 size-3.5" />
+              {savingBulkPhone ? "Saving..." : "Save"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditingBulkPhone(false)}
+            >
+              <XIcon className="mr-1 size-3.5" />
+              Cancel
+            </Button>
+          </div>
+        ) : settings?.bulk_sales_phone ? (
+          <p className="text-2xl font-bold">{settings.bulk_sales_phone}</p>
+        ) : (
+          <p className="text-sm text-muted-foreground">No bulk sales phone set</p>
         )}
       </div>
 
