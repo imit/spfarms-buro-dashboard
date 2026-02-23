@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Avatar from "boring-avatars";
 import { ShoppingCartIcon, BellIcon, LogOutIcon, PackageIcon, FlaskConicalIcon, SettingsIcon } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { useAuth } from "@/contexts/auth-context";
-import { apiClient, type Company } from "@/lib/api";
+import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,16 +20,13 @@ import {
 export function ShopHeader({ slug }: { slug: string }) {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
   const [cartCount, setCartCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [company, setCompany] = useState<Company | null>(null);
 
   useEffect(() => {
     async function fetchCartCount() {
       try {
         const companyData = await apiClient.getCompany(slug);
-        setCompany(companyData);
         const cart = await apiClient.getCart(companyData.id);
         setCartCount(cart.item_count);
       } catch {
@@ -70,27 +67,6 @@ export function ShopHeader({ slug }: { slug: string }) {
         <Link href={`/${slug}/storefront`} className="w-28">
           <Logo />
         </Link>
-
-        <nav className="flex items-center gap-3 sm:gap-6">
-          <Link
-            href={`/${slug}/storefront`}
-            className={`text-sm font-medium transition-opacity ${
-              pathname === `/${slug}/storefront` ? "opacity-100" : "opacity-50 hover:opacity-70"
-            }`}
-          >
-            products
-          </Link>
-          {company?.bulk_buyer && (
-            <Link
-              href={`/${slug}/storefront/bulk`}
-              className={`text-sm font-medium transition-opacity ${
-                pathname === `/${slug}/storefront/bulk` ? "opacity-100" : "opacity-50 hover:opacity-70"
-              }`}
-            >
-              bulk
-            </Link>
-          )}
-        </nav>
 
         <div className="flex items-center gap-2">
           <Button

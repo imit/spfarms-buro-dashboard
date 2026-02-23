@@ -56,7 +56,11 @@ export default function StorefrontPage({
           apiClient.getCompany(slug),
           apiClient.getStrains(),
         ]);
-        setProducts(productData.filter((p) => p.active && p.status === "active" && !p.bulk));
+        setProducts(
+          company.bulk_buyer
+            ? productData.filter((p) => p.active && p.status === "active" && p.bulk)
+            : productData.filter((p) => p.active && p.status === "active" && !p.bulk)
+        );
         setCompany(company);
 
         const map: Record<number, Strain> = {};
