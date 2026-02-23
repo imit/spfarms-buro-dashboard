@@ -22,11 +22,13 @@ export function ShopHeader({ slug }: { slug: string }) {
   const router = useRouter();
   const [cartCount, setCartCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isBulkBuyer, setIsBulkBuyer] = useState(false);
 
   useEffect(() => {
     async function fetchCartCount() {
       try {
         const companyData = await apiClient.getCompany(slug);
+        setIsBulkBuyer(!!companyData.bulk_buyer);
         const cart = await apiClient.getCart(companyData.id);
         setCartCount(cart.item_count);
       } catch {
