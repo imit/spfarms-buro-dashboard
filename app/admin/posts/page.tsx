@@ -17,12 +17,13 @@ import {
   POST_STATUS_LABELS,
   POST_PRIORITY_LABELS,
 } from "@/lib/api";
-import { canWrite } from "@/lib/roles";
+import { canWrite, canDelete as canDeleteResource } from "@/lib/roles";
 import type { UserRole } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -32,10 +33,36 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { PostComments } from "@/components/post-comments";
 import {
   PlusIcon,
   HashIcon,
@@ -48,6 +75,15 @@ import {
   TagIcon,
   FlagIcon,
   XIcon,
+  PenIcon,
+  Trash2Icon,
+  PhoneIcon,
+  MailIcon,
+  MapPinIcon,
+  BellIcon,
+  CircleCheckIcon,
+  CircleDashedIcon,
+  ExternalLinkIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -112,8 +148,30 @@ export default function PostsPage() {
   const [newChannelPrivate, setNewChannelPrivate] = useState(false);
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
 
+  // Drawer detail
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerPost, setDrawerPost] = useState<Post | null>(null);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+
+  // Drawer edit
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [editType, setEditType] = useState<PostType>("task");
+  const [editStatus, setEditStatus] = useState<PostStatus>("open");
+  const [editPriority, setEditPriority] = useState<PostPriority>("normal");
+  const [editChannel, setEditChannel] = useState<number | null>(null);
+  const [editScheduledDate, setEditScheduledDate] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editPinned, setEditPinned] = useState(false);
+  const [editAssignees, setEditAssignees] = useState<number[]>([]);
+  const [editCompanies, setEditCompanies] = useState<number[]>([]);
+  const [editNotify, setEditNotify] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
   const role = currentUser?.role as UserRole | undefined;
   const writable = canWrite("posts", role);
+  const deletable = canDeleteResource("posts", role);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -236,6 +294,96 @@ export default function PostsPage() {
     setSelectedChannel(slug);
     const url = slug ? `/admin/posts?channel=${slug}` : "/admin/posts";
     router.replace(url, { scroll: false });
+  }
+
+  // Drawer handlers
+  async function openDrawer(postId: number) {
+    setDrawerOpen(true);
+    setDrawerLoading(true);
+    try {
+      const data = await apiClient.getPost(postId);
+      setDrawerPost(data);
+    } catch {
+      toast.error("Failed to load task");
+      setDrawerOpen(false);
+    } finally {
+      setDrawerLoading(false);
+    }
+  }
+
+  async function handleDrawerStatusChange(status: PostStatus) {
+    if (!drawerPost) return;
+    try {
+      const updated = await apiClient.updatePost(drawerPost.id, { post: { status } });
+      setDrawerPost(updated);
+      setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, status: updated.status } : p)));
+      toast.success(`Status changed to ${POST_STATUS_LABELS[status]}`);
+    } catch {
+      toast.error("Failed to update status");
+    }
+  }
+
+  function openDrawerEdit() {
+    if (!drawerPost) return;
+    setEditTitle(drawerPost.title);
+    setEditBody(drawerPost.body || "");
+    setEditType(drawerPost.post_type);
+    setEditStatus(drawerPost.status);
+    setEditPriority(drawerPost.priority);
+    setEditChannel(drawerPost.channel.id);
+    setEditScheduledDate(drawerPost.scheduled_date || "");
+    setEditDueDate(drawerPost.due_date || "");
+    setEditPinned(drawerPost.pinned);
+    setEditAssignees(drawerPost.assignees.map((a) => a.id));
+    setEditCompanies(drawerPost.companies.map((c) => c.id));
+    setEditNotify(false);
+    setEditOpen(true);
+  }
+
+  async function handleDrawerUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!drawerPost || !editTitle.trim()) return;
+
+    setIsUpdating(true);
+    try {
+      const updated = await apiClient.updatePost(drawerPost.id, {
+        post: {
+          title: editTitle.trim(),
+          body: editBody.trim() || undefined,
+          post_type: editType,
+          status: editStatus,
+          priority: editPriority,
+          channel_id: editChannel || undefined,
+          scheduled_date: editScheduledDate || null,
+          due_date: editDueDate || null,
+          pinned: editPinned,
+        },
+        assignee_ids: editAssignees,
+        company_ids: editCompanies,
+        notify: editNotify || undefined,
+      });
+      setDrawerPost(updated);
+      setEditOpen(false);
+      fetchPosts();
+      toast.success("Task updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update");
+    } finally {
+      setIsUpdating(false);
+    }
+  }
+
+  async function handleDrawerDelete() {
+    if (!drawerPost) return;
+    try {
+      await apiClient.deletePost(drawerPost.id);
+      setDrawerOpen(false);
+      setDrawerPost(null);
+      fetchPosts();
+      toast.success("Task deleted");
+    } catch {
+      toast.error("Failed to delete task");
+    }
   }
 
   if (authLoading) return null;
@@ -765,10 +913,11 @@ export default function PostsPage() {
           ) : (
             <div className="p-3 space-y-1.5">
               {posts.map((post) => (
-                <Link
+                <button
                   key={post.id}
-                  href={`/admin/posts/${post.id}`}
-                  className="group flex items-start gap-3 rounded-lg border border-transparent bg-card px-4 py-3 shadow-xs hover:shadow-md hover:border-border/60 hover:bg-accent/40 active:scale-[0.995] transition-all duration-150"
+                  type="button"
+                  onClick={() => openDrawer(post.id)}
+                  className="group w-full text-left flex items-start gap-3 rounded-lg border border-transparent bg-card px-4 py-3 shadow-xs hover:shadow-md hover:border-border/60 hover:bg-accent/40 active:scale-[0.995] transition-all duration-150 cursor-pointer"
                 >
                   {/* Channel color bar */}
                   <div
@@ -814,9 +963,9 @@ export default function PostsPage() {
 
                   <div className="flex items-center gap-3 shrink-0 text-muted-foreground text-xs opacity-60 group-hover:opacity-100 transition-opacity duration-150">
                     {post.assignees.length > 0 && (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1.5">
                         <UserIcon className="size-3" />
-                        {post.assignees.length}
+                        {post.assignees.map((a) => a.full_name?.split(" ")[0] || a.email.split("@")[0]).join(", ")}
                       </span>
                     )}
                     {post.companies.length > 0 && (
@@ -844,12 +993,391 @@ export default function PostsPage() {
                       {post.author.full_name?.split(" ")[0] || post.author.email.split("@")[0]}
                     </span>
                   </div>
-                </Link>
+                </button>
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Task Detail Drawer */}
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent className="sm:max-w-2xl w-full overflow-y-auto p-0" showCloseButton={false}>
+          {drawerLoading ? (
+            <div className="p-8 text-center text-muted-foreground">Loading...</div>
+          ) : drawerPost ? (
+            <>
+              <SheetHeader className="p-5 pb-0">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                  <span
+                    className="inline-block size-2 rounded-full"
+                    style={{ backgroundColor: drawerPost.channel.color }}
+                  />
+                  <span>{drawerPost.channel.title}</span>
+                  <span className="ml-auto">
+                    <Link
+                      href={`/admin/posts/${drawerPost.id}`}
+                      className="hover:text-foreground transition-colors"
+                    >
+                      <ExternalLinkIcon className="size-3.5" />
+                    </Link>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {drawerPost.pinned && <PinIcon className="size-4 text-amber-500" />}
+                  <SheetTitle className="text-xl">{drawerPost.title}</SheetTitle>
+                </div>
+                <SheetDescription className="sr-only">Task detail</SheetDescription>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${POST_TYPE_COLORS[drawerPost.post_type]}`}>
+                    {POST_TYPE_LABELS[drawerPost.post_type]}
+                  </span>
+
+                  {writable ? (
+                    <Select
+                      value={drawerPost.status}
+                      onValueChange={(v) => handleDrawerStatusChange(v as PostStatus)}
+                    >
+                      <SelectTrigger className="h-6 w-auto text-xs px-2.5 rounded-full border-0">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${POST_STATUS_COLORS[drawerPost.status]}`}>
+                          {POST_STATUS_LABELS[drawerPost.status]}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.entries(POST_STATUS_LABELS) as [PostStatus, string][]).map(([val, label]) => (
+                          <SelectItem key={val} value={val}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${POST_STATUS_COLORS[drawerPost.status]}`}>
+                      {POST_STATUS_LABELS[drawerPost.status]}
+                    </span>
+                  )}
+
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${POST_PRIORITY_COLORS[drawerPost.priority]}`}>
+                    {POST_PRIORITY_LABELS[drawerPost.priority]}
+                  </span>
+                </div>
+              </SheetHeader>
+
+              {/* Actions */}
+              {writable && (
+                <div className="px-5 pt-4 flex items-center gap-2">
+                  {drawerPost.status === "done" ? (
+                    <Button variant="outline" size="sm" onClick={() => handleDrawerStatusChange("open")}>
+                      <CircleDashedIcon className="size-3.5 mr-1.5" />
+                      Reopen
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={() => handleDrawerStatusChange("done")}>
+                      <CircleCheckIcon className="size-3.5 mr-1.5" />
+                      Mark Done
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={openDrawerEdit}>
+                    <PenIcon className="size-3.5 mr-1.5" />
+                    Edit
+                  </Button>
+                  {deletable && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          <Trash2Icon className="size-3.5 mr-1.5" />
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this task?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete the task and all its comments.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDrawerDelete}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              )}
+
+              <div className="p-5 space-y-5">
+                {/* Body */}
+                {drawerPost.body && (
+                  <div className="rounded-lg border bg-card p-4">
+                    <p className="text-sm whitespace-pre-wrap">{drawerPost.body}</p>
+                  </div>
+                )}
+
+                {/* Meta */}
+                <div className="rounded-lg border bg-card p-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Author</span>
+                      <p className="font-medium mt-0.5">
+                        {drawerPost.author.full_name || drawerPost.author.email}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Created</span>
+                      <p className="font-medium mt-0.5">
+                        {new Date(drawerPost.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                    </div>
+                    {drawerPost.scheduled_date && (
+                      <div>
+                        <span className="text-muted-foreground">Scheduled</span>
+                        <p className="font-medium mt-0.5">
+                          {new Date(drawerPost.scheduled_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </p>
+                      </div>
+                    )}
+                    {drawerPost.due_date && (
+                      <div>
+                        <span className="text-muted-foreground">Due Date</span>
+                        <p className="font-medium mt-0.5">
+                          {new Date(drawerPost.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Assignees */}
+                {drawerPost.assignees.length > 0 && (
+                  <div className="rounded-lg border bg-card p-4">
+                    <h3 className="font-medium text-sm flex items-center gap-2 mb-3">
+                      <UserIcon className="size-4 text-muted-foreground" />
+                      Assignees
+                    </h3>
+                    <div className="space-y-2">
+                      {drawerPost.assignees.map((assignee) => (
+                        <div key={assignee.id} className="flex items-center gap-2 text-sm">
+                          <div className="size-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                            {assignee.full_name?.[0]?.toUpperCase() || assignee.email[0].toUpperCase()}
+                          </div>
+                          <span>{assignee.full_name || assignee.email}</span>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">{assignee.role}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Companies */}
+                {drawerPost.companies.length > 0 && (
+                  <div className="rounded-lg border bg-card p-4">
+                    <h3 className="font-medium text-sm flex items-center gap-2 mb-3">
+                      <BuildingIcon className="size-4 text-muted-foreground" />
+                      Linked Companies
+                    </h3>
+                    <div className="space-y-4">
+                      {drawerPost.companies.map((company) => (
+                        <div key={company.id} className="rounded-lg border p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Link
+                              href={`/admin/companies/${company.slug}`}
+                              className="font-semibold text-lg hover:underline"
+                            >
+                              {company.name}
+                            </Link>
+                            <Badge variant="outline" className="text-xs">{company.company_type}</Badge>
+                          </div>
+
+                          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                            {company.phone_number && (
+                              <a href={`tel:${company.phone_number}`} className="flex items-center gap-1.5 hover:text-foreground text-base font-medium">
+                                <PhoneIcon className="size-4" />
+                                {company.phone_number}
+                              </a>
+                            )}
+                            {company.email && (
+                              <a href={`mailto:${company.email}`} className="flex items-center gap-1.5 hover:text-foreground">
+                                <MailIcon className="size-4" />
+                                {company.email}
+                              </a>
+                            )}
+                            {company.locations.length > 0 && company.locations[0].city && (
+                              <span className="flex items-center gap-1.5">
+                                <MapPinIcon className="size-4" />
+                                {[company.locations[0].city, company.locations[0].state].filter(Boolean).join(", ")}
+                              </span>
+                            )}
+                          </div>
+
+                          {company.members.length > 0 && (
+                            <div className="pt-2 space-y-1.5">
+                              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Contacts</p>
+                              {company.members.map((member) => (
+                                <div key={member.id} className="flex items-center justify-between text-sm py-1.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{member.full_name || member.email}</span>
+                                    {member.company_title && (
+                                      <span className="text-muted-foreground">{member.company_title}</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-muted-foreground">
+                                    {member.phone_number && (
+                                      <a href={`tel:${member.phone_number}`} className="hover:text-foreground font-medium">
+                                        {member.phone_number}
+                                      </a>
+                                    )}
+                                    <a href={`mailto:${member.email}`} className="hover:text-foreground">
+                                      {member.email}
+                                    </a>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Comments */}
+                <PostComments postId={drawerPost.id} />
+              </div>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+
+      {/* Edit Dialog (for drawer) */}
+      {writable && drawerPost && (
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Task</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleDrawerUpdate} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Body</Label>
+                <Textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={3} />
+              </div>
+              <div className="space-y-2">
+                <Label>Channel</Label>
+                <Select value={String(editChannel)} onValueChange={(v) => setEditChannel(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {channels.map((ch) => (
+                      <SelectItem key={ch.id} value={String(ch.id)}>
+                        <span className="flex items-center gap-2">
+                          <span className="size-2 rounded-full inline-block" style={{ backgroundColor: ch.color }} />
+                          {ch.title}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={editType} onValueChange={(v) => setEditType(v as PostType)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.entries(POST_TYPE_LABELS) as [PostType, string][]).map(([val, label]) => (
+                        <SelectItem key={val} value={val}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={editStatus} onValueChange={(v) => setEditStatus(v as PostStatus)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.entries(POST_STATUS_LABELS) as [PostStatus, string][]).map(([val, label]) => (
+                        <SelectItem key={val} value={val}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select value={editPriority} onValueChange={(v) => setEditPriority(v as PostPriority)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.entries(POST_PRIORITY_LABELS) as [PostPriority, string][]).map(([val, label]) => (
+                        <SelectItem key={val} value={val}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Scheduled Date</Label>
+                  <Input type="date" value={editScheduledDate} onChange={(e) => setEditScheduledDate(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Due Date</Label>
+                  <Input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="edit-pinned" checked={editPinned} onCheckedChange={(v) => setEditPinned(v === true)} />
+                <Label htmlFor="edit-pinned" className="text-sm font-normal">Pin this task</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Assignees</Label>
+                <div className="border rounded-md max-h-32 overflow-y-auto p-2 space-y-1">
+                  {internalUsers.map((u) => (
+                    <label key={u.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5">
+                      <Checkbox
+                        checked={editAssignees.includes(u.id)}
+                        onCheckedChange={(checked) => setEditAssignees((prev) => checked ? [...prev, u.id] : prev.filter((uid) => uid !== u.id))}
+                      />
+                      <span>{u.full_name || u.email}</span>
+                      <span className="text-xs text-muted-foreground ml-auto">{u.role}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Companies</Label>
+                <div className="border rounded-md max-h-32 overflow-y-auto p-2 space-y-1">
+                  {companies.map((c) => (
+                    <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5">
+                      <Checkbox
+                        checked={editCompanies.includes(c.id)}
+                        onCheckedChange={(checked) => setEditCompanies((prev) => checked ? [...prev, c.id] : prev.filter((cid) => cid !== c.id))}
+                      />
+                      <span>{c.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {editAssignees.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Checkbox id="edit-notify" checked={editNotify} onCheckedChange={(v) => setEditNotify(v === true)} />
+                  <Label htmlFor="edit-notify" className="text-sm font-normal">
+                    <BellIcon className="size-3.5 inline mr-1" />
+                    Notify assignees
+                  </Label>
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" disabled={isUpdating}>
+                {isUpdating ? "Saving..." : "Save Changes"}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
