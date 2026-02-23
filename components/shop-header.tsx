@@ -108,7 +108,7 @@ export function ShopHeader({ slug }: { slug: string }) {
           </Button>
 
           <Button variant="ghost" size="icon" asChild className="relative">
-            <Link href={`/${slug}/notifications`}>
+            <Link href={`/${slug}/storefront`}>
               <BellIcon className="size-5" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
