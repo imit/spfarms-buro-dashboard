@@ -1586,6 +1586,7 @@ export interface UpdatePostParams {
     post_type?: PostType;
     status?: PostStatus;
     priority?: PostPriority;
+    channel_id?: number;
     scheduled_date?: string | null;
     due_date?: string | null;
     pinned?: boolean;

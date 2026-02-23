@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/auth-context";
 import {
   apiClient,
   type Post,
+  type Channel,
   type PostType,
   type PostStatus,
   type PostPriority,
@@ -114,9 +115,11 @@ export default function PostDetailPage({
   const [editPinned, setEditPinned] = useState(false);
   const [editAssignees, setEditAssignees] = useState<number[]>([]);
   const [editCompanies, setEditCompanies] = useState<number[]>([]);
+  const [editChannel, setEditChannel] = useState<number | null>(null);
   const [editNotify, setEditNotify] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [allCompanies, setAllCompanies] = useState<Company[]>([]);
 
@@ -139,10 +142,12 @@ export default function PostDetailPage({
         setPost(postData);
 
         if (writable) {
-          const [usersData, companiesData] = await Promise.all([
+          const [channelsData, usersData, companiesData] = await Promise.all([
+            apiClient.getChannels().catch(() => []),
             apiClient.getUsers().catch(() => []),
             apiClient.getCompanies().catch(() => []),
           ]);
+          setChannels(channelsData);
           setUsers(usersData);
           setAllCompanies(companiesData);
         }
@@ -166,6 +171,7 @@ export default function PostDetailPage({
     setEditScheduledDate(post.scheduled_date || "");
     setEditDueDate(post.due_date || "");
     setEditPinned(post.pinned);
+    setEditChannel(post.channel.id);
     setEditAssignees(post.assignees.map((a) => a.id));
     setEditCompanies(post.companies.map((c) => c.id));
     setEditNotify(false);
@@ -185,6 +191,7 @@ export default function PostDetailPage({
           post_type: editType,
           status: editStatus,
           priority: editPriority,
+          channel_id: editChannel || undefined,
           scheduled_date: editScheduledDate || null,
           due_date: editDueDate || null,
           pinned: editPinned,
@@ -585,6 +592,25 @@ export default function PostDetailPage({
                   onChange={(e) => setEditBody(e.target.value)}
                   rows={3}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Channel</Label>
+                <Select value={String(editChannel)} onValueChange={(v) => setEditChannel(Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {channels.map((ch) => (
+                      <SelectItem key={ch.id} value={String(ch.id)}>
+                        <span className="flex items-center gap-2">
+                          <span className="size-2 rounded-full inline-block" style={{ backgroundColor: ch.color }} />
+                          {ch.title}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
