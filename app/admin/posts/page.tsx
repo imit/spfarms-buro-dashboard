@@ -11,6 +11,8 @@ import {
   type PostType,
   type PostStatus,
   type PostPriority,
+  type User,
+  type Company,
   POST_TYPE_LABELS,
   POST_STATUS_LABELS,
   POST_PRIORITY_LABELS,
@@ -30,13 +32,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -52,6 +47,7 @@ import {
   BuildingIcon,
   TagIcon,
   FlagIcon,
+  XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -83,6 +79,8 @@ export default function PostsPage() {
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [selectedChannel, setSelectedChannel] = useState<string | null>(
@@ -92,7 +90,7 @@ export default function PostsPage() {
   const [statusFilter, setStatusFilter] = useState<PostStatus | "all">("all");
   const [assignedToMe, setAssignedToMe] = useState(false);
 
-  // New task — minimal
+  // New task
   const [newPostOpen, setNewPostOpen] = useState(false);
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostBody, setNewPostBody] = useState("");
@@ -100,7 +98,11 @@ export default function PostsPage() {
   const [newPostPriority, setNewPostPriority] = useState<PostPriority>("normal");
   const [newPostChannel, setNewPostChannel] = useState<number | null>(null);
   const [newPostDueDate, setNewPostDueDate] = useState("");
+  const [newPostAssignees, setNewPostAssignees] = useState<number[]>([]);
+  const [newPostCompanies, setNewPostCompanies] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [peopleSearch, setPeopleSearch] = useState("");
+  const [companySearch, setCompanySearch] = useState("");
 
   // New channel dialog
   const [newChannelOpen, setNewChannelOpen] = useState(false);
@@ -140,10 +142,14 @@ export default function PostsPage() {
     Promise.all([
       apiClient.getChannels(),
       apiClient.getPosts({ channel_slug: selectedChannel || undefined }),
+      writable ? apiClient.getUsers().catch(() => []) : Promise.resolve([]),
+      writable ? apiClient.getCompanies().catch(() => []) : Promise.resolve([]),
     ])
-      .then(([channelsData, postsData]) => {
+      .then(([channelsData, postsData, usersData, companiesData]) => {
         setChannels(channelsData);
         setPosts(postsData);
+        setUsers(usersData as User[]);
+        setCompanies(companiesData as Company[]);
         if (channelsData.length > 0 && !newPostChannel) {
           setNewPostChannel(channelsData[0].id);
         }
@@ -173,6 +179,8 @@ export default function PostsPage() {
           channel_id: newPostChannel,
           due_date: newPostDueDate || undefined,
         },
+        assignee_ids: newPostAssignees.length > 0 ? newPostAssignees : undefined,
+        company_ids: newPostCompanies.length > 0 ? newPostCompanies : undefined,
       });
 
       toast.success("Task created");
@@ -192,6 +200,10 @@ export default function PostsPage() {
     setNewPostType("task");
     setNewPostPriority("normal");
     setNewPostDueDate("");
+    setNewPostAssignees([]);
+    setNewPostCompanies([]);
+    setPeopleSearch("");
+    setCompanySearch("");
   }
 
   async function handleCreateChannel(e: React.FormEvent) {
@@ -229,6 +241,9 @@ export default function PostsPage() {
   if (authLoading) return null;
 
   const currentChannel = channels.find((c) => c.slug === selectedChannel);
+  const internalUsers = users.filter(
+    (u) => u.role !== "account" && u.role !== "user" && !u.deleted_at
+  );
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
@@ -379,14 +394,14 @@ export default function PostsPage() {
                   New
                 </Button>
               </DialogTrigger>
-              <DialogContent className="p-0 gap-0 max-w-md" showCloseButton={false}>
+              <DialogContent className="p-0 gap-0 max-w-xl" showCloseButton={false}>
                 <form onSubmit={handleCreatePost}>
-                  <div className="p-4 pb-2">
+                  <div className="p-5 pb-3">
                     <input
                       value={newPostTitle}
                       onChange={(e) => setNewPostTitle(e.target.value)}
                       placeholder="New Task"
-                      className="w-full text-lg font-medium bg-transparent outline-none placeholder:text-muted-foreground/50"
+                      className="w-full text-xl font-semibold bg-transparent outline-none placeholder:text-muted-foreground/40"
                       autoFocus
                       required
                     />
@@ -394,18 +409,70 @@ export default function PostsPage() {
                       value={newPostBody}
                       onChange={(e) => setNewPostBody(e.target.value)}
                       placeholder="Notes"
-                      className="w-full mt-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground/40 resize-none"
-                      rows={2}
+                      className="w-full mt-2 text-sm bg-transparent outline-none placeholder:text-muted-foreground/40 resize-none leading-relaxed"
+                      rows={3}
                     />
                   </div>
 
-                  <div className="px-4 pb-3 pt-1 flex items-center gap-1.5">
+                  {/* Tagged users */}
+                  {newPostAssignees.length > 0 && (
+                    <div className="px-5 pb-2 flex flex-wrap gap-1.5">
+                      {newPostAssignees.map((uid) => {
+                        const u = internalUsers.find((u) => u.id === uid);
+                        if (!u) return null;
+                        return (
+                          <span
+                            key={uid}
+                            className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 pl-2 pr-1 py-0.5 text-xs font-medium"
+                          >
+                            <UserIcon className="size-3" />
+                            {u.full_name?.split(" ")[0] || u.email.split("@")[0]}
+                            <button
+                              type="button"
+                              onClick={() => setNewPostAssignees((prev) => prev.filter((id) => id !== uid))}
+                              className="rounded-full p-0.5 hover:bg-blue-200/60 transition-colors"
+                            >
+                              <XIcon className="size-3" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Tagged companies */}
+                  {newPostCompanies.length > 0 && (
+                    <div className="px-5 pb-2 flex flex-wrap gap-1.5">
+                      {newPostCompanies.map((cid) => {
+                        const c = companies.find((c) => c.id === cid);
+                        if (!c) return null;
+                        return (
+                          <span
+                            key={cid}
+                            className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 pl-2 pr-1 py-0.5 text-xs font-medium"
+                          >
+                            <BuildingIcon className="size-3" />
+                            {c.name}
+                            <button
+                              type="button"
+                              onClick={() => setNewPostCompanies((prev) => prev.filter((id) => id !== cid))}
+                              className="rounded-full p-0.5 hover:bg-emerald-200/60 transition-colors"
+                            >
+                              <XIcon className="size-3" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="px-5 pb-4 pt-1 flex items-center gap-1.5 flex-wrap">
                     {/* Channel */}
                     <Popover>
                       <PopoverTrigger asChild>
                         <button
                           type="button"
-                          className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
                         >
                           <span
                             className="size-2 rounded-full"
@@ -438,7 +505,7 @@ export default function PostsPage() {
                       <PopoverTrigger asChild>
                         <button
                           type="button"
-                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
+                          className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
                         >
                           <TagIcon className="size-3" />
                           {POST_TYPE_LABELS[newPostType]}
@@ -465,14 +532,14 @@ export default function PostsPage() {
                       <PopoverTrigger asChild>
                         <button
                           type="button"
-                          className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors ${
+                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${
                             newPostPriority !== "normal"
                               ? POST_PRIORITY_COLORS[newPostPriority]
                               : "text-muted-foreground hover:bg-muted/50"
                           }`}
                         >
                           <FlagIcon className="size-3" />
-                          {newPostPriority !== "normal" && POST_PRIORITY_LABELS[newPostPriority]}
+                          {newPostPriority !== "normal" ? POST_PRIORITY_LABELS[newPostPriority] : "Priority"}
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-32 p-1" align="start">
@@ -500,23 +567,119 @@ export default function PostsPage() {
                         className="absolute inset-0 opacity-0 cursor-pointer"
                       />
                       <span
-                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs pointer-events-none transition-colors ${
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs pointer-events-none transition-colors ${
                           newPostDueDate ? "text-foreground" : "text-muted-foreground"
                         }`}
                       >
                         <CalendarIcon className="size-3" />
                         {newPostDueDate
                           ? new Date(newPostDueDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                          : ""}
+                          : "Due"}
                       </span>
                     </div>
+
+                    {/* Assign people */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                            newPostAssignees.length > 0 ? "text-blue-700 border-blue-200 bg-blue-50" : "text-muted-foreground hover:bg-muted/50"
+                          }`}
+                        >
+                          <UserIcon className="size-3" />
+                          {newPostAssignees.length > 0 ? newPostAssignees.length : "People"}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                        <input
+                          value={peopleSearch}
+                          onChange={(e) => setPeopleSearch(e.target.value)}
+                          placeholder="Search people..."
+                          className="w-full px-2 py-1.5 text-xs bg-transparent outline-none border-b mb-1 placeholder:text-muted-foreground/50"
+                          autoFocus
+                        />
+                        <div className="max-h-48 overflow-y-auto">
+                          {internalUsers
+                            .filter((u) => {
+                              if (!peopleSearch) return true;
+                              const q = peopleSearch.toLowerCase();
+                              return (u.full_name?.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+                            })
+                            .map((u) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => {
+                                setNewPostAssignees((prev) =>
+                                  prev.includes(u.id) ? prev.filter((id) => id !== u.id) : [...prev, u.id]
+                                );
+                              }}
+                              className={`w-full flex items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors ${
+                                newPostAssignees.includes(u.id) ? "bg-accent font-medium" : "hover:bg-muted/50"
+                              }`}
+                            >
+                              <span className="truncate">{u.full_name || u.email}</span>
+                              <span className="ml-auto text-muted-foreground">{u.role}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* Tag companies */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                            newPostCompanies.length > 0 ? "text-emerald-700 border-emerald-200 bg-emerald-50" : "text-muted-foreground hover:bg-muted/50"
+                          }`}
+                        >
+                          <BuildingIcon className="size-3" />
+                          {newPostCompanies.length > 0 ? newPostCompanies.length : "Companies"}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-1" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                        <input
+                          value={companySearch}
+                          onChange={(e) => setCompanySearch(e.target.value)}
+                          placeholder="Search companies..."
+                          className="w-full px-2 py-1.5 text-xs bg-transparent outline-none border-b mb-1 placeholder:text-muted-foreground/50"
+                          autoFocus
+                        />
+                        <div className="max-h-48 overflow-y-auto">
+                          {companies
+                            .filter((c) => {
+                              if (!companySearch) return true;
+                              return c.name.toLowerCase().includes(companySearch.toLowerCase());
+                            })
+                            .map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                setNewPostCompanies((prev) =>
+                                  prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                                );
+                              }}
+                              className={`w-full flex items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors text-left ${
+                                newPostCompanies.includes(c.id) ? "bg-accent font-medium" : "hover:bg-muted/50"
+                              }`}
+                            >
+                              <span className="truncate">{c.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
 
                     <div className="ml-auto">
                       <Button
                         type="submit"
                         size="sm"
                         disabled={isSubmitting || !newPostTitle.trim()}
-                        className="h-7 text-xs px-3"
+                        className="rounded-full px-4"
                       >
                         {isSubmitting ? "..." : "Save"}
                       </Button>

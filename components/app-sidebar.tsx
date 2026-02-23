@@ -55,12 +55,6 @@ const navOps: NavItem[] = [
     icon: <FolderIcon />,
     resource: "projects",
   },
-  {
-    title: "Tasks",
-    url: "/admin/posts",
-    icon: <MessageSquareIcon />,
-    resource: "posts",
-  },
 ]
 
 const navSales: NavItem[] = [
@@ -152,7 +146,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain label="Dashboard" items={[{ title: "Dashboard", url: "/admin", icon: <LayoutDashboardIcon /> }]} />
+        <NavMain label="Dashboard" items={[{ title: "Dashboard", url: "/admin", icon: <LayoutDashboardIcon /> }, ...(canAccess("posts", role) ? [{ title: "Tasks", url: "/admin/posts", icon: <MessageSquareIcon /> }] : [])]} />
         {filteredOps.length > 0 && <NavMain label="Ops" items={filteredOps} />}
         {filteredSales.length > 0 && <NavMain label="Sales" items={filteredSales} />}
         {showQuickOnboard && (
