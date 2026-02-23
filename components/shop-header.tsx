@@ -66,9 +66,16 @@ export function ShopHeader({ slug }: { slug: string }) {
   return (
     <header className="sticky top-0 z-50 border-b" style={{ backgroundColor: "#F3F1EF", borderColor: "#050403/10" }}>
       <div className="flex h-14 items-center justify-between px-4 lg:px-6">
-        <Link href={`/${slug}/storefront`} className="w-28">
-          <Logo />
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/${slug}/storefront`} className="w-28">
+            <Logo />
+          </Link>
+          {isBulkBuyer && (
+            <span className="rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+              Bulk
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           <Button
