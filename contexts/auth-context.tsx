@@ -8,6 +8,7 @@ import { ADMIN_LAYOUT_ROLES } from "@/lib/roles";
 import type { UserRole } from "@/lib/api";
 
 const PUBLIC_ROUTES = ["/", "/auth/invitation", "/auth/verify", "/wholesale", "/bulk"];
+const POSTHOG_EXCLUDED_EMAILS = ["imitkit@gmail.com"];
 
 interface AuthContextType {
   user: User | null;
