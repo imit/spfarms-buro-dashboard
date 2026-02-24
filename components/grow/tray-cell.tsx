@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { type TrayView, type GrowthPhase, GROWTH_PHASE_LABELS } from "@/lib/api"
 import { PlusIcon, TagIcon } from "lucide-react"
 import { StrainAvatar } from "./strain-avatar"
+import { PlantCard } from "./plant-card"
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card"
 
 const PHASE_COLORS: Record<GrowthPhase, string> = {
@@ -105,32 +106,18 @@ export function TrayCell({ tray, isSelected, isMoveTarget, onClick }: TrayCellPr
             <span className="text-xs font-medium">{tray.name || `Tray ${tray.position + 1}`}</span>
             <span className="text-muted-foreground text-xs tabular-nums">{occupancy}/{tray.capacity}</span>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {tray.plants.map((plant) => (
-              <div key={plant.id} className="flex items-center gap-1.5">
-                <StrainAvatar name={plant.strain_name} size={18} />
-                <span className="min-w-0 flex-1 truncate text-xs">{plant.strain_name}</span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded px-1 py-0.5 text-[9px] font-medium leading-none",
-                    PHASE_COLORS[plant.growth_phase]
-                  )}
-                >
-                  {GROWTH_PHASE_LABELS[plant.growth_phase]}
-                </span>
-              </div>
+              <PlantCard
+                key={plant.id}
+                variant="compact"
+                strainName={plant.strain_name}
+                plantUid={plant.plant_uid}
+                growthPhase={plant.growth_phase}
+                metrcLabel={plant.metrc_label}
+              />
             ))}
           </div>
-          {tray.plants.some((p) => p.metrc_label) && (
-            <div className="border-t pt-1.5 space-y-0.5">
-              {tray.plants.filter((p) => p.metrc_label).map((p) => (
-                <div key={p.id} className="text-muted-foreground flex items-center gap-1 text-[10px]">
-                  <TagIcon className="h-2.5 w-2.5 shrink-0" />
-                  <span className="truncate font-mono">{p.metrc_label}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </HoverCardContent>
     </HoverCard>

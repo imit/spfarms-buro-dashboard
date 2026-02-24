@@ -1201,6 +1201,25 @@ export interface PlantEventData {
   created_at: string;
 }
 
+export interface FeedEvent {
+  id: number;
+  event_type: PlantEventType;
+  notes: string | null;
+  photo_urls: string[];
+  user_name: string;
+  created_at: string;
+  plant: {
+    id: number;
+    plant_uid: string;
+    strain_name: string;
+    strain_id: number;
+    growth_phase: GrowthPhase;
+    metrc_label: string | null;
+    room_name: string | null;
+    room_id: number | null;
+  };
+}
+
 export type AuditEventType =
   | "harvest_created"
   | "harvest_plants_added"
@@ -3440,6 +3459,19 @@ export class ApiClient {
       `/api/v1/plants/lookup?q=${encodeURIComponent(query)}`
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async getPlantFeed(opts?: {
+    strain_id?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ data: FeedEvent[]; meta: { total: number; limit: number; offset: number } }> {
+    const params = new URLSearchParams();
+    if (opts?.strain_id) params.set("strain_id", String(opts.strain_id));
+    if (opts?.limit) params.set("limit", String(opts.limit));
+    if (opts?.offset) params.set("offset", String(opts.offset));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/api/v1/plants/feed${query}`);
   }
 
   // ---- Audit Events ----

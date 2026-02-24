@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react"
 import { apiClient, type Plant, type PlantEventData } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { PhaseBadge } from "@/components/grow/phase-badge"
+import { StrainAvatar } from "@/components/grow/strain-avatar"
 import { PlantEventTimeline } from "@/components/grow/plant-event-timeline"
-import { TagIcon } from "lucide-react"
+import { TagIcon, ExternalLinkIcon } from "lucide-react"
+import Link from "next/link"
 import {
   Dialog,
   DialogContent,
@@ -51,14 +54,19 @@ export function PlantDetailDialog({
         ) : plant ? (
           <>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                {plant.strain?.name}
-                <PhaseBadge phase={plant.growth_phase} />
-                {plant.status !== "active" && (
-                  <Badge variant="destructive">{plant.status}</Badge>
-                )}
-              </DialogTitle>
-              <p className="text-muted-foreground font-mono text-sm">{plant.plant_uid}</p>
+              <div className="flex items-start gap-3">
+                <StrainAvatar name={plant.strain?.name || "?"} size={40} />
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="flex items-center gap-2 flex-wrap">
+                    {plant.strain?.name}
+                    <PhaseBadge phase={plant.growth_phase} />
+                    {plant.status !== "active" && (
+                      <Badge variant="destructive">{plant.status}</Badge>
+                    )}
+                  </DialogTitle>
+                  <p className="text-muted-foreground font-mono text-sm">{plant.plant_uid}</p>
+                </div>
+              </div>
             </DialogHeader>
 
             <div className="grid gap-3 sm:grid-cols-2 text-sm">
@@ -110,6 +118,14 @@ export function PlantDetailDialog({
                 <PlantEventTimeline events={events} />
               </div>
             )}
+
+            <div className="mt-3 border-t pt-3">
+              <Button variant="outline" size="sm" className="w-full" asChild>
+                <Link href={`/admin/grow/plants/${plantId}`}>
+                  <ExternalLinkIcon className="mr-1 h-3.5 w-3.5" /> View Full Details
+                </Link>
+              </Button>
+            </div>
           </>
         ) : (
           <div className="py-8 text-center">

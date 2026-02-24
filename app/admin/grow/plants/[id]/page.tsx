@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { apiClient, type Plant, type PlantEventData, GROWTH_PHASE_LABELS, type GrowthPhase } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { PhaseBadge } from "@/components/grow/phase-badge"
+import { StrainAvatar } from "@/components/grow/strain-avatar"
 import { PlantEventTimeline } from "@/components/grow/plant-event-timeline"
 import { TagAssignDialog } from "@/components/grow/tag-assign-dialog"
 import { PlantMoveDialog } from "@/components/grow/plant-move-dialog"
@@ -19,6 +21,7 @@ import {
   CameraIcon,
   XIcon,
   ImageIcon,
+  MapPinIcon,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -141,14 +144,15 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
+      <div className="flex items-start gap-3">
+        <Button variant="ghost" size="icon" className="mt-1" asChild>
           <Link href={plant.room ? `/admin/grow/rooms/${plant.room.id}` : "/admin/grow"}>
             <ArrowLeftIcon className="h-4 w-4" />
           </Link>
         </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
+        <StrainAvatar name={plant.strain?.name || "?"} size={48} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-semibold">{plant.strain?.name}</h1>
             <PhaseBadge phase={plant.growth_phase} />
             {plant.status !== "active" && (
@@ -156,49 +160,22 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
           <p className="text-muted-foreground font-mono text-sm">{plant.plant_uid}</p>
-        </div>
-      </div>
-
-      {/* Info Card */}
-      <Card>
-        <CardContent className="grid gap-4 py-4 sm:grid-cols-2">
-          <div>
-            <p className="text-muted-foreground text-xs">Location</p>
-            <p className="text-sm font-medium">
-              {plant.room?.name} &middot; Floor {plant.rack?.floor} &middot; {plant.rack?.name || `Rack ${(plant.rack?.position ?? 0) + 1}`} &middot; {plant.tray?.name || "Tray"}
-            </p>
+          <div className="text-muted-foreground mt-1 flex items-center gap-1 text-sm">
+            <MapPinIcon className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              {plant.room?.name}
+              {plant.rack && <> &middot; F{plant.rack.floor} &middot; {plant.rack.name || `Rack ${(plant.rack.position ?? 0) + 1}`}</>}
+              {plant.tray && <> &middot; {plant.tray.name || "Tray"}</>}
+            </span>
           </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Strain</p>
-            <p className="text-sm font-medium">{plant.strain?.name}</p>
-          </div>
-          {plant.plant_batch && (
-            <div>
-              <p className="text-muted-foreground text-xs">Batch</p>
-              <p className="text-sm font-medium">{plant.plant_batch.name}</p>
-              <p className="text-muted-foreground font-mono text-[10px]">{plant.plant_batch.batch_uid}</p>
+          {plant.metrc_label && (
+            <div className="mt-1 flex items-center gap-1 text-sm">
+              <TagIcon className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+              <span className="font-mono text-xs">{plant.metrc_label}</span>
             </div>
           )}
-          <div>
-            <p className="text-muted-foreground text-xs">METRC Tag</p>
-            {plant.metrc_label ? (
-              <Badge variant="secondary" className="font-mono text-xs">
-                <TagIcon className="mr-1 h-3 w-3" />
-                {plant.metrc_label}
-              </Badge>
-            ) : (
-              <p className="text-muted-foreground text-sm">Not tagged</p>
-            )}
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Placed</p>
-            <p className="text-sm">{new Date(plant.created_at).toLocaleDateString()}</p>
-            {plant.placed_by && (
-              <p className="text-muted-foreground text-xs">by {plant.placed_by.full_name || plant.placed_by.email}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Actions */}
       {plant.status === "active" && (
@@ -218,19 +195,68 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      {/* Event Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Event Timeline</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {events.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No events yet.</p>
-          ) : (
-            <PlantEventTimeline events={events} />
-          )}
-        </CardContent>
-      </Card>
+      {/* Tabs */}
+      <Tabs defaultValue="timeline">
+        <TabsList>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="details">Details</TabsTrigger>
+        </TabsList>
+        <TabsContent value="timeline">
+          <Card>
+            <CardContent className="py-4">
+              {events.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No events yet.</p>
+              ) : (
+                <PlantEventTimeline events={events} />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="details">
+          <Card>
+            <CardContent className="grid gap-4 py-4 sm:grid-cols-2">
+              <div>
+                <p className="text-muted-foreground text-xs">Location</p>
+                <p className="text-sm font-medium">
+                  {plant.room?.name} &middot; Floor {plant.rack?.floor} &middot; {plant.rack?.name || `Rack ${(plant.rack?.position ?? 0) + 1}`} &middot; {plant.tray?.name || "Tray"}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Strain</p>
+                <p className="text-sm font-medium">{plant.strain?.name}</p>
+                {plant.strain?.category && (
+                  <p className="text-muted-foreground text-xs">{plant.strain.category}</p>
+                )}
+              </div>
+              {plant.plant_batch && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Batch</p>
+                  <p className="text-sm font-medium">{plant.plant_batch.name}</p>
+                  <p className="text-muted-foreground font-mono text-[10px]">{plant.plant_batch.batch_uid}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-muted-foreground text-xs">METRC Tag</p>
+                {plant.metrc_label ? (
+                  <Badge variant="secondary" className="font-mono text-xs">
+                    <TagIcon className="mr-1 h-3 w-3" />
+                    {plant.metrc_label}
+                  </Badge>
+                ) : (
+                  <p className="text-muted-foreground text-sm">Not tagged</p>
+                )}
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Placed</p>
+                <p className="text-sm">{new Date(plant.created_at).toLocaleDateString()}</p>
+                {plant.placed_by && (
+                  <p className="text-muted-foreground text-xs">by {plant.placed_by.full_name || plant.placed_by.email}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       {showTagDialog && (

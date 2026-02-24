@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { FacilitySetupForm } from "@/components/grow/facility-setup-form"
 import { BatchCreateDialog } from "@/components/grow/batch-create-dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { PlusIcon, TagIcon, SproutIcon, LayersIcon, BoxIcon, ScissorsIcon, LeafIcon, Flower as FlowerIcon, SunIcon, MoreVerticalIcon, SettingsIcon, ClockIcon, EyeIcon } from "lucide-react"
+import { PlusIcon, TagIcon, SproutIcon, LayersIcon, BoxIcon, ScissorsIcon, LeafIcon, Flower as FlowerIcon, SunIcon, MoreVerticalIcon, SettingsIcon, ClockIcon, EyeIcon, StickyNoteIcon } from "lucide-react"
 import { StrainAvatar } from "@/components/grow/strain-avatar"
 import Link from "next/link"
 
@@ -82,6 +82,11 @@ export default function GrowPage() {
           <Button variant="outline" asChild>
             <Link href="/admin/grow/observe">
               <EyeIcon className="mr-2 h-4 w-4" /> Observe
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/grow/feed">
+              <StickyNoteIcon className="mr-2 h-4 w-4" /> Feed
             </Link>
           </Button>
           {facility && (

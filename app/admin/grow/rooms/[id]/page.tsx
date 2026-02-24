@@ -22,6 +22,7 @@ import { PlantMoveDialog } from "@/components/grow/plant-move-dialog"
 import { PlantDetailDialog } from "@/components/grow/plant-detail-dialog"
 import { TagAssignDialog } from "@/components/grow/tag-assign-dialog"
 import { PhaseBadge } from "@/components/grow/phase-badge"
+import { PlantCard } from "@/components/grow/plant-card"
 import {
   Sheet,
   SheetContent,
@@ -313,36 +314,16 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
 
               <div className="space-y-3 px-4 pb-4">
                 {selectedTray.plants.map((plant) => (
-                  <div
+                  <PlantCard
                     key={plant.id}
-                    className={`rounded-lg border p-3 transition-colors ${
-                      plant.id === selectedPlantId
-                        ? "border-primary bg-primary/5"
-                        : "hover:bg-muted/50"
-                    }`}
-                  >
-                    <div
-                      className="cursor-pointer"
-                      onClick={() => setSelectedPlantId(selectedPlantId === plant.id ? null : plant.id)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-medium">{plant.strain_name}</p>
-                          <p className="text-muted-foreground font-mono text-xs">{plant.plant_uid}</p>
-                        </div>
-                        <PhaseBadge phase={plant.growth_phase} />
-                      </div>
-                      {plant.metrc_label && (
-                        <div className="text-muted-foreground mt-1.5 flex items-center gap-1 text-xs">
-                          <TagIcon className="h-3 w-3" />
-                          <span className="font-mono">{plant.metrc_label}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Expanded actions */}
-                    {plant.id === selectedPlantId && (
-                      <div className="mt-3 flex flex-wrap gap-1.5 border-t pt-3">
+                    strainName={plant.strain_name}
+                    plantUid={plant.plant_uid}
+                    growthPhase={plant.growth_phase}
+                    metrcLabel={plant.metrc_label}
+                    isSelected={plant.id === selectedPlantId}
+                    onClick={() => setSelectedPlantId(selectedPlantId === plant.id ? null : plant.id)}
+                    actions={
+                      <>
                         <Button
                           variant="outline"
                           size="sm"
@@ -427,9 +408,9 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                         >
                           <ExternalLinkIcon className="mr-1 h-3 w-3" /> Details
                         </Button>
-                      </div>
-                    )}
-                  </div>
+                      </>
+                    }
+                  />
                 ))}
 
                 {/* Add Plant */}
