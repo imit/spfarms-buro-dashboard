@@ -573,7 +573,7 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
             {/* Product type line */}
             <LineConfigFields
               title="Product Type"
-              hint="e.g. PRODUCT TYPE (FLOWER)"
+              hint="e.g.(FLOWER)"
               config={productTypeLine}
               onChange={setProductTypeLine}
               disabled={isSubmitting}

@@ -32,6 +32,7 @@ import {
   Trash2Icon,
   DownloadIcon,
   PrinterIcon,
+  CopyIcon,
 } from "lucide-react";
 import { ErrorAlert } from "@/components/ui/error-alert";
 
@@ -77,6 +78,7 @@ export default function LabelDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
 
   useEffect(() => {
@@ -128,6 +130,20 @@ export default function LabelDetailPage({
         err instanceof Error ? err.message : "We couldn't delete the label"
       );
       setIsDeleting(false);
+    }
+  }
+
+  async function handleDuplicate() {
+    if (!label) return;
+    setIsDuplicating(true);
+    try {
+      const copy = await apiClient.duplicateLabel(label.slug);
+      router.push(`/admin/projects/labels/${copy.slug}/edit`);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "We couldn't duplicate the label"
+      );
+      setIsDuplicating(false);
     }
   }
 
@@ -215,6 +231,10 @@ export default function LabelDetailPage({
               <PencilIcon className="mr-2 size-4" />
               Edit
             </Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDuplicate} disabled={isDuplicating}>
+            <CopyIcon className="mr-2 size-4" />
+            {isDuplicating ? "Duplicating..." : "Duplicate"}
           </Button>
           <Button variant="outline" size="sm" onClick={handleDownloadSvg} disabled={!svgPreview}>
             <DownloadIcon className="mr-2 size-4" />

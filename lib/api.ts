@@ -2218,6 +2218,14 @@ export class ApiClient {
     await this.request(`/api/v1/labels/${slug}`, { method: "DELETE" });
   }
 
+  async duplicateLabel(slug: string): Promise<Label> {
+    const res = await this.request<JsonApiResponse<Label>>(
+      `/api/v1/labels/${slug}/duplicate`,
+      { method: "POST" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async getLabelSvgPreview(slug: string): Promise<string> {
     const url = `${this.baseUrl}/api/v1/labels/${slug}/render_svg`;
     const token =

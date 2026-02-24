@@ -4,12 +4,13 @@ import { use, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { apiClient, type Label } from "@/lib/api";
+import { apiClient, type Label, type LabelDesign } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { LabelForm } from "@/components/label-form";
 import { LabelOverlayPanel } from "@/components/label-overlay-panel";
 import { MetrcLabelSetPanel } from "@/components/metrc-label-set-panel";
+import { LabelCanvasEditor } from "@/components/label-canvas-editor";
 import { ArrowLeftIcon, RefreshCwIcon } from "lucide-react";
 import { ErrorAlert } from "@/components/ui/error-alert";
 
@@ -65,6 +66,53 @@ export default function EditLabelPage({
     refreshPreview();
   }
 
+  const handleElementMoved = useCallback(
+    async (element: string, x: number, y: number) => {
+      if (!label) return;
+
+      // Overlay move
+      if (element.startsWith("overlay:")) {
+        const overlayId = parseInt(element.split(":")[1], 10);
+        const fd = new FormData();
+        fd.append("label_overlay[position_x]", String(x));
+        fd.append("label_overlay[position_y]", String(y));
+        try {
+          const updated = await apiClient.updateLabelOverlay(label.slug, overlayId, fd);
+          setLabel(updated);
+          refreshPreview();
+        } catch {
+          // silently fail
+        }
+        return;
+      }
+
+      // Design element move — send full design with patched position
+      const design: LabelDesign = JSON.parse(JSON.stringify(label.design || {}));
+      const key = element as keyof LabelDesign;
+      if (key === "info_group" && design.info_group) {
+        design.info_group.x = x;
+        design.info_group.y = y;
+      } else if (key === "qr" && design.qr) {
+        design.qr.x = x;
+        design.qr.y = y;
+      } else if (key === "logo" && design.logo) {
+        design.logo.x = x;
+        design.logo.y = y;
+      } else if (key === "metrc_zone" && design.metrc_zone) {
+        design.metrc_zone.x = x;
+        design.metrc_zone.y = y;
+      }
+
+      try {
+        await apiClient.updateLabel(label.slug, { design: design as unknown as Record<string, unknown> });
+        await Promise.all([fetchLabel(), refreshPreview()]);
+      } catch {
+        // silently fail
+      }
+    },
+    [label, fetchLabel, refreshPreview]
+  );
+
   if (authLoading || !isAuthenticated) return null;
 
   if (isLoading) {
@@ -102,9 +150,10 @@ export default function EditLabelPage({
         <div className="lg:sticky lg:top-4 space-y-3">
           <div className="rounded-lg border bg-muted/30 p-4 flex items-center justify-center min-h-[250px]">
             {svgPreview ? (
-              <div
-                className="max-w-full [&>svg]:max-w-full [&>svg]:h-auto"
-                dangerouslySetInnerHTML={{ __html: svgPreview }}
+              <LabelCanvasEditor
+                svgHtml={svgPreview}
+                label={label}
+                onElementMoved={handleElementMoved}
               />
             ) : (
               <p className="text-muted-foreground">Loading preview...</p>
@@ -123,6 +172,7 @@ export default function EditLabelPage({
         {/* Right: Form + Overlays */}
         <div className="space-y-8">
           <LabelForm
+            key={label.updated_at}
             label={label}
             mode="edit"
             onSaved={() => {
