@@ -82,7 +82,7 @@ export default function PlantFeedPage() {
           <CardContent className="py-8 text-center">
             <StickyNoteIcon className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
             <p className="text-muted-foreground text-sm">
-              No observations yet. Use the Observe page to add your first.
+              No observations yet. Add notes from a plant&apos;s detail page.
             </p>
           </CardContent>
         </Card>

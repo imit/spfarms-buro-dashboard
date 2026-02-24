@@ -28,6 +28,7 @@ interface NavItem {
   url: string
   icon: React.ReactNode
   resource?: Resource
+  children?: { title: string; url: string }[]
 }
 
 const navOps: NavItem[] = [
@@ -42,6 +43,14 @@ const navOps: NavItem[] = [
     url: "/admin/grow",
     icon: <SproutIcon />,
     resource: "grow",
+    children: [
+      { title: "Overview", url: "/admin/grow" },
+      { title: "Batches", url: "/admin/grow/batches" },
+      { title: "Harvests", url: "/admin/grow/harvests" },
+      { title: "METRC Tags", url: "/admin/grow/tags" },
+      { title: "Activity", url: "/admin/grow/activity" },
+      { title: "Feed", url: "/admin/grow/feed" },
+    ],
   },
   {
     title: "Samples",

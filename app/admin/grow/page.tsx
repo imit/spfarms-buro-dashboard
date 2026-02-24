@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { apiClient, type Facility, type PlantBatch, ROOM_TYPE_LABELS, BATCH_TYPE_LABELS, type RoomType } from "@/lib/api"
+import { apiClient, type Facility, type Harvest, ROOM_TYPE_LABELS, type RoomType } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { FacilitySetupForm } from "@/components/grow/facility-setup-form"
-import { BatchCreateDialog } from "@/components/grow/batch-create-dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { PlusIcon, TagIcon, SproutIcon, LayersIcon, BoxIcon, ScissorsIcon, LeafIcon, Flower as FlowerIcon, SunIcon, MoreVerticalIcon, SettingsIcon, ClockIcon, EyeIcon, StickyNoteIcon } from "lucide-react"
+import { PlusIcon, SproutIcon, BoxIcon, ScissorsIcon, LeafIcon, Flower as FlowerIcon, SunIcon, LayersIcon, MoreVerticalIcon, SettingsIcon, ScaleIcon } from "lucide-react"
 import { StrainAvatar } from "@/components/grow/strain-avatar"
 import Link from "next/link"
 
@@ -18,10 +17,9 @@ export default function GrowPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [facility, setFacility] = useState<Facility | null>(null)
-  const [batches, setBatches] = useState<PlantBatch[]>([])
+  const [harvests, setHarvests] = useState<Harvest[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showSetup, setShowSetup] = useState(false)
-  const [showBatchCreate, setShowBatchCreate] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/")
@@ -31,12 +29,12 @@ export default function GrowPage() {
     if (!isAuthenticated) return
     async function load() {
       try {
-        const [f, b] = await Promise.all([
+        const [f, h] = await Promise.all([
           apiClient.getFacility(),
-          apiClient.getPlantBatches().catch(() => []),
+          apiClient.getHarvests().catch(() => []),
         ])
         setFacility(f)
-        setBatches(b)
+        setHarvests(h)
         if (!f) setShowSetup(true)
       } catch {
         // Facility doesn't exist yet
@@ -58,59 +56,25 @@ export default function GrowPage() {
           <h1 className="text-2xl font-semibold">Grow</h1>
           <p className="text-muted-foreground text-sm">Manage your facility, rooms, plants, and METRC tags</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/admin/grow/harvests">
-              <ScissorsIcon className="mr-2 h-4 w-4" /> Harvests
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/admin/grow/tags">
-              <TagIcon className="mr-2 h-4 w-4" /> METRC Tags
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/admin/grow/flower">
-              <FlowerIcon className="mr-2 h-4 w-4" /> Flower
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/admin/grow/activity">
-              <ClockIcon className="mr-2 h-4 w-4" /> Activity
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/admin/grow/observe">
-              <EyeIcon className="mr-2 h-4 w-4" /> Observe
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/admin/grow/feed">
-              <StickyNoteIcon className="mr-2 h-4 w-4" /> Feed
-            </Link>
-          </Button>
-          {facility && (
-            <Button asChild>
-              <Link href="/admin/grow/rooms/new">
-                <PlusIcon className="mr-2 h-4 w-4" /> Add Room
-              </Link>
-            </Button>
-          )}
-          {facility && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVerticalIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowSetup(true)}>
-                  <SettingsIcon className="mr-2 h-4 w-4" /> Edit Facility
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+        {facility && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreVerticalIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href="/admin/grow/rooms/new">
+                  <PlusIcon className="mr-2 h-4 w-4" /> Add Room
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowSetup(true)}>
+                <SettingsIcon className="mr-2 h-4 w-4" /> Edit Facility
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Facility Setup */}
@@ -141,15 +105,15 @@ export default function GrowPage() {
 
       {/* Grow Summary */}
       {facility && !showSetup && facility.grow_summary && (
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
           {[
             { label: "Flowering", value: facility.grow_summary.flowering, icon: FlowerIcon, color: "text-pink-500" },
             { label: "Vegetative", value: facility.grow_summary.vegetative, icon: LeafIcon, color: "text-green-500" },
             { label: "Immature", value: facility.grow_summary.immature, icon: SproutIcon, color: "text-emerald-400" },
+            { label: "Harvests", value: facility.grow_summary.active_harvests, icon: ScissorsIcon, color: "text-orange-500" },
             { label: "Seeds", value: facility.grow_summary.seed_batches, icon: SunIcon, color: "text-amber-500" },
             { label: "Clones", value: facility.grow_summary.clone_batches, icon: LayersIcon, color: "text-teal-500" },
             { label: "Mothers", value: facility.grow_summary.mother_batches, icon: LeafIcon, color: "text-purple-500" },
-            { label: "Harvests", value: facility.grow_summary.active_harvests, icon: ScissorsIcon, color: "text-orange-500" },
           ].map((stat) => (
             <div key={stat.label} className="rounded-lg border bg-card px-3 py-2.5">
               <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -159,70 +123,6 @@ export default function GrowPage() {
               <p className="text-xl font-semibold tabular-nums mt-0.5">{stat.value}</p>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Plant Batches */}
-      {facility && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Plant Batches</h2>
-            <Button variant="outline" size="sm" onClick={() => setShowBatchCreate(true)}>
-              <PlusIcon className="mr-1 h-3.5 w-3.5" /> New Batch
-            </Button>
-          </div>
-          {batches.length === 0 ? (
-            <div className="rounded-lg border border-dashed py-6 text-center">
-              <LayersIcon className="text-muted-foreground mx-auto mb-1.5 h-6 w-6" />
-              <p className="text-muted-foreground text-xs">No batches yet</p>
-            </div>
-          ) : (
-            <div className="rounded-lg border divide-y">
-              {batches.map((batch) => {
-                const pct = batch.initial_count > 0
-                  ? Math.round((batch.active_plant_count / batch.initial_count) * 100)
-                  : 0
-                const typeColor = batch.batch_type === "seed"
-                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-                  : batch.batch_type === "clone"
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                    : "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
-                return (
-                  <div key={batch.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/30 transition-colors">
-                    {/* Stacked avatar */}
-                    <div className="relative shrink-0 h-[30px] w-[28px]">
-                      <div className="absolute top-0 left-1 opacity-40 scale-90">
-                        <StrainAvatar name={batch.strain?.name || "?"} size={24} />
-                      </div>
-                      <div className="absolute top-[6px] left-0">
-                        <StrainAvatar name={batch.strain?.name || "?"} size={24} />
-                      </div>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium">{batch.name}</span>
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold leading-none ${typeColor}`}>
-                          {BATCH_TYPE_LABELS[batch.batch_type]}
-                        </span>
-                      </div>
-                      <span className="text-muted-foreground text-xs">{batch.strain?.name}</span>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right">
-                        <span className="text-sm tabular-nums font-medium">{batch.active_plant_count}<span className="text-muted-foreground font-normal">/{batch.initial_count}</span></span>
-                      </div>
-                      <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-green-500/70 transition-all"
-                          style={{ width: `${Math.min(pct, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
         </div>
       )}
 
@@ -303,14 +203,114 @@ export default function GrowPage() {
           )}
         </div>
       )}
-      <BatchCreateDialog
-        open={showBatchCreate}
-        onOpenChange={setShowBatchCreate}
-        onCreated={async () => {
-          const b = await apiClient.getPlantBatches().catch(() => [])
-          setBatches(b)
-        }}
-      />
+
+      {/* Flower Inventory */}
+      {facility && <FlowerInventory harvests={harvests} />}
+    </div>
+  )
+}
+
+function gToLbs(grams: number): string {
+  return (grams / 453.592).toFixed(2)
+}
+
+function FlowerInventory({ harvests }: { harvests: Harvest[] }) {
+  const strainMap = new Map<number, { strain_id: number; strain_name: string; flower_grams: number; shake_grams: number; harvests: { id: number; name: string; flower_grams: number; shake_grams: number }[] }>()
+
+  for (const harvest of harvests) {
+    for (const hw of harvest.harvest_weights || []) {
+      const flower = Number(hw.flower_weight_grams) || 0
+      const shake = Number(hw.shake_weight_grams) || 0
+      if (flower === 0 && shake === 0) continue
+
+      let entry = strainMap.get(hw.strain_id)
+      if (!entry) {
+        entry = { strain_id: hw.strain_id, strain_name: hw.strain_name, flower_grams: 0, shake_grams: 0, harvests: [] }
+        strainMap.set(hw.strain_id, entry)
+      }
+      entry.flower_grams += flower
+      entry.shake_grams += shake
+      entry.harvests.push({ id: harvest.id, name: harvest.name, flower_grams: flower, shake_grams: shake })
+    }
+  }
+
+  const strains = Array.from(strainMap.values()).sort((a, b) => b.flower_grams - a.flower_grams)
+  const grandFlower = strains.reduce((sum, s) => sum + s.flower_grams, 0)
+  const grandShake = strains.reduce((sum, s) => sum + s.shake_grams, 0)
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-medium">Flower Inventory</h2>
+
+      {/* Grand Totals */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <FlowerIcon className="h-4 w-4 text-violet-500" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Flower</span>
+          </div>
+          <p className="text-3xl font-semibold tabular-nums">{grandFlower.toFixed(1)}g</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{gToLbs(grandFlower)} lbs</p>
+        </div>
+        <div className="rounded-lg border p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <ScaleIcon className="h-4 w-4 text-teal-500" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Shake</span>
+          </div>
+          <p className="text-3xl font-semibold tabular-nums">{grandShake.toFixed(1)}g</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{gToLbs(grandShake)} lbs</p>
+        </div>
+      </div>
+
+      {/* Per-Strain Breakdown */}
+      {strains.length === 0 ? (
+        <div className="rounded-lg border border-dashed py-8 text-center">
+          <FlowerIcon className="text-muted-foreground mx-auto mb-2 h-6 w-6" />
+          <p className="text-muted-foreground text-sm">No trimmed flower yet</p>
+        </div>
+      ) : (
+        <div className="rounded-lg border divide-y">
+          <div className="grid grid-cols-[1fr_100px_100px] gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground">
+            <span>Strain</span>
+            <span className="text-right">Flower</span>
+            <span className="text-right">Shake</span>
+          </div>
+          {strains.map((strain) => (
+            <div key={strain.strain_id}>
+              <div className="grid grid-cols-[1fr_100px_100px] gap-2 px-4 py-3 items-center">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <StrainAvatar name={strain.strain_name} size={28} />
+                  <div className="min-w-0">
+                    <span className="text-sm font-semibold truncate block">{strain.strain_name}</span>
+                    <span className="text-muted-foreground text-[10px]">{strain.harvests.length} harvest{strain.harvests.length !== 1 ? "s" : ""}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-semibold tabular-nums">{strain.flower_grams.toFixed(1)}g</span>
+                  <span className="text-[10px] text-muted-foreground block">{gToLbs(strain.flower_grams)} lbs</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-semibold tabular-nums">{strain.shake_grams.toFixed(1)}g</span>
+                  <span className="text-[10px] text-muted-foreground block">{gToLbs(strain.shake_grams)} lbs</span>
+                </div>
+              </div>
+              {strain.harvests.length > 1 && (
+                <div className="bg-muted/30 px-4 py-1.5 space-y-1">
+                  {strain.harvests.map((h) => (
+                    <div key={h.id} className="grid grid-cols-[1fr_100px_100px] gap-2 text-xs text-muted-foreground">
+                      <Link href={`/admin/grow/harvests/${h.id}`} className="truncate hover:underline pl-9">
+                        {h.name}
+                      </Link>
+                      <span className="text-right tabular-nums">{h.flower_grams.toFixed(1)}g</span>
+                      <span className="text-right tabular-nums">{h.shake_grams.toFixed(1)}g</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
