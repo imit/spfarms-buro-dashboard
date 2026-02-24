@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(storedUser);
         setUser(parsed);
         posthog.identify(String(parsed.id), { email: parsed.email, name: parsed.full_name, role: parsed.role });
+        if (POSTHOG_EXCLUDED_EMAILS.includes(parsed.email)) posthog.opt_out_capturing();
       } catch {
         localStorage.removeItem("auth_user");
       }
