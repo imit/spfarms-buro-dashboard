@@ -1196,6 +1196,7 @@ export interface PlantEventData {
   event_type: PlantEventType;
   metadata: Record<string, unknown>;
   notes: string | null;
+  photo_urls: string[];
   user_name: string;
   created_at: string;
 }
@@ -3423,6 +3424,24 @@ export class ApiClient {
     return res.data;
   }
 
+  async addPlantObservation(plantId: number, notes: string, photos: File[]): Promise<PlantEventData> {
+    const formData = new FormData();
+    if (notes) formData.append("notes", notes);
+    photos.forEach((photo) => formData.append("photos[]", photo));
+    const res = await this.requestFormData<{ data: PlantEventData }>(
+      `/api/v1/plants/${plantId}/events`,
+      { method: "POST", body: formData }
+    );
+    return res.data;
+  }
+
+  async lookupPlant(query: string): Promise<Plant> {
+    const res = await this.request<JsonApiResponse<Plant>>(
+      `/api/v1/plants/lookup?q=${encodeURIComponent(query)}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   // ---- Audit Events ----
 
   async getAuditEvents(opts?: {
@@ -3476,6 +3495,12 @@ export class ApiClient {
       method: "POST",
     });
     return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async nukeMetrcTag(id: number): Promise<void> {
+    await this.request(`/api/v1/metrc_tags/${id}/nuke`, {
+      method: "DELETE",
+    });
   }
 
   async getNextAvailableTag(): Promise<MetrcTag | null> {

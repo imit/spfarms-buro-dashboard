@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TagImportDialog } from "@/components/grow/tag-import-dialog"
-import { ArrowLeftIcon, PlusIcon, TagIcon, BanIcon } from "lucide-react"
+import { ArrowLeftIcon, PlusIcon, TagIcon, BanIcon, Trash2Icon } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { showError } from "@/lib/errors"
@@ -29,7 +29,8 @@ const STATUS_COLORS: Record<MetrcTagStatus, string> = {
 }
 
 export default function MetrcTagsPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const isAdmin = user?.role === "admin"
   const router = useRouter()
   const [tags, setTags] = useState<MetrcTag[]>([])
   const [stats, setStats] = useState<MetrcTagStats | null>(null)
@@ -69,6 +70,18 @@ export default function MetrcTagsPage() {
       load()
     } catch (err) {
       showError("void the tag", err)
+    }
+  }
+
+  const handleNuke = async (tag: MetrcTag) => {
+    if (!confirm(`PERMANENTLY DELETE tag ${tag.tag} and all references to it? This cannot be undone.`)) return
+    if (!confirm(`Are you sure? This will remove the tag, clear metrc_label on the plant, and delete related tag events.`)) return
+    try {
+      await apiClient.nukeMetrcTag(tag.id)
+      toast.success("Tag permanently deleted")
+      load()
+    } catch (err) {
+      showError("delete the tag", err)
     }
   }
 
@@ -193,16 +206,29 @@ export default function MetrcTagsPage() {
                     {tag.assigned_at ? new Date(tag.assigned_at).toLocaleString() : "-"}
                   </TableCell>
                   <TableCell>
-                    {tag.status === "available" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleVoid(tag)}
-                      >
-                        <BanIcon className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {tag.status === "available" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleVoid(tag)}
+                        >
+                          <BanIcon className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleNuke(tag)}
+                          title="Permanently delete tag and all references"
+                        >
+                          <Trash2Icon className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

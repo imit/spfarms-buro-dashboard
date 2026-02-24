@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
+import { useEffect, useState, useRef, use } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { apiClient, type Plant, type PlantEventData, GROWTH_PHASE_LABELS, type GrowthPhase } from "@/lib/api"
@@ -16,7 +16,9 @@ import {
   TagIcon,
   MoveIcon,
   RefreshCwIcon,
-  StickyNoteIcon,
+  CameraIcon,
+  XIcon,
+  ImageIcon,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -50,8 +52,12 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
   const [showTagDialog, setShowTagDialog] = useState(false)
   const [showMoveDialog, setShowMoveDialog] = useState(false)
   const [showPhaseDialog, setShowPhaseDialog] = useState(false)
-  const [showNoteDialog, setShowNoteDialog] = useState(false)
+  const [showObserveDialog, setShowObserveDialog] = useState(false)
   const [noteText, setNoteText] = useState("")
+  const [photoFiles, setPhotoFiles] = useState<File[]>([])
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/")
@@ -89,16 +95,42 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  const handleAddNote = async () => {
-    if (!plant || !noteText.trim()) return
+  const handleFilesSelected = (files: FileList | null) => {
+    if (!files) return
+    const newFiles = Array.from(files)
+    setPhotoFiles((prev) => [...prev, ...newFiles])
+    newFiles.forEach((file) => {
+      const url = URL.createObjectURL(file)
+      setPhotoPreviews((prev) => [...prev, url])
+    })
+  }
+
+  const removePhoto = (index: number) => {
+    URL.revokeObjectURL(photoPreviews[index])
+    setPhotoFiles((prev) => prev.filter((_, i) => i !== index))
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const resetObserveDialog = () => {
+    setNoteText("")
+    photoPreviews.forEach((url) => URL.revokeObjectURL(url))
+    setPhotoFiles([])
+    setPhotoPreviews([])
+  }
+
+  const handleAddObservation = async () => {
+    if (!plant || (!noteText.trim() && photoFiles.length === 0)) return
+    setIsSubmitting(true)
     try {
-      await apiClient.addPlantNote(plant.id, noteText.trim())
-      toast.success("Note added")
-      setShowNoteDialog(false)
-      setNoteText("")
+      await apiClient.addPlantObservation(plant.id, noteText.trim(), photoFiles)
+      toast.success("Observation saved")
+      setShowObserveDialog(false)
+      resetObserveDialog()
       load()
     } catch (err) {
       showError("complete the action", err)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -180,8 +212,8 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
           <Button variant="outline" size="sm" onClick={() => setShowTagDialog(true)}>
             <TagIcon className="mr-1 h-3.5 w-3.5" /> {plant.metrc_label ? "Reassign" : "Assign"} Tag
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowNoteDialog(true)}>
-            <StickyNoteIcon className="mr-1 h-3.5 w-3.5" /> Add Note
+          <Button variant="outline" size="sm" onClick={() => setShowObserveDialog(true)}>
+            <CameraIcon className="mr-1 h-3.5 w-3.5" /> Add Observation
           </Button>
         </div>
       )}
@@ -249,27 +281,67 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
         </Dialog>
       )}
 
-      {showNoteDialog && (
-        <Dialog open={showNoteDialog} onOpenChange={(open) => { setShowNoteDialog(open); if (!open) setNoteText("") }}>
-          <DialogContent>
+      {showObserveDialog && (
+        <Dialog open={showObserveDialog} onOpenChange={(open) => { setShowObserveDialog(open); if (!open) resetObserveDialog() }}>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Add Note</DialogTitle>
+              <DialogTitle>Add Observation</DialogTitle>
             </DialogHeader>
-            <div className="py-2">
-              <Label>Note</Label>
-              <Input
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                placeholder="e.g. Looking healthy, strong growth"
-                onKeyDown={(e) => e.key === "Enter" && handleAddNote()}
-              />
+            <div className="space-y-4 py-2">
+              <div>
+                <Label>Note</Label>
+                <Input
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="e.g. Looking healthy, strong growth"
+                />
+              </div>
+              <div>
+                <Label>Photos</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFilesSelected(e.target.files)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-1 w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <ImageIcon className="mr-1 h-3.5 w-3.5" /> Choose Photos
+                </Button>
+                {photoPreviews.length > 0 && (
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    {photoPreviews.map((url, i) => (
+                      <div key={url} className="relative">
+                        <img src={url} alt="" className="h-16 w-16 rounded-md object-cover border" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(i)}
+                          className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center"
+                        >
+                          <XIcon className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setShowNoteDialog(false); setNoteText("") }}>
+              <Button variant="outline" onClick={() => { setShowObserveDialog(false); resetObserveDialog() }}>
                 Cancel
               </Button>
-              <Button onClick={handleAddNote} disabled={!noteText.trim()}>
-                Add Note
+              <Button
+                onClick={handleAddObservation}
+                disabled={isSubmitting || (!noteText.trim() && photoFiles.length === 0)}
+              >
+                {isSubmitting ? "Saving..." : "Save Observation"}
               </Button>
             </DialogFooter>
           </DialogContent>

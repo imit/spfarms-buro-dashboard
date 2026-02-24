@@ -91,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setHasToken(true);
       localStorage.setItem("auth_user", JSON.stringify(user));
       posthog.identify(String(user.id), { email: user.email, name: user.full_name, role: user.role });
+      if (POSTHOG_EXCLUDED_EMAILS.includes(user.email)) posthog.opt_out_capturing();
       document.cookie = `spf_email=${encodeURIComponent(user.email)};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
       router.push(getRedirectPath(user));
     } catch (error) {
@@ -103,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHasToken(true);
     localStorage.setItem("auth_user", JSON.stringify(authenticatedUser));
     posthog.identify(String(authenticatedUser.id), { email: authenticatedUser.email, name: authenticatedUser.full_name, role: authenticatedUser.role });
+    if (POSTHOG_EXCLUDED_EMAILS.includes(authenticatedUser.email)) posthog.opt_out_capturing();
     document.cookie = `spf_email=${encodeURIComponent(authenticatedUser.email)};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
     router.push(getRedirectPath(authenticatedUser));
   }, [router]);
@@ -119,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Even if the API call fails, we still want to clear local state
       console.error("Logout error:", error);
     } finally {
+      if (posthog.has_opted_out_capturing()) posthog.opt_in_capturing();
       posthog.reset();
       setUser(null);
       setHasToken(false);

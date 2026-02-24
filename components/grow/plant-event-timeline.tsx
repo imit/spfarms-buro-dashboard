@@ -1,5 +1,12 @@
+"use client"
+
+import { useState } from "react"
 import { type PlantEventData, type PlantEventType } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog"
 import {
   MapPinIcon,
   MoveIcon,
@@ -8,6 +15,7 @@ import {
   StickyNoteIcon,
   ScissorsIcon,
   TrashIcon,
+  ImageIcon,
 } from "lucide-react"
 
 const EVENT_ICONS: Record<PlantEventType, React.ReactNode> = {
@@ -63,13 +71,47 @@ function formatLocation(loc: Record<string, unknown> | undefined): string {
   return "?"
 }
 
+function EventPhotos({ urls }: { urls: string[] }) {
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
+  if (!urls || urls.length === 0) return null
+
+  return (
+    <>
+      <div className="mt-1 flex gap-1.5 flex-wrap">
+        {urls.map((url) => (
+          <button
+            key={url}
+            type="button"
+            className="relative h-16 w-16 overflow-hidden rounded-md border cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => setLightboxUrl(url)}
+          >
+            <img src={url} alt="Plant observation" className="h-full w-full object-cover" />
+          </button>
+        ))}
+      </div>
+      <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
+        <DialogContent className="max-w-2xl p-2">
+          {lightboxUrl && (
+            <img src={lightboxUrl} alt="Plant observation" className="w-full rounded" />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
 export function PlantEventTimeline({ events }: { events: PlantEventData[] }) {
   return (
     <div className="space-y-3">
       {events.map((event) => (
         <div key={event.id} className="flex gap-3">
           <div className="text-muted-foreground mt-0.5 shrink-0">
-            {EVENT_ICONS[event.event_type]}
+            {event.photo_urls?.length > 0 ? (
+              <ImageIcon className="h-3.5 w-3.5 text-green-600" />
+            ) : (
+              EVENT_ICONS[event.event_type]
+            )}
           </div>
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="flex items-center gap-2">
@@ -86,6 +128,7 @@ export function PlantEventTimeline({ events }: { events: PlantEventData[] }) {
             {event.notes && (
               <p className="text-muted-foreground text-xs italic">{event.notes}</p>
             )}
+            <EventPhotos urls={event.photo_urls} />
             <p className="text-muted-foreground text-[10px]">by {event.user_name}</p>
           </div>
         </div>
