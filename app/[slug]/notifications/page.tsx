@@ -31,6 +31,7 @@ const TYPE_ICONS: Record<NotificationType, React.ReactNode> = {
   cart_reminder: <PackageIcon className="size-4" />,
   bank_info_send: <CreditCardIcon className="size-4" />,
   payment_terms_agreement: <InfoIcon className="size-4" />,
+  payment_received: <CheckCheckIcon className="size-4" />,
 };
 
 const TYPE_COLORS: Record<NotificationType, string> = {
@@ -43,6 +44,7 @@ const TYPE_COLORS: Record<NotificationType, string> = {
   cart_reminder: "bg-pink-100 text-pink-700",
   bank_info_send: "bg-emerald-100 text-emerald-700",
   payment_terms_agreement: "bg-violet-100 text-violet-700",
+  payment_received: "bg-green-100 text-green-700",
 };
 
 function timeAgo(dateStr: string) {

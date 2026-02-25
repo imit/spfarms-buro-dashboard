@@ -671,7 +671,8 @@ export type OrderStatus =
   | "fulfilled"
   | "shipped"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "payment_received";
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Pending",
@@ -681,6 +682,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   shipped: "Shipped",
   delivered: "Delivered",
   cancelled: "Cancelled",
+  payment_received: "Payment Received",
 };
 
 export type OrderType = "standard" | "preorder";
@@ -728,6 +730,7 @@ export interface OrderCompanyDetails {
   company_type: CompanyType;
   email: string | null;
   phone_number: string | null;
+  license_number: string | null;
   locations: OrderLocation[];
   members: CompanyMember[];
 }
@@ -751,6 +754,7 @@ export interface Order {
   internal_notes: string | null;
   desired_delivery_date: string | null;
   payment_terms_accepted_at: string | null;
+  payment_due_date: string | null;
   payment_term_agreement: {
     signed: boolean;
     signer_name: string | null;
@@ -761,6 +765,7 @@ export interface Order {
     sent_at: string | null;
     expires_at: string | null;
     expired: boolean;
+    agreement_url: string | null;
   } | null;
   user: {
     id: number;
@@ -958,7 +963,8 @@ export type NotificationType =
   | "announcement"
   | "cart_reminder"
   | "bank_info_send"
-  | "payment_terms_agreement";
+  | "payment_terms_agreement"
+  | "payment_received";
 
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   order_status: "Order Status",
@@ -970,6 +976,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   cart_reminder: "Cart Reminder",
   bank_info_send: "Bank Info",
   payment_terms_agreement: "Terms Agreement",
+  payment_received: "Payment Received",
 };
 
 export type NotificationChannel = "email_and_in_app" | "email_only" | "in_app_only";
@@ -2630,6 +2637,12 @@ export class ApiClient {
     return res.data.attributes;
   }
 
+  async snoozeInvitation(userId: number): Promise<void> {
+    await this.request(`/api/v1/users/${userId}/snooze_invitation`, {
+      method: "POST",
+    });
+  }
+
   // Cart
 
   async getCarts(): Promise<Cart[]> {
@@ -2897,6 +2910,12 @@ export class ApiClient {
       { method: "POST" }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async sendLicenseReminder(id: number): Promise<void> {
+    await this.request(`/api/v1/orders/${id}/send_license_reminder`, {
+      method: "POST",
+    });
   }
 
   // Sample Batches

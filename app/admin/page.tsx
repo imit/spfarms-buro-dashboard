@@ -36,6 +36,7 @@ import {
   UserPlusIcon,
   SendIcon,
   MailWarningIcon,
+  XIcon,
 } from "lucide-react";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
@@ -274,8 +275,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Unsent invitations */}
-      {stats.unsent_invitations.length > 0 && (
+      {/* Unsent invitations — admin only */}
+      {currentUser?.role === "admin" && stats.unsent_invitations.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 shadow-xs dark:border-amber-800 dark:bg-amber-950/20">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -316,17 +317,36 @@ export default function DashboardPage() {
                       {timeAgo(u.created_at)}
                     </td>
                     <td className="px-4 py-2.5 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setInviteMessage("");
-                          setInviteTarget(u);
-                        }}
-                      >
-                        <SendIcon className="mr-1.5 size-3.5" />
-                        Send Invite
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setInviteMessage("");
+                            setInviteTarget(u);
+                          }}
+                        >
+                          <SendIcon className="mr-1.5 size-3.5" />
+                          Send Invite
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-muted-foreground hover:text-foreground"
+                          title="Dismiss"
+                          onClick={async () => {
+                            try {
+                              await apiClient.snoozeInvitation(u.id);
+                              setStats({
+                                ...stats,
+                                unsent_invitations: stats.unsent_invitations.filter((i) => i.id !== u.id),
+                              });
+                            } catch {}
+                          }}
+                        >
+                          <XIcon className="size-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

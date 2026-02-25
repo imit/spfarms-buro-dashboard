@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/shared/logo";
 import { ArrowLeftIcon, CheckCircleIcon, BuildingIcon, UserIcon, MapPinIcon } from "lucide-react";
 
 export default function WholesaleRegisterPage() {
@@ -58,7 +59,7 @@ export default function WholesaleRegisterPage() {
         contact: {
           full_name: form.contact_name,
           email: form.contact_email,
-          phone_number: form.contact_phone || undefined,
+          phone_number: form.contact_phone,
           title: form.contact_title || undefined,
         },
       });
@@ -96,15 +97,20 @@ export default function WholesaleRegisterPage() {
   return (
     <div className="min-h-screen">
       <header className="border-b">
-        <div className="mx-auto max-w-2xl flex items-center gap-3 px-4 py-4 sm:px-8">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/wholesale")}>
-            <ArrowLeftIcon className="size-4" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold">Become a Wholesale Partner</h1>
-            <p className="text-sm text-muted-foreground">
-              Fill out the form below and our team will get back to you
-            </p>
+        <div className="mx-auto max-w-2xl flex items-center justify-between px-4 py-4 sm:px-8">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => router.push("/wholesale")}>
+              <ArrowLeftIcon className="size-4" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold">Become a Wholesale Partner</h1>
+              <p className="text-sm text-muted-foreground">
+                Fill out the form below and our team will get back to you
+              </p>
+            </div>
+          </div>
+          <div className="w-28 shrink-0">
+            <Logo />
           </div>
         </div>
       </header>
@@ -237,9 +243,10 @@ export default function WholesaleRegisterPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="contact_phone">Phone Number</Label>
+                <Label htmlFor="contact_phone">Phone Number *</Label>
                 <Input
                   id="contact_phone"
+                  required
                   value={form.contact_phone}
                   onChange={(e) => update("contact_phone", e.target.value)}
                 />

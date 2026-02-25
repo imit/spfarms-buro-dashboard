@@ -43,6 +43,12 @@ export const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string; dot:
     dot: "bg-red-500",
     border: "border-red-200 dark:border-red-800",
   },
+  payment_received: {
+    bg: "bg-green-50 dark:bg-green-950/30",
+    text: "text-green-700 dark:text-green-400",
+    dot: "bg-green-500",
+    border: "border-green-200 dark:border-green-800",
+  },
 };
 
 export function statusBadgeClasses(status: OrderStatus): string {

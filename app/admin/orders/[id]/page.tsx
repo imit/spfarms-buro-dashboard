@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon, FileSignatureIcon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon, FileSignatureIcon, ExternalLinkIcon, ShieldAlertIcon } from "lucide-react";
 import { apiClient, type Order, type OrderStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
@@ -53,6 +53,7 @@ export default function AdminOrderDetailPage({
   const [showDoneConfirm, setShowDoneConfirm] = useState(false);
   const [sendingBankInfo, setSendingBankInfo] = useState(false);
   const [sendingAgreement, setSendingAgreement] = useState(false);
+  const [sendingLicenseReminder, setSendingLicenseReminder] = useState(false);
   const [timelineKey, setTimelineKey] = useState(0);
 
   useEffect(() => {
@@ -137,6 +138,19 @@ export default function AdminOrderDetailPage({
     }
   };
 
+  const handleSendLicenseReminder = async () => {
+    setSendingLicenseReminder(true);
+    try {
+      await apiClient.sendLicenseReminder(Number(id));
+      toast.success("License reminder sent");
+      setTimelineKey((k) => k + 1);
+    } catch {
+      showError("send license reminder");
+    } finally {
+      setSendingLicenseReminder(false);
+    }
+  };
+
   const markProcessingDone = async () => {
     try {
       const updated = await apiClient.markProcessingDone(Number(id));
@@ -208,6 +222,12 @@ export default function AdminOrderDetailPage({
             <Button variant="outline" size="sm" onClick={handleSendAgreement} disabled={sendingAgreement}>
               <FileSignatureIcon className="mr-1.5 size-4" />
               {sendingAgreement ? "Sending..." : "Send Terms Agreement"}
+            </Button>
+          )}
+          {companyDetails && !companyDetails.license_number && (
+            <Button variant="outline" size="sm" onClick={handleSendLicenseReminder} disabled={sendingLicenseReminder}>
+              <ShieldAlertIcon className="mr-1.5 size-4" />
+              {sendingLicenseReminder ? "Sending..." : "License Reminder"}
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={downloadInvoice}>
@@ -414,6 +434,11 @@ export default function AdminOrderDetailPage({
                 Accepted {new Date(order.payment_terms_accepted_at).toLocaleDateString()}
               </p>
             )}
+            {order.payment_due_date && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Due {new Date(order.payment_due_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </p>
+            )}
           </div>
 
           {order.payment_term_agreement && (
@@ -457,6 +482,18 @@ export default function AdminOrderDetailPage({
                   )}
                 </div>
               )}
+
+              {order.payment_term_agreement.agreement_url && (
+                <a
+                  href={order.payment_term_agreement.agreement_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                >
+                  <ExternalLinkIcon className="size-3.5" />
+                  View Agreement
+                </a>
+              )}
             </div>
           )}
         </div>
@@ -470,8 +507,11 @@ export default function AdminOrderDetailPage({
               This will change the status from{" "}
               <strong>{ORDER_STATUS_LABELS[order.status]}</strong> to{" "}
               <strong>{ORDER_STATUS_LABELS[pendingStatus as OrderStatus]}</strong>.
-              {pendingStatus === "fulfilled" ? (
+              {pendingStatus === "fulfilled" || pendingStatus === "delivered" ? (
                 <> This is an internal status — no email will be sent to the customer.</>
+              ) : pendingStatus === "payment_received" ? (
+                <> A payment received thank you email will be sent to all members of{" "}
+                <strong>{order.company?.name ?? "the company"}</strong>.</>
               ) : (
                 <> An email notification will be sent to all members of{" "}
                 <strong>{order.company?.name ?? "the company"}</strong>.</>
