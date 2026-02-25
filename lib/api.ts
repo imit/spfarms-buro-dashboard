@@ -750,6 +750,18 @@ export interface Order {
   notes_to_vendor: string | null;
   internal_notes: string | null;
   desired_delivery_date: string | null;
+  payment_terms_accepted_at: string | null;
+  payment_term_agreement: {
+    signed: boolean;
+    signer_name: string | null;
+    signer_email: string | null;
+    signer_ip: string | null;
+    signature_data: string | null;
+    signed_at: string | null;
+    sent_at: string | null;
+    expires_at: string | null;
+    expired: boolean;
+  } | null;
   user: {
     id: number;
     email: string;
@@ -944,7 +956,9 @@ export type NotificationType =
   | "info_request"
   | "product_update"
   | "announcement"
-  | "cart_reminder";
+  | "cart_reminder"
+  | "bank_info_send"
+  | "payment_terms_agreement";
 
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   order_status: "Order Status",
@@ -954,6 +968,8 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   product_update: "Product Update",
   announcement: "Announcement",
   cart_reminder: "Cart Reminder",
+  bank_info_send: "Bank Info",
+  payment_terms_agreement: "Terms Agreement",
 };
 
 export type NotificationChannel = "email_and_in_app" | "email_only" | "in_app_only";
@@ -1051,6 +1067,7 @@ export interface CreateOrderParams {
   desired_delivery_date?: string;
   contact_users?: { full_name: string; email: string; phone_number?: string }[];
   payment_term_id?: number;
+  payment_terms_accepted?: boolean;
 }
 
 // ---- Grow / Facility ----
@@ -2599,12 +2616,15 @@ export class ApiClient {
     });
   }
 
-  async sendWelcomeEmail(userId: number, customMessage?: string): Promise<User> {
+  async sendWelcomeEmail(userId: number, opts?: { customMessage?: string; companySlug?: string }): Promise<User> {
     const res = await this.request<{ data: { attributes: User } }>(
       `/api/v1/users/${userId}/send_welcome_email`,
       {
         method: "POST",
-        body: JSON.stringify({ custom_message: customMessage || undefined }),
+        body: JSON.stringify({
+          custom_message: opts?.customMessage || undefined,
+          company_slug: opts?.companySlug || undefined,
+        }),
       }
     );
     return res.data.attributes;
@@ -2851,6 +2871,29 @@ export class ApiClient {
   async markProcessingDone(id: number): Promise<Order> {
     const res = await this.request<JsonApiResponse<Order>>(
       `/api/v1/orders/${id}/mark_processing_done`,
+      { method: "POST" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async sendBankInfo(id: number): Promise<{ message: string }> {
+    const res = await this.request<{ data: { message: string } }>(
+      `/api/v1/orders/${id}/send_bank_info`,
+      { method: "POST" }
+    );
+    return res.data;
+  }
+
+  async getOrderEmailTimeline(id: number): Promise<Notification[]> {
+    const res = await this.request<JsonApiCollectionResponse<Notification>>(
+      `/api/v1/orders/${id}/email_timeline`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async sendPaymentTermsAgreement(id: number): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${id}/send_payment_terms_agreement`,
       { method: "POST" }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };

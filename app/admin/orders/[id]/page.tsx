@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon, FileSignatureIcon } from "lucide-react";
 import { apiClient, type Order, type OrderStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
+import { EmailTimeline } from "@/components/email-timeline";
 
 function formatPrice(amount: string | number | null) {
   if (amount === null || amount === undefined) return "$0.00";
@@ -50,6 +51,9 @@ export default function AdminOrderDetailPage({
   const [saving, setSaving] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [showDoneConfirm, setShowDoneConfirm] = useState(false);
+  const [sendingBankInfo, setSendingBankInfo] = useState(false);
+  const [sendingAgreement, setSendingAgreement] = useState(false);
+  const [timelineKey, setTimelineKey] = useState(0);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -103,6 +107,33 @@ export default function AdminOrderDetailPage({
       URL.revokeObjectURL(url);
     } catch {
       showError("download the invoice");
+    }
+  };
+
+  const handleSendBankInfo = async () => {
+    setSendingBankInfo(true);
+    try {
+      await apiClient.sendBankInfo(Number(id));
+      toast.success("Bank info email sent");
+      setTimelineKey((k) => k + 1);
+    } catch {
+      showError("send bank info");
+    } finally {
+      setSendingBankInfo(false);
+    }
+  };
+
+  const handleSendAgreement = async () => {
+    setSendingAgreement(true);
+    try {
+      const updated = await apiClient.sendPaymentTermsAgreement(Number(id));
+      setOrder(updated);
+      toast.success("Payment terms agreement sent");
+      setTimelineKey((k) => k + 1);
+    } catch {
+      showError("send payment terms agreement");
+    } finally {
+      setSendingAgreement(false);
     }
   };
 
@@ -169,6 +200,16 @@ export default function AdminOrderDetailPage({
               </option>
             ))}
           </select>
+          <Button variant="outline" size="sm" onClick={handleSendBankInfo} disabled={sendingBankInfo}>
+            <BanknoteIcon className="mr-1.5 size-4" />
+            {sendingBankInfo ? "Sending..." : "Send Bank Info"}
+          </Button>
+          {order.payment_term_days != null && order.payment_term_days > 0 && (
+            <Button variant="outline" size="sm" onClick={handleSendAgreement} disabled={sendingAgreement}>
+              <FileSignatureIcon className="mr-1.5 size-4" />
+              {sendingAgreement ? "Sending..." : "Send Terms Agreement"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={downloadInvoice}>
             <DownloadIcon className="mr-1.5 size-4" />
             Invoice
@@ -297,6 +338,9 @@ export default function AdminOrderDetailPage({
               {saving ? "Saving..." : "Save Notes"}
             </Button>
           </div>
+
+          {/* Email History */}
+          <EmailTimeline key={timelineKey} orderId={Number(id)} />
         </div>
 
         {/* Sidebar */}
@@ -365,7 +409,56 @@ export default function AdminOrderDetailPage({
             <p className="text-sm text-muted-foreground">
               {order.payment_term_name || "ACH / Bank Transfer"}
             </p>
+            {order.payment_terms_accepted_at && (
+              <p className="text-xs text-green-600 mt-1">
+                Accepted {new Date(order.payment_terms_accepted_at).toLocaleDateString()}
+              </p>
+            )}
           </div>
+
+          {order.payment_term_agreement && (
+            <div className="rounded-lg border p-4 space-y-3">
+              <h3 className="font-semibold text-sm">Terms Agreement</h3>
+
+              {order.payment_term_agreement.signed ? (
+                <>
+                  <div className="flex items-center gap-1.5 text-sm text-green-600">
+                    <CheckCircleIcon className="size-4" />
+                    Signed
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-muted-foreground">Name:</span> {order.payment_term_agreement.signer_name}</p>
+                    <p><span className="text-muted-foreground">Email:</span> {order.payment_term_agreement.signer_email}</p>
+                    <p><span className="text-muted-foreground">Signed:</span> {new Date(order.payment_term_agreement.signed_at!).toLocaleString()}</p>
+                    <p><span className="text-muted-foreground">IP:</span> {order.payment_term_agreement.signer_ip}</p>
+                  </div>
+                  {order.payment_term_agreement.signature_data && (
+                    <div className="rounded-md border bg-white p-2">
+                      <img
+                        src={order.payment_term_agreement.signature_data}
+                        alt="Signature"
+                        className="h-16 w-full object-contain"
+                      />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-sm text-amber-600">Awaiting signature</p>
+                  <p className="text-xs text-muted-foreground">
+                    Sent {new Date(order.payment_term_agreement.sent_at!).toLocaleString()}
+                  </p>
+                  {order.payment_term_agreement.expired ? (
+                    <p className="text-xs text-red-500">Link expired</p>
+                  ) : order.payment_term_agreement.expires_at && (
+                    <p className="text-xs text-muted-foreground">
+                      Expires {new Date(order.payment_term_agreement.expires_at).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

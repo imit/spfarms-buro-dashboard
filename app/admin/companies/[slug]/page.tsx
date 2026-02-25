@@ -283,7 +283,7 @@ export default function CompanyDetailPage({
     if (!inviteModalMember) return;
     setSendingInviteId(inviteModalMember.id);
     try {
-      await apiClient.sendWelcomeEmail(inviteModalMember.id, inviteCustomMessage || undefined);
+      await apiClient.sendWelcomeEmail(inviteModalMember.id, { customMessage: inviteCustomMessage || undefined });
       const updated = await apiClient.getCompany(slug);
       setCompany(updated);
       setInviteModalMember(null);

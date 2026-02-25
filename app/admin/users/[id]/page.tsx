@@ -53,7 +53,7 @@ export default function UserDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [sendingForCompany, setSendingForCompany] = useState<string | null>(null);
   const [tokens, setTokens] = useState<MagicLoginToken[]>([]);
   const [revokingTokenId, setRevokingTokenId] = useState<number | null>(null);
   const [isRevokingAll, setIsRevokingAll] = useState(false);
@@ -97,17 +97,17 @@ export default function UserDetailPage({
     }
   }
 
-  async function handleSendEmail() {
+  async function handleSendEmail(companySlug?: string) {
     if (!user) return;
-    setIsSendingEmail(true);
+    setSendingForCompany(companySlug ?? "__default__");
     try {
-      const updated = await apiClient.sendWelcomeEmail(user.id);
+      const updated = await apiClient.sendWelcomeEmail(user.id, { companySlug });
       setUser(updated);
       toast.success(`Welcome email sent to ${user.email}`);
     } catch (err) {
       showError("send the email", err);
     } finally {
-      setIsSendingEmail(false);
+      setSendingForCompany(null);
     }
   }
 
@@ -176,15 +176,17 @@ export default function UserDetailPage({
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSendEmail}
-            disabled={isSendingEmail}
-          >
-            <SendIcon className="mr-2 size-4" />
-            {isSendingEmail ? "Sending..." : user.invitation_sent_at ? "Resend Invitation" : "Send Invitation"}
-          </Button>
+          {(!user.companies || user.companies.length <= 1) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSendEmail(user.companies?.[0]?.slug)}
+              disabled={sendingForCompany !== null}
+            >
+              <SendIcon className="mr-2 size-4" />
+              {sendingForCompany ? "Sending..." : user.invitation_sent_at ? "Resend Invitation" : "Send Invitation"}
+            </Button>
+          )}
           {currentUser?.role === "admin" && (
             <Button variant="outline" size="sm" asChild>
               <Link href={`/admin/users/${user.id}/edit`}>
@@ -303,22 +305,30 @@ export default function UserDetailPage({
         <div className="max-w-md rounded-lg border bg-card p-5">
           <h3 className="font-medium mb-3">Companies</h3>
           <Separator className="mb-1" />
-          <dl>
-            {user.companies.map((c) => (
-              <DetailRow
-                key={c.slug}
-                label={
-                  <Link
-                    href={`/admin/companies/${c.slug}`}
-                    className="text-primary hover:underline"
-                  >
-                    {c.name}
-                  </Link>
-                }
-                value={c.company_title || "Member"}
-              />
-            ))}
-          </dl>
+          {user.companies.map((c) => (
+            <div key={c.slug} className="flex items-center justify-between py-2.5">
+              <div>
+                <Link
+                  href={`/admin/companies/${c.slug}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  {c.name}
+                </Link>
+                <p className="text-xs text-muted-foreground">{c.company_title || "Member"}</p>
+              </div>
+              {user.companies.length > 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSendEmail(c.slug)}
+                  disabled={sendingForCompany !== null}
+                >
+                  <SendIcon className="mr-2 size-3.5" />
+                  {sendingForCompany === c.slug ? "Sending..." : "Send Invite"}
+                </Button>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

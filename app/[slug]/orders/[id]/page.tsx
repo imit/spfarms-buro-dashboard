@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, DownloadIcon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon } from "lucide-react";
 import { apiClient, type Order, type AppSettings, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
@@ -247,6 +247,38 @@ export default function OrderDetailPage({
               {order.payment_term_name || "ACH / Bank Transfer"}
             </p>
           </div>
+
+          {order.payment_term_agreement && (
+            <div className="rounded-lg border p-4 space-y-2">
+              <h3 className="font-semibold text-sm">Terms Agreement</h3>
+              {order.payment_term_agreement.signed ? (
+                <>
+                  <div className="flex items-center gap-1.5 text-sm text-green-600">
+                    <CheckCircleIcon className="size-4" />
+                    Signed by {order.payment_term_agreement.signer_name} on{" "}
+                    {new Date(order.payment_term_agreement.signed_at!).toLocaleDateString()}
+                  </div>
+                  {order.payment_term_agreement.signature_data && (
+                    <div className="rounded-md border bg-white p-2">
+                      <img
+                        src={order.payment_term_agreement.signature_data}
+                        alt="Signature"
+                        className="h-12 w-full object-contain"
+                      />
+                    </div>
+                  )}
+                </>
+              ) : order.payment_term_agreement.expired ? (
+                <p className="text-sm text-red-500">
+                  Agreement link has expired — contact SPFarms for a new one
+                </p>
+              ) : (
+                <p className="text-sm text-amber-600">
+                  Agreement sent — check your email to review and sign
+                </p>
+              )}
+            </div>
+          )}
 
           {settings?.bank_info && (
             <div className="rounded-lg border p-4">

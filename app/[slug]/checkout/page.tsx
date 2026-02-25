@@ -21,6 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { BoxProgress, useMinimumOrderMet } from "@/components/storefront/box-progress";
 import { toast } from "sonner";
@@ -69,6 +75,8 @@ export default function CheckoutPage({
     return d.toISOString().split("T")[0];
   });
   const [contactUsers, setContactUsers] = useState<ContactUser[]>([]);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsDialogOpen, setTermsDialogOpen] = useState(false);
 
   // Load cart, company, payment terms
   useEffect(() => {
@@ -173,6 +181,9 @@ export default function CheckoutPage({
 
       if (selectedPaymentTermId && !skipPaymentTerms) {
         orderParams.payment_term_id = selectedPaymentTermId;
+        if (termsAccepted) {
+          orderParams.payment_terms_accepted = true;
+        }
       }
 
       const validContacts = contactUsers.filter((c) => c.email?.trim());
@@ -520,12 +531,90 @@ export default function CheckoutPage({
             )}
           </div>
 
+          {/* Payment Terms Agreement */}
+          {!skipPaymentTerms && (
+            <>
+              <label
+                htmlFor="termsAccepted"
+                className={cn(
+                  "flex items-center gap-3 rounded-lg border-2 p-4 cursor-pointer transition-colors",
+                  termsAccepted
+                    ? "border-primary bg-primary/5"
+                    : "border-muted hover:border-muted-foreground/30"
+                )}
+              >
+                <input
+                  type="checkbox"
+                  id="termsAccepted"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="size-5 rounded border-input accent-primary shrink-0"
+                />
+                <span className="text-sm leading-snug">
+                  I agree to the selected{" "}
+                  <button
+                    type="button"
+                    className="underline text-primary font-medium hover:text-primary/80"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setTermsDialogOpen(true);
+                    }}
+                  >
+                    payment terms
+                    {selectedPaymentTermId && paymentTerms.find(t => t.id === selectedPaymentTermId) && (
+                      <> ({paymentTerms.find(t => t.id === selectedPaymentTermId)!.name})</>
+                    )}
+                  </button>
+                </span>
+              </label>
+
+              <Dialog open={termsDialogOpen} onOpenChange={setTermsDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Payment Terms</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 text-sm">
+                    {selectedPaymentTermId && paymentTerms.find(t => t.id === selectedPaymentTermId) ? (
+                      (() => {
+                        const term = paymentTerms.find(t => t.id === selectedPaymentTermId)!;
+                        const discount = parseFloat(term.discount_percentage);
+                        return (
+                          <div className="space-y-3">
+                            <div className="rounded-lg border p-4 space-y-2">
+                              <p className="font-semibold text-base">{term.name}</p>
+                              <p className="text-muted-foreground">
+                                {term.days === 0
+                                  ? <>Payment is due <span className="font-medium text-foreground">on delivery</span> — cash or check accepted at the time of drop-off.</>
+                                  : <>Payment is due within <span className="font-medium text-foreground">{term.days} days</span> of the invoice date.</>
+                                }
+                              </p>
+                              {discount > 0 && (
+                                <p className="text-green-600">
+                                  A <span className="font-medium">{discount}% discount</span> is applied to the order total for this payment term.
+                                </p>
+                              )}
+                            </div>
+                            <p className="text-muted-foreground text-xs leading-relaxed">
+                              By accepting these terms, you agree to pay the full invoice amount within the specified period. Late payments may be subject to additional fees or changes to your available payment terms.
+                            </p>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <p className="text-muted-foreground">Please select a payment term above to view its details.</p>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
+
           {/* Confirm Order */}
           <Button
             className="w-full"
             size="lg"
             onClick={handleConfirmOrder}
-            disabled={submitting || !cart || cart.items.length === 0 || !meetsMinimum}
+            disabled={submitting || !cart || cart.items.length === 0 || !meetsMinimum || (!skipPaymentTerms && !termsAccepted)}
           >
             {submitting
               ? isPreorder ? "Placing Pre-order..." : "Placing Order..."

@@ -108,7 +108,7 @@ export default function DashboardPage() {
     if (!inviteTarget || !stats) return;
     setSendingId(inviteTarget.id);
     try {
-      await apiClient.sendWelcomeEmail(inviteTarget.id, inviteMessage || undefined);
+      await apiClient.sendWelcomeEmail(inviteTarget.id, { customMessage: inviteMessage || undefined });
       setStats({
         ...stats,
         unsent_invitations: stats.unsent_invitations.filter((u) => u.id !== inviteTarget.id),
