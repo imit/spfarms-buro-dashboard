@@ -5,13 +5,17 @@ import SignatureCanvas from "react-signature-canvas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircleIcon, LoaderIcon, AlertCircleIcon } from "lucide-react";
+import { Logo } from "@/components/shared/logo";
+import { CheckCircleIcon, LoaderIcon, AlertCircleIcon, ShoppingBagIcon, MailIcon } from "lucide-react";
+import Link from "next/link";
+import posthog from "posthog-js";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface AgreementOrder {
   order_number: string;
   company_name: string;
+  company_slug: string | null;
   total: string;
   subtotal: string;
   payment_term_name: string;
@@ -63,14 +67,27 @@ export default function PaymentTermAgreementPage({
         );
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          setError(body.error || "Agreement not found");
+          const msg = body.error || "Agreement not found";
+          setError(msg);
+          posthog.capture("agreement_load_error", { error: msg, status: res.status });
           return;
         }
         const json = await res.json();
         setData(json.data);
+        const o = json.data.order;
+        posthog.capture("agreement_viewed", {
+          order_number: o.order_number,
+          company_name: o.company_name,
+          company_slug: o.company_slug,
+          total: o.total,
+          payment_term_name: o.payment_term_name,
+          payment_term_days: o.payment_term_days,
+          already_signed: json.data.signed,
+        });
         if (json.data.signed) setSigned(true);
       } catch {
         setError("Failed to load agreement");
+        posthog.capture("agreement_load_error", { error: "network_failure" });
       } finally {
         setIsLoading(false);
       }
@@ -100,13 +117,33 @@ export default function PaymentTermAgreementPage({
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error || "Failed to sign agreement");
+        const msg = body.error || "Failed to sign agreement";
+        setError(msg);
+        posthog.capture("agreement_sign_error", {
+          error: msg,
+          status: res.status,
+          order_number: data?.order.order_number,
+          company_name: data?.order.company_name,
+        });
         return;
       }
 
       setSigned(true);
+      posthog.capture("agreement_signed", {
+        order_number: data?.order.order_number,
+        company_name: data?.order.company_name,
+        company_slug: data?.order.company_slug,
+        total: data?.order.total,
+        payment_term_name: data?.order.payment_term_name,
+        signer_name: signerName,
+        signer_email: signerEmail,
+      });
     } catch {
       setError("Failed to sign agreement");
+      posthog.capture("agreement_sign_error", {
+        error: "network_failure",
+        order_number: data?.order.order_number,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -140,8 +177,13 @@ export default function PaymentTermAgreementPage({
   if (signed) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="text-center space-y-3 max-w-md">
-          <CheckCircleIcon className="mx-auto size-12 text-green-500" />
+        <div className="text-center space-y-5 max-w-md">
+          <div className="mx-auto w-36">
+            <Logo />
+          </div>
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-green-100">
+            <CheckCircleIcon className="size-7 text-green-600" />
+          </div>
           <h1 className="text-2xl font-bold">Agreement Signed</h1>
           <p className="text-muted-foreground">
             Thank you for signing the payment terms agreement for order{" "}
@@ -156,6 +198,22 @@ export default function PaymentTermAgreementPage({
               </p>
             </div>
           )}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-2">
+            {order.company_slug && (
+              <Link href={`/${order.company_slug}`}>
+                <Button variant="outline">
+                  <ShoppingBagIcon className="mr-2 size-4" />
+                  Place Another Order
+                </Button>
+              </Link>
+            )}
+            <a href="mailto:wholesale@spfarms.com">
+              <Button variant="ghost">
+                <MailIcon className="mr-2 size-4" />
+                Contact Us
+              </Button>
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -164,11 +222,16 @@ export default function PaymentTermAgreementPage({
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Payment Terms Agreement</h1>
-        <p className="text-muted-foreground mt-1">
-          Order {order.order_number} &middot; {order.company_name}
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Payment Terms Agreement</h1>
+          <p className="text-muted-foreground mt-1">
+            Order {order.order_number} &middot; {order.company_name}
+          </p>
+        </div>
+        <div className="w-32 shrink-0">
+          <Logo />
+        </div>
       </div>
 
       {/* Order Summary */}
@@ -235,6 +298,33 @@ export default function PaymentTermAgreementPage({
             check (accepted by driver at time of delivery). Failure to pay within
             the agreed terms may result in suspension of future orders.
           </p>
+          <ol className="list-decimal list-outside pl-5 space-y-2">
+            <li>
+              Buyer agrees to timely accept all product transfers in the state
+              tracking system upon delivery. Failure to accept transfer does not
+              relieve Buyer of payment obligations.
+            </li>
+            <li>
+              Buyer represents and warrants that it holds a valid and active
+              New York State cannabis retail license issued by the Office of
+              Cannabis Management and is authorized to receive the products
+              listed in this order. Buyer agrees to notify Seller immediately
+              of any suspension, restriction, or lapse in its license.
+            </li>
+            <li>
+              Title and risk of loss transfer to Buyer upon physical delivery
+              and signed receipt.
+            </li>
+            <li>
+              All sales are final. Claims for shortages or damage must be made
+              at time of delivery. No returns permitted except for
+              state-mandated recalls or verified defects.
+            </li>
+            <li>
+              Upon default, all outstanding invoices become immediately due and
+              payable.
+            </li>
+          </ol>
         </div>
       </div>
 
