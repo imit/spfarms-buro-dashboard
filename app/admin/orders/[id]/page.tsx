@@ -2,12 +2,13 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon, FileSignatureIcon, ExternalLinkIcon, ShieldAlertIcon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon, FileSignatureIcon, ExternalLinkIcon, ShieldAlertIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { apiClient, type Order, type OrderStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -55,6 +56,9 @@ export default function AdminOrderDetailPage({
   const [sendingAgreement, setSendingAgreement] = useState(false);
   const [sendingLicenseReminder, setSendingLicenseReminder] = useState(false);
   const [timelineKey, setTimelineKey] = useState(0);
+  const [editingContacts, setEditingContacts] = useState(false);
+  const [contactDrafts, setContactDrafts] = useState<{ full_name: string; email: string; phone_number: string }[]>([]);
+  const [savingContacts, setSavingContacts] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -111,6 +115,20 @@ export default function AdminOrderDetailPage({
     }
   };
 
+  const downloadDeliveryAgreement = async () => {
+    try {
+      const blob = await apiClient.getOrderDeliveryAgreement(Number(id));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `delivery-agreement-${order?.order_number || id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showError("download the delivery agreement");
+    }
+  };
+
   const handleSendBankInfo = async () => {
     setSendingBankInfo(true);
     try {
@@ -148,6 +166,31 @@ export default function AdminOrderDetailPage({
       showError("send license reminder");
     } finally {
       setSendingLicenseReminder(false);
+    }
+  };
+
+  const startEditingContacts = () => {
+    const contacts = order?.order_users.filter((ou) => ou.role === "contact") ?? [];
+    setContactDrafts(
+      contacts.length > 0
+        ? contacts.map((c) => ({ full_name: c.full_name || "", email: c.email, phone_number: c.phone_number || "" }))
+        : [{ full_name: "", email: "", phone_number: "" }]
+    );
+    setEditingContacts(true);
+  };
+
+  const saveContacts = async () => {
+    const valid = contactDrafts.filter((c) => c.email.trim());
+    setSavingContacts(true);
+    try {
+      const updated = await apiClient.updateOrderContacts(Number(id), valid);
+      setOrder(updated);
+      setEditingContacts(false);
+      toast.success("Contacts updated");
+    } catch {
+      showError("update the contacts");
+    } finally {
+      setSavingContacts(false);
     }
   };
 
@@ -233,6 +276,10 @@ export default function AdminOrderDetailPage({
           <Button variant="outline" size="sm" onClick={downloadInvoice}>
             <DownloadIcon className="mr-1.5 size-4" />
             Invoice
+          </Button>
+          <Button variant="outline" size="sm" onClick={downloadDeliveryAgreement}>
+            <FileSignatureIcon className="mr-1.5 size-4" />
+            Delivery Agreement
           </Button>
           {order.status === "processing" && (
             <Button size="sm" onClick={() => setShowDoneConfirm(true)}>
@@ -367,21 +414,102 @@ export default function AdminOrderDetailPage({
         <div className="space-y-4">
           {/* People on order */}
           <div className="rounded-lg border p-4">
-            <h3 className="font-semibold text-sm mb-3">Order People</h3>
-            <div className="space-y-3">
-              {order.order_users.map((ou) => (
-                <div key={ou.id} className="text-sm">
-                  <p className="font-medium">{ou.full_name || ou.email}</p>
-                  <p className="text-xs text-muted-foreground">{ou.email}</p>
-                  {ou.phone_number && (
-                    <p className="text-xs text-muted-foreground">{ou.phone_number}</p>
-                  )}
-                  <Badge variant="outline" className="mt-1 text-xs">
-                    {ou.role === "orderer" ? "Ordered by" : "Contact"}
-                  </Badge>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-sm">Order People</h3>
+              {!editingContacts && (
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditingContacts}>
+                  <PencilIcon className="mr-1 size-3" />
+                  Edit
+                </Button>
+              )}
             </div>
+
+            {editingContacts ? (
+              <div className="space-y-4">
+                {/* Show orderer as read-only */}
+                {order.order_users.filter((ou) => ou.role === "orderer").map((ou) => (
+                  <div key={ou.id} className="text-sm">
+                    <p className="font-medium">{ou.full_name || ou.email}</p>
+                    <p className="text-xs text-muted-foreground">{ou.email}</p>
+                    <Badge variant="outline" className="mt-1 text-xs">Ordered by</Badge>
+                  </div>
+                ))}
+
+                {/* Editable contacts */}
+                <div className="border-t pt-3 space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground">Contacts</p>
+                  {contactDrafts.map((draft, i) => (
+                    <div key={i} className="space-y-2 rounded border p-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Contact {i + 1}</span>
+                        {contactDrafts.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => setContactDrafts((d) => d.filter((_, j) => j !== i))}
+                          >
+                            <Trash2Icon className="size-3" />
+                          </Button>
+                        )}
+                      </div>
+                      <Input
+                        placeholder="Full name"
+                        value={draft.full_name}
+                        onChange={(e) => setContactDrafts((d) => d.map((c, j) => j === i ? { ...c, full_name: e.target.value } : c))}
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        placeholder="Email"
+                        type="email"
+                        value={draft.email}
+                        onChange={(e) => setContactDrafts((d) => d.map((c, j) => j === i ? { ...c, email: e.target.value } : c))}
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        placeholder="Phone"
+                        value={draft.phone_number}
+                        onChange={(e) => setContactDrafts((d) => d.map((c, j) => j === i ? { ...c, phone_number: e.target.value } : c))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs h-7"
+                    onClick={() => setContactDrafts((d) => [...d, { full_name: "", email: "", phone_number: "" }])}
+                  >
+                    <PlusIcon className="mr-1 size-3" />
+                    Add Contact
+                  </Button>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" className="text-xs h-7" onClick={saveContacts} disabled={savingContacts}>
+                    {savingContacts ? "Saving..." : "Save"}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setEditingContacts(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {order.order_users.map((ou) => (
+                  <div key={ou.id} className="text-sm">
+                    <p className="font-medium">{ou.full_name || ou.email}</p>
+                    <p className="text-xs text-muted-foreground">{ou.email}</p>
+                    {ou.phone_number && (
+                      <p className="text-xs text-muted-foreground">{ou.phone_number}</p>
+                    )}
+                    <Badge variant="outline" className="mt-1 text-xs">
+                      {ou.role === "orderer" ? "Ordered by" : "Contact"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Company details */}

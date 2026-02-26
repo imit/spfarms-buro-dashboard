@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { FloorRackView } from "@/components/grow/floor-rack-view"
 import { FloorPicker } from "@/components/grow/floor-picker"
 import { PlantPlacementForm } from "@/components/grow/plant-placement-form"
+import { BulkPlantDialog } from "@/components/grow/bulk-plant-dialog"
 import { PlantMoveDialog } from "@/components/grow/plant-move-dialog"
 import { PlantDetailDialog } from "@/components/grow/plant-detail-dialog"
 import { TagAssignDialog } from "@/components/grow/tag-assign-dialog"
@@ -40,6 +41,7 @@ import {
   StickyNoteIcon,
   PlusIcon,
   ExternalLinkIcon,
+  ListPlusIcon,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -87,6 +89,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
   const [noteDialogPlant, setNoteDialogPlant] = useState<{ id: number; uid: string } | null>(null)
   const [noteText, setNoteText] = useState("")
   const [detailDialogPlantId, setDetailDialogPlantId] = useState<number | null>(null)
+  const [showBulkDialog, setShowBulkDialog] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/")
@@ -425,13 +428,22 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
                       onCancel={() => setShowAddPlantForm(false)}
                     />
                   ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setShowAddPlantForm(true)}
-                    >
-                      <PlusIcon className="mr-2 h-4 w-4" /> Add Plant
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setShowAddPlantForm(true)}
+                      >
+                        <PlusIcon className="mr-2 h-4 w-4" /> Add Plant
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setShowBulkDialog(true)}
+                      >
+                        <ListPlusIcon className="mr-2 h-4 w-4" /> Quick Entry
+                      </Button>
+                    </div>
                   )
                 )}
               </div>
@@ -524,6 +536,21 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
           open={!!detailDialogPlantId}
           onOpenChange={(open) => !open && setDetailDialogPlantId(null)}
           plantId={detailDialogPlantId}
+        />
+      )}
+
+      {/* Bulk Plant Dialog */}
+      {selectedTray && (
+        <BulkPlantDialog
+          open={showBulkDialog}
+          onOpenChange={setShowBulkDialog}
+          trayId={selectedTray.id}
+          trayName={selectedTray.name || `Tray ${selectedTray.position + 1}`}
+          rackName={selectedRackName}
+          onCreated={() => {
+            toast.success("Plants created")
+            refresh()
+          }}
         />
       )}
     </div>

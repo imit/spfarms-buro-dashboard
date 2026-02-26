@@ -67,6 +67,7 @@ export default function AdminOrdersPage() {
                 <th className="px-4 py-3 text-left font-medium">Date</th>
                 <th className="px-4 py-3 text-left font-medium">Items</th>
                 <th className="px-4 py-3 text-left font-medium">Total</th>
+                <th className="px-4 py-3 text-left font-medium">Terms</th>
                 <th className="px-4 py-3 text-left font-medium">Placed By</th>
                 <th className="px-4 py-3 text-left font-medium">Status</th>
               </tr>
@@ -94,6 +95,11 @@ export default function AdminOrdersPage() {
                     {order.items.length}
                   </td>
                   <td className="px-4 py-3">{formatPrice(order.total)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {order.payment_term_name
+                      ? `${order.payment_term_name}${order.payment_term_days ? ` (Net ${order.payment_term_days})` : ""}`
+                      : "COD"}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {order.user?.full_name || order.user?.email || "—"}
                   </td>

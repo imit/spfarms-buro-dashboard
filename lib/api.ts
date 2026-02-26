@@ -755,6 +755,7 @@ export interface Order {
   desired_delivery_date: string | null;
   payment_terms_accepted_at: string | null;
   payment_due_date: string | null;
+  delivered_at: string | null;
   payment_term_agreement: {
     signed: boolean;
     signer_name: string | null;
@@ -2881,6 +2882,20 @@ export class ApiClient {
     return res.blob();
   }
 
+  async getOrderDeliveryAgreement(id: number): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/orders/${id}/delivery_agreement`;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(url, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to generate delivery agreement");
+    return res.blob();
+  }
+
   async markProcessingDone(id: number): Promise<Order> {
     const res = await this.request<JsonApiResponse<Order>>(
       `/api/v1/orders/${id}/mark_processing_done`,
@@ -2902,6 +2917,14 @@ export class ApiClient {
       `/api/v1/orders/${id}/email_timeline`
     );
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async updateOrderContacts(id: number, contacts: { full_name: string; email: string; phone_number?: string }[]): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${id}/update_contacts`,
+      { method: "PATCH", body: JSON.stringify({ contacts }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
   async sendPaymentTermsAgreement(id: number): Promise<Order> {

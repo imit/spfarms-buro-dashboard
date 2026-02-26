@@ -18,6 +18,8 @@ import {
   CheckCircleIcon,
   PackageIcon,
   TruckIcon,
+  PlayIcon,
+  FileTextIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
@@ -109,7 +111,6 @@ export default function FulfilmentPage() {
 
   async function handleDownloadInvoice(order: Order) {
     try {
-      await ensureProcessing(order);
       const blob = await apiClient.getOrderInvoice(order.id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -122,8 +123,21 @@ export default function FulfilmentPage() {
     }
   }
 
+  async function handleDownloadDeliveryAgreement(order: Order) {
+    try {
+      const blob = await apiClient.getOrderDeliveryAgreement(order.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `delivery-agreement-${order.order_number}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showError("download the delivery agreement");
+    }
+  }
+
   async function handlePrintBoxLabel(order: Order) {
-    await ensureProcessing(order);
     const shipping = order.shipping_location;
     const win = window.open("", "_blank", "width=400,height=600");
     if (!win) return;
@@ -190,6 +204,18 @@ export default function FulfilmentPage() {
 </body>
 </html>`);
     win.document.close();
+  }
+
+  async function handleStartProcessing(order: Order) {
+    try {
+      const updated = await apiClient.updateOrder(order.id, { status: "processing" });
+      setOrders((prev) =>
+        prev.map((o) => (o.id === updated.id ? updated : o))
+      );
+      toast.success(`${order.order_number} moved to processing`);
+    } catch {
+      showError("start processing the order");
+    }
   }
 
   async function handleMarkProcessingDone(order: Order) {
@@ -317,11 +343,31 @@ export default function FulfilmentPage() {
                               variant="outline"
                               size="sm"
                               className="text-xs h-8"
+                              onClick={() => handleDownloadDeliveryAgreement(order)}
+                            >
+                              <FileTextIcon className="mr-1 size-3" />
+                              Delivery
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-8"
                               onClick={() => handlePrintBoxLabel(order)}
                             >
                               <PrinterIcon className="mr-1 size-3" />
                               Box Label
                             </Button>
+                            {order.status === "confirmed" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-8"
+                                onClick={() => handleStartProcessing(order)}
+                              >
+                                <PlayIcon className="mr-1 size-3" />
+                                Process
+                              </Button>
+                            )}
                             {(order.status === "confirmed" || order.status === "processing") && (
                               <Button
                                 size="sm"
