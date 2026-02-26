@@ -2896,6 +2896,20 @@ export class ApiClient {
     return res.blob();
   }
 
+  async getOrderPaymentTermsPdf(id: number): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/orders/${id}/payment_terms_pdf`;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(url, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to generate payment terms PDF");
+    return res.blob();
+  }
+
   async markProcessingDone(id: number): Promise<Order> {
     const res = await this.request<JsonApiResponse<Order>>(
       `/api/v1/orders/${id}/mark_processing_done`,

@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon, FileSignatureIcon, ExternalLinkIcon, ShieldAlertIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { apiClient, type Order, type OrderStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
@@ -55,6 +56,7 @@ export default function AdminOrderDetailPage({
   const [sendingBankInfo, setSendingBankInfo] = useState(false);
   const [sendingAgreement, setSendingAgreement] = useState(false);
   const [sendingLicenseReminder, setSendingLicenseReminder] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"bank_info" | "agreement" | "license_reminder" | null>(null);
   const [timelineKey, setTimelineKey] = useState(0);
   const [editingContacts, setEditingContacts] = useState(false);
   const [contactDrafts, setContactDrafts] = useState<{ full_name: string; email: string; phone_number: string }[]>([]);
@@ -127,6 +129,28 @@ export default function AdminOrderDetailPage({
     } catch {
       showError("download the delivery agreement");
     }
+  };
+
+  const downloadPaymentTerms = async () => {
+    try {
+      const blob = await apiClient.getOrderPaymentTermsPdf(Number(id));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `payment-terms-${order?.order_number || id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showError("download the payment terms");
+    }
+  };
+
+  const confirmAndSend = async () => {
+    if (!confirmAction) return;
+    if (confirmAction === "bank_info") await handleSendBankInfo();
+    else if (confirmAction === "agreement") await handleSendAgreement();
+    else if (confirmAction === "license_reminder") await handleSendLicenseReminder();
+    setConfirmAction(null);
   };
 
   const handleSendBankInfo = async () => {
@@ -238,7 +262,11 @@ export default function AdminOrderDetailPage({
             )}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {order.company?.name ?? "Unknown company"} — {new Date(order.created_at).toLocaleDateString()}
+            {order.company?.slug ? (
+              <Link href={`/admin/companies/${order.company.slug}`} className="hover:underline">{order.company.name}</Link>
+            ) : (
+              order.company?.name ?? "Unknown company"
+            )} — {new Date(order.created_at).toLocaleDateString()}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -257,18 +285,18 @@ export default function AdminOrderDetailPage({
               </option>
             ))}
           </select>
-          <Button variant="outline" size="sm" onClick={handleSendBankInfo} disabled={sendingBankInfo}>
+          <Button variant="outline" size="sm" onClick={() => setConfirmAction("bank_info")} disabled={sendingBankInfo}>
             <BanknoteIcon className="mr-1.5 size-4" />
             {sendingBankInfo ? "Sending..." : "Send Bank Info"}
           </Button>
           {order.payment_term_days != null && order.payment_term_days > 0 && (
-            <Button variant="outline" size="sm" onClick={handleSendAgreement} disabled={sendingAgreement}>
+            <Button variant="outline" size="sm" onClick={() => setConfirmAction("agreement")} disabled={sendingAgreement}>
               <FileSignatureIcon className="mr-1.5 size-4" />
               {sendingAgreement ? "Sending..." : "Send Terms Agreement"}
             </Button>
           )}
           {companyDetails && !companyDetails.license_number && (
-            <Button variant="outline" size="sm" onClick={handleSendLicenseReminder} disabled={sendingLicenseReminder}>
+            <Button variant="outline" size="sm" onClick={() => setConfirmAction("license_reminder")} disabled={sendingLicenseReminder}>
               <ShieldAlertIcon className="mr-1.5 size-4" />
               {sendingLicenseReminder ? "Sending..." : "License Reminder"}
             </Button>
@@ -281,6 +309,12 @@ export default function AdminOrderDetailPage({
             <FileSignatureIcon className="mr-1.5 size-4" />
             Delivery Agreement
           </Button>
+          {order.payment_term_days != null && order.payment_term_days > 0 && (
+            <Button variant="outline" size="sm" onClick={downloadPaymentTerms}>
+              <DownloadIcon className="mr-1.5 size-4" />
+              Payment Terms
+            </Button>
+          )}
           {order.status === "processing" && (
             <Button size="sm" onClick={() => setShowDoneConfirm(true)}>
               <CheckCircleIcon className="mr-1.5 size-4" />
@@ -518,6 +552,11 @@ export default function AdminOrderDetailPage({
               <h3 className="font-semibold text-sm mb-3">Company</h3>
               <div className="space-y-2 text-sm">
                 <p className="font-medium">{companyDetails.name}</p>
+                {companyDetails.license_number ? (
+                  <p className="text-muted-foreground">OCM: {companyDetails.license_number}</p>
+                ) : (
+                  <p className="text-xs font-medium text-amber-600">Missing OCM license</p>
+                )}
                 {companyDetails.email && (
                   <p className="text-muted-foreground">{companyDetails.email}</p>
                 )}
@@ -674,6 +713,35 @@ export default function AdminOrderDetailPage({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={markProcessingDone}>
               Mark Fulfilled
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction === "bank_info" && "Send bank info email?"}
+              {confirmAction === "agreement" && "Send payment terms agreement?"}
+              {confirmAction === "license_reminder" && "Send license reminder?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction === "bank_info" && (
+                <>This will send a bank info email to all members of <strong>{order.company?.name ?? "the company"}</strong>.</>
+              )}
+              {confirmAction === "agreement" && (
+                <>This will send a payment terms agreement for signing to all members of <strong>{order.company?.name ?? "the company"}</strong>. Any existing unsigned agreement will be replaced.</>
+              )}
+              {confirmAction === "license_reminder" && (
+                <>This will send a license reminder email to all members of <strong>{order.company?.name ?? "the company"}</strong> asking them to add their license number.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmAction(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAndSend}>
+              Send Email
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
