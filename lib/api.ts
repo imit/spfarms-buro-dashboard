@@ -385,6 +385,24 @@ export interface SheetLayout {
   updated_at: string;
 }
 
+export interface ExtractedSheetLayout {
+  name: string;
+  sheet_width_cm: number;
+  sheet_height_cm: number;
+  label_width_cm: number;
+  label_height_cm: number;
+  margin_top_cm: number;
+  margin_bottom_cm: number;
+  margin_left_cm: number;
+  margin_right_cm: number;
+  gap_x_cm: number;
+  gap_y_cm: number;
+  corner_radius_mm: number;
+  columns: number;
+  rows: number;
+  labels_per_sheet: number;
+}
+
 // ---- Labels ----
 
 export type LabelStatus = "draft" | "active" | "archived";
@@ -410,37 +428,9 @@ export interface LabelOverlayData {
   asset_url: string | null;
 }
 
-export interface LabelLineConfig {
-  visible?: boolean;
-  fontSize?: number;
-  color?: string;
-  fontWeight?: string;
-  override?: string | null;
-  letterSpacing?: number;
-}
-
 export interface LabelDesign {
   background_color?: string;
   font_primary?: string;
-  info_group?: {
-    visible?: boolean;
-    x?: number;
-    y?: number;
-    product_type?: LabelLineConfig;
-    strain_name?: LabelLineConfig;
-    weight_line?: LabelLineConfig;
-    badges?: {
-      visible?: boolean;
-      items?: string[];
-      fontSize?: number;
-      color?: string;
-      bg?: string;
-      radius?: number;
-      paddingX?: number;
-      paddingY?: number;
-      gap?: number;
-    };
-  };
   qr?: {
     enabled?: boolean;
     data_source?: "product_url" | "custom";
@@ -2449,6 +2439,19 @@ export class ApiClient {
 
   async deleteSheetLayout(slug: string): Promise<void> {
     await this.request(`/api/v1/sheet_layouts/${slug}`, { method: "DELETE" });
+  }
+
+  async extractSheetLayoutFromSvg(
+    file: File
+  ): Promise<ExtractedSheetLayout> {
+    const formData = new FormData();
+    formData.append("svg", file);
+
+    const res = await this.requestFormData<{ data: ExtractedSheetLayout }>(
+      "/api/v1/sheet_layouts/extract_from_svg",
+      { method: "POST", body: formData }
+    );
+    return res.data;
   }
 
   // QR Codes

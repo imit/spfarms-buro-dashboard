@@ -89,10 +89,7 @@ export default function EditLabelPage({
       // Design element move — send full design with patched position
       const design: LabelDesign = JSON.parse(JSON.stringify(label.design || {}));
       const key = element as keyof LabelDesign;
-      if (key === "info_group" && design.info_group) {
-        design.info_group.x = x;
-        design.info_group.y = y;
-      } else if (key === "qr" && design.qr) {
+      if (key === "qr" && design.qr) {
         design.qr.x = x;
         design.qr.y = y;
       } else if (key === "logo" && design.logo) {

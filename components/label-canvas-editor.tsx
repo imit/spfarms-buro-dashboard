@@ -60,19 +60,6 @@ export function LabelCanvasEditor({
   const handles: DragHandle[] = []
   const d = label.design
 
-  if (d?.info_group?.visible !== false) {
-    const ig = d?.info_group
-    handles.push({
-      key: "info_group",
-      label: "Text",
-      x: ig?.x ?? 20,
-      y: ig?.y ?? 30,
-      width: widthPx * 0.5,
-      height: heightPx * 0.4,
-      color: "#3b82f6",
-    })
-  }
-
   if (d?.qr?.enabled) {
     const qr = d.qr
     const size = qr.size ?? 50

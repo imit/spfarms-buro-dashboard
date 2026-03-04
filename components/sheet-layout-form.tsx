@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useRef, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient, type SheetLayout } from "@/lib/api";
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,9 @@ export function SheetLayoutForm({
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractError, setExtractError] = useState("");
+  const svgInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     name: layout?.name ?? "",
@@ -58,6 +62,42 @@ export function SheetLayoutForm({
     gapY: parseFloat(form.gap_y_cm) || 0,
     cornerRadius: parseFloat(form.corner_radius_mm) || 0,
   };
+
+  async function handleSvgExtract() {
+    const file = svgInputRef.current?.files?.[0];
+    if (!file) return;
+
+    setExtractError("");
+    setIsExtracting(true);
+
+    try {
+      const extracted = await apiClient.extractSheetLayoutFromSvg(file);
+
+      setForm({
+        name: extracted.name || form.name,
+        sheet_width_cm: String(extracted.sheet_width_cm),
+        sheet_height_cm: String(extracted.sheet_height_cm),
+        label_width_cm: String(extracted.label_width_cm),
+        label_height_cm: String(extracted.label_height_cm),
+        corner_radius_mm: String(extracted.corner_radius_mm),
+        margin_top_cm: String(extracted.margin_top_cm),
+        margin_bottom_cm: String(extracted.margin_bottom_cm),
+        margin_left_cm: String(extracted.margin_left_cm),
+        margin_right_cm: String(extracted.margin_right_cm),
+        gap_x_cm: String(extracted.gap_x_cm),
+        gap_y_cm: String(extracted.gap_y_cm),
+        default: form.default,
+      });
+    } catch (err) {
+      setExtractError(
+        err instanceof Error
+          ? err.message
+          : "Could not extract dimensions from this SVG"
+      );
+    } finally {
+      setIsExtracting(false);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -102,6 +142,40 @@ export function SheetLayoutForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {error && <ErrorAlert message={error} />}
+
+      {/* SVG Template Import */}
+      <section className="rounded-lg border bg-card p-5 space-y-4">
+        <div className="space-y-1">
+          <h3 className="text-lg font-medium">Import from SVG Template</h3>
+          <p className="text-sm text-muted-foreground">
+            Upload your sticker paper SVG template to auto-detect all
+            dimensions
+          </p>
+        </div>
+
+        {extractError && <ErrorAlert message={extractError} />}
+
+        <div className="flex items-end gap-3">
+          <Field className="flex-1">
+            <FieldLabel>SVG Template File</FieldLabel>
+            <Input
+              ref={svgInputRef}
+              type="file"
+              accept=".svg,image/svg+xml"
+              disabled={isExtracting || isSubmitting}
+            />
+          </Field>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSvgExtract}
+            disabled={isExtracting || isSubmitting}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {isExtracting ? "Extracting..." : "Extract Dimensions"}
+          </Button>
+        </div>
+      </section>
 
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Form fields */}
