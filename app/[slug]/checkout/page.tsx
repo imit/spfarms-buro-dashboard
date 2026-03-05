@@ -4,7 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 import {
-  ArrowLeftIcon, PlusCircleIcon, TrashIcon, LoaderIcon,
+  ArrowLeftIcon, PlusCircleIcon, TrashIcon, LoaderIcon, AlertTriangleIcon,
 } from "lucide-react";
 import {
   apiClient,
@@ -220,6 +220,11 @@ export default function CheckoutPage({
     preview?.items ?? cart?.items ?? []
   );
 
+  const missingLicense = !company?.license_number;
+  const missingName = !user?.full_name;
+  const missingPhone = !user?.phone_number;
+  const hasMissingInfo = missingLicense || missingName || missingPhone;
+
   if (isLoading) {
     return <p className="text-muted-foreground">Loading checkout...</p>;
   }
@@ -252,6 +257,30 @@ export default function CheckoutPage({
       <h1 className="text-2xl font-bold mb-6">
         {isPreorder ? "Pre-order Checkout" : "Checkout"}
       </h1>
+
+      {hasMissingInfo && (
+        <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 p-4">
+          <div className="flex gap-3">
+            <AlertTriangleIcon className="size-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Required information missing
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                Before placing an order, please complete the following in your{" "}
+                <a href={`/${slug}/settings`} className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100">
+                  settings
+                </a>:
+              </p>
+              <ul className="text-sm text-amber-700 dark:text-amber-300 list-disc list-inside">
+                {missingLicense && <li>Company OCM license number</li>}
+                {missingName && <li>Your full name</li>}
+                {missingPhone && <li>Your phone number</li>}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Left column: Order summary + form */}
@@ -614,15 +643,17 @@ export default function CheckoutPage({
             className="w-full"
             size="lg"
             onClick={handleConfirmOrder}
-            disabled={submitting || !cart || cart.items.length === 0 || !meetsMinimum || (!skipPaymentTerms && !termsAccepted)}
+            disabled={submitting || !cart || cart.items.length === 0 || !meetsMinimum || (!skipPaymentTerms && !termsAccepted) || hasMissingInfo}
           >
             {submitting
               ? isPreorder ? "Placing Pre-order..." : "Placing Order..."
-              : !meetsMinimum
-                ? "Minimum order not met"
-                : isPreorder
-                  ? `Confirm Pre-order — ${formatPrice(preview?.total || cart.subtotal)}`
-                  : `Confirm Order — ${formatPrice(preview?.total || cart.subtotal)}`}
+              : hasMissingInfo
+                ? "Complete required info to order"
+                : !meetsMinimum
+                  ? "Minimum order not met"
+                  : isPreorder
+                    ? `Confirm Pre-order — ${formatPrice(preview?.total || cart.subtotal)}`
+                    : `Confirm Order — ${formatPrice(preview?.total || cart.subtotal)}`}
           </Button>
         </div>
       </div>

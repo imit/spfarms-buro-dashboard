@@ -30,6 +30,7 @@ import { showError } from "@/lib/errors";
 interface LocationForm {
   id?: number;
   name: string;
+  license_number: string;
   address: string;
   city: string;
   state: string;
@@ -39,6 +40,7 @@ interface LocationForm {
 
 const EMPTY_LOCATION: LocationForm = {
   name: "",
+  license_number: "",
   address: "",
   city: "",
   state: "",
@@ -171,6 +173,7 @@ export default function SettingsPage({
     setEditForm({
       id: loc.id,
       name: loc.name || "",
+      license_number: loc.license_number || "",
       address: loc.address || "",
       city: loc.city || "",
       state: loc.state || "",
@@ -190,6 +193,7 @@ export default function SettingsPage({
     try {
       const attrs: Record<string, unknown> = {
         name: form.name,
+        license_number: form.license_number || null,
         address: form.address,
         city: form.city,
         state: form.state,
@@ -468,6 +472,9 @@ export default function SettingsPage({
                   {loc.name && (
                     <p className="font-medium text-sm">{loc.name}</p>
                   )}
+                  {loc.license_number && (
+                    <p className="text-xs text-muted-foreground">OCM: {loc.license_number}</p>
+                  )}
                   <p className="text-sm text-muted-foreground">{loc.address}</p>
                   <p className="text-sm text-muted-foreground">
                     {[loc.city, loc.state, loc.zip_code]
@@ -671,12 +678,20 @@ function LocationFormCard({
   return (
     <div className="rounded-lg border p-4 space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5 sm:col-span-2">
+        <div className="space-y-1.5">
           <Label>Location Name</Label>
           <Input
             value={form.name}
             onChange={(e) => onChange({ ...form, name: e.target.value })}
             placeholder="Main Office"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>OCM License</Label>
+          <Input
+            value={form.license_number}
+            onChange={(e) => onChange({ ...form, license_number: e.target.value })}
+            placeholder="OCM-XXXXX"
           />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
