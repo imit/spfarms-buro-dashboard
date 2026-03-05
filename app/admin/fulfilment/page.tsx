@@ -200,7 +200,7 @@ export default function FulfilmentPage() {
       <tbody>${order.items.map((i) => `<tr><td>${i.product_name}</td><td style="text-align:right">${i.quantity}</td></tr>`).join("")}</tbody>
     </table>
   </div>
-  <div class="footer">Packed on ${new Date().toLocaleDateString()} — ${order.items.length} item${order.items.length !== 1 ? "s" : ""}, Total: ${formatPrice(order.total)}</div>
+  <div class="footer">Packed on ${new Date().toLocaleDateString()} — ${order.items.length} item${order.items.length !== 1 ? "s" : ""}</div>
 </body>
 </html>`);
     win.document.close();

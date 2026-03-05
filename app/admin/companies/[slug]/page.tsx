@@ -13,9 +13,11 @@ import {
   type Company,
   type DiscountRecord,
   type LeadStatus,
+  type Location,
   type NotificationType,
   type Order,
   type OrderStatus,
+  type Region,
   COMPANY_TYPE_LABELS,
   LEAD_STATUS_LABELS,
   NOTIFICATION_TYPE_LABELS,
@@ -154,6 +156,11 @@ export default function CompanyDetailPage({
   const [bulkListMessage, setBulkListMessage] = useState("");
   const [sendingBulkList, setSendingBulkList] = useState(false);
   const [fetchingLogo, setFetchingLogo] = useState(false);
+  const [locationFormOpen, setLocationFormOpen] = useState(false);
+  const [editingLocationId, setEditingLocationId] = useState<number | null>(null);
+  const [locationForm, setLocationForm] = useState({ name: "", address: "", city: "", state: "", zip_code: "", region: "" as string, phone_number: "", license_number: "" });
+  const [locationSubmitting, setLocationSubmitting] = useState(false);
+  const [deletingLocationId, setDeletingLocationId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -369,6 +376,74 @@ export default function CompanyDetailPage({
       setError(err instanceof Error ? err.message : "We couldn't send the bulk flower list");
     } finally {
       setSendingBulkList(false);
+    }
+  }
+
+  const emptyLocationForm = { name: "", address: "", city: "", state: "", zip_code: "", region: "" as string, phone_number: "", license_number: "" };
+
+  function openAddLocation() {
+    setEditingLocationId(null);
+    setLocationForm(emptyLocationForm);
+    setLocationFormOpen(true);
+  }
+
+  function openEditLocation(loc: Location) {
+    setEditingLocationId(loc.id);
+    setLocationForm({
+      name: loc.name || "",
+      address: loc.address || "",
+      city: loc.city || "",
+      state: loc.state || "",
+      zip_code: loc.zip_code || "",
+      region: loc.region || "",
+      phone_number: loc.phone_number || "",
+      license_number: loc.license_number || "",
+    });
+    setLocationFormOpen(true);
+  }
+
+  async function handleSaveLocation(e: React.FormEvent) {
+    e.preventDefault();
+    if (!company) return;
+    setLocationSubmitting(true);
+    try {
+      const attrs: Record<string, unknown> = {
+        name: locationForm.name || null,
+        address: locationForm.address || null,
+        city: locationForm.city || null,
+        state: locationForm.state || null,
+        zip_code: locationForm.zip_code || null,
+        region: locationForm.region || null,
+        phone_number: locationForm.phone_number || null,
+        license_number: locationForm.license_number || null,
+      };
+      if (editingLocationId) attrs.id = editingLocationId;
+      const updated = await apiClient.updateCompany(company.slug, {
+        locations_attributes: [attrs],
+      });
+      setCompany(updated);
+      setLocationFormOpen(false);
+      setLocationForm(emptyLocationForm);
+      setEditingLocationId(null);
+    } catch (err) {
+      showError(editingLocationId ? "update this location" : "add this location");
+    } finally {
+      setLocationSubmitting(false);
+    }
+  }
+
+  async function handleDeleteLocation(locationId: number) {
+    if (!company) return;
+    setDeletingLocationId(locationId);
+    try {
+      const updated = await apiClient.updateCompany(company.slug, {
+        locations_attributes: [{ id: locationId, _destroy: true }],
+      });
+      setCompany(updated);
+    } catch {
+      showError("delete this location");
+    } finally {
+      setDeletingLocationId(null);
     }
   }
 
@@ -1191,7 +1266,109 @@ export default function CompanyDetailPage({
 
       {/* Locations */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium">Locations</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium">Locations</h3>
+          <Button variant="outline" size="sm" onClick={openAddLocation}>
+            <PlusIcon className="mr-2 size-4" />
+            Add Location
+          </Button>
+        </div>
+
+        {/* Location Form Dialog */}
+        <Dialog open={locationFormOpen} onOpenChange={(open) => {
+          setLocationFormOpen(open);
+          if (!open) { setEditingLocationId(null); setLocationForm(emptyLocationForm); }
+        }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{editingLocationId ? "Edit Location" : "Add Location"}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSaveLocation} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="loc-name">Location Name</Label>
+                <Input
+                  id="loc-name"
+                  placeholder="e.g. Main Store, Warehouse"
+                  value={locationForm.name}
+                  onChange={(e) => setLocationForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="loc-license">OCM License Number</Label>
+                <Input
+                  id="loc-license"
+                  placeholder="OCM-XXXXX"
+                  value={locationForm.license_number}
+                  onChange={(e) => setLocationForm((f) => ({ ...f, license_number: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="loc-address">Street Address</Label>
+                <Input
+                  id="loc-address"
+                  value={locationForm.address}
+                  onChange={(e) => setLocationForm((f) => ({ ...f, address: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="loc-city">City</Label>
+                  <Input
+                    id="loc-city"
+                    value={locationForm.city}
+                    onChange={(e) => setLocationForm((f) => ({ ...f, city: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="loc-state">State</Label>
+                  <Input
+                    id="loc-state"
+                    value={locationForm.state}
+                    onChange={(e) => setLocationForm((f) => ({ ...f, state: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="loc-zip">ZIP Code</Label>
+                  <Input
+                    id="loc-zip"
+                    value={locationForm.zip_code}
+                    onChange={(e) => setLocationForm((f) => ({ ...f, zip_code: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="loc-region">Region</Label>
+                  <select
+                    id="loc-region"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    value={locationForm.region}
+                    onChange={(e) => setLocationForm((f) => ({ ...f, region: e.target.value }))}
+                  >
+                    <option value="">Select region</option>
+                    {(Object.entries(REGION_LABELS) as [Region, string][]).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="loc-phone">Phone Number</Label>
+                  <Input
+                    id="loc-phone"
+                    value={locationForm.phone_number}
+                    onChange={(e) => setLocationForm((f) => ({ ...f, phone_number: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit" disabled={locationSubmitting}>
+                  {locationSubmitting ? "Saving..." : editingLocationId ? "Update Location" : "Add Location"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         {!company.locations || company.locations.length === 0 ? (
           <div className="rounded-lg border bg-card p-6 text-center">
             <p className="text-sm text-muted-foreground">
@@ -1211,12 +1388,54 @@ export default function CompanyDetailPage({
                     <span className="font-medium text-sm">
                       {loc.name || `Location ${i + 1}`}
                     </span>
-                    {loc.region && (
-                      <Badge variant="outline" className="text-xs">
-                        {REGION_LABELS[loc.region]}
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {loc.region && (
+                        <Badge variant="outline" className="text-xs">
+                          {REGION_LABELS[loc.region]}
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => openEditLocation(loc)}
+                      >
+                        <PencilIcon className="size-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground hover:text-destructive"
+                            disabled={deletingLocationId === loc.id}
+                          >
+                            <Trash2Icon className="size-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove location?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove {loc.name || "this location"} from {company.name}.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteLocation(loc.id)}>
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
+                  {loc.license_number && (
+                    <div className="flex items-center gap-2 text-sm mb-1">
+                      <Badge variant="secondary" className="text-xs">OCM</Badge>
+                      <span className="text-muted-foreground">{loc.license_number}</span>
+                    </div>
+                  )}
                   {fullAddress && (
                     <div className="flex items-start gap-2 text-sm text-muted-foreground">
                       <MapPinIcon className="size-3.5 mt-0.5 shrink-0" />

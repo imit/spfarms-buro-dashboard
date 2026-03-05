@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon, FileSignatureIcon, ExternalLinkIcon, ShieldAlertIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon, FileSignatureIcon, ExternalLinkIcon, ShieldAlertIcon, PencilIcon, PlusIcon, Trash2Icon, MailIcon, ChevronDownIcon, EllipsisIcon } from "lucide-react";
 import { apiClient, type Order, type OrderStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
@@ -22,6 +22,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
 import { EmailTimeline } from "@/components/email-timeline";
@@ -61,6 +69,12 @@ export default function AdminOrderDetailPage({
   const [editingContacts, setEditingContacts] = useState(false);
   const [contactDrafts, setContactDrafts] = useState<{ full_name: string; email: string; phone_number: string }[]>([]);
   const [savingContacts, setSavingContacts] = useState(false);
+  const [selectedOrdererId, setSelectedOrdererId] = useState<number | null>(null);
+  const [editingPrices, setEditingPrices] = useState(false);
+  const [priceDrafts, setPriceDrafts] = useState<Record<number, string>>({});
+  const [savingPrices, setSavingPrices] = useState(false);
+  const [sendPriceNotification, setSendPriceNotification] = useState(true);
+  const [priceCustomMessage, setPriceCustomMessage] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -195,6 +209,8 @@ export default function AdminOrderDetailPage({
 
   const startEditingContacts = () => {
     const contacts = order?.order_users.filter((ou) => ou.role === "contact") ?? [];
+    const orderer = order?.order_users.find((ou) => ou.role === "orderer");
+    setSelectedOrdererId(orderer?.user_id ?? null);
     setContactDrafts(
       contacts.length > 0
         ? contacts.map((c) => ({ full_name: c.full_name || "", email: c.email, phone_number: c.phone_number || "" }))
@@ -207,12 +223,17 @@ export default function AdminOrderDetailPage({
     const valid = contactDrafts.filter((c) => c.email.trim());
     setSavingContacts(true);
     try {
-      const updated = await apiClient.updateOrderContacts(Number(id), valid);
+      const currentOrderer = order?.order_users.find((ou) => ou.role === "orderer");
+      let updated: Order | undefined;
+      if (selectedOrdererId && selectedOrdererId !== currentOrderer?.user_id) {
+        updated = await apiClient.updateOrderOrderer(Number(id), selectedOrdererId);
+      }
+      updated = await apiClient.updateOrderContacts(Number(id), valid);
       setOrder(updated);
       setEditingContacts(false);
-      toast.success("Contacts updated");
+      toast.success("Order people updated");
     } catch {
-      showError("update the contacts");
+      showError("update the order people");
     } finally {
       setSavingContacts(false);
     }
@@ -226,6 +247,35 @@ export default function AdminOrderDetailPage({
       toast.success("Order marked as fulfilled");
     } catch {
       showError("mark the order as fulfilled");
+    }
+  };
+
+  const startEditingPrices = () => {
+    if (!order) return;
+    const drafts: Record<number, string> = {};
+    order.items.forEach((item) => { drafts[item.id] = parseFloat(item.unit_price).toFixed(2); });
+    setPriceDrafts(drafts);
+    setSendPriceNotification(true);
+    setPriceCustomMessage("");
+    setEditingPrices(true);
+  };
+
+  const savePrices = async () => {
+    if (!order) return;
+    setSavingPrices(true);
+    try {
+      const items = order.items.map((item) => ({
+        id: item.id,
+        unit_price: priceDrafts[item.id] || item.unit_price,
+      }));
+      const updated = await apiClient.updateOrderPrices(Number(id), items, sendPriceNotification, priceCustomMessage || undefined);
+      setOrder(updated);
+      setEditingPrices(false);
+      toast.success("Prices updated");
+    } catch {
+      showError("update the prices");
+    } finally {
+      setSavingPrices(false);
     }
   };
 
@@ -285,42 +335,64 @@ export default function AdminOrderDetailPage({
               </option>
             ))}
           </select>
-          <Button variant="outline" size="sm" onClick={() => setConfirmAction("bank_info")} disabled={sendingBankInfo}>
-            <BanknoteIcon className="mr-1.5 size-4" />
-            {sendingBankInfo ? "Sending..." : "Send Bank Info"}
-          </Button>
-          {order.payment_term_days != null && order.payment_term_days > 0 && (
-            <Button variant="outline" size="sm" onClick={() => setConfirmAction("agreement")} disabled={sendingAgreement}>
-              <FileSignatureIcon className="mr-1.5 size-4" />
-              {sendingAgreement ? "Sending..." : "Send Terms Agreement"}
-            </Button>
-          )}
-          {companyDetails && !companyDetails.license_number && (
-            <Button variant="outline" size="sm" onClick={() => setConfirmAction("license_reminder")} disabled={sendingLicenseReminder}>
-              <ShieldAlertIcon className="mr-1.5 size-4" />
-              {sendingLicenseReminder ? "Sending..." : "License Reminder"}
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={downloadInvoice}>
-            <DownloadIcon className="mr-1.5 size-4" />
-            Invoice
-          </Button>
-          <Button variant="outline" size="sm" onClick={downloadDeliveryAgreement}>
-            <FileSignatureIcon className="mr-1.5 size-4" />
-            Delivery Agreement
-          </Button>
-          {order.payment_term_days != null && order.payment_term_days > 0 && (
-            <Button variant="outline" size="sm" onClick={downloadPaymentTerms}>
-              <DownloadIcon className="mr-1.5 size-4" />
-              Payment Terms
-            </Button>
-          )}
           {order.status === "processing" && (
             <Button size="sm" onClick={() => setShowDoneConfirm(true)}>
               <CheckCircleIcon className="mr-1.5 size-4" />
               Mark Done
             </Button>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <MailIcon className="mr-1.5 size-4" />
+                Send Email
+                <ChevronDownIcon className="ml-1.5 size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setConfirmAction("bank_info")} disabled={sendingBankInfo}>
+                <BanknoteIcon className="mr-2 size-4" />
+                {sendingBankInfo ? "Sending..." : "Bank Info"}
+              </DropdownMenuItem>
+              {order.payment_term_days != null && order.payment_term_days > 0 && (
+                <DropdownMenuItem onClick={() => setConfirmAction("agreement")} disabled={sendingAgreement}>
+                  <FileSignatureIcon className="mr-2 size-4" />
+                  {sendingAgreement ? "Sending..." : "Terms Agreement"}
+                </DropdownMenuItem>
+              )}
+              {companyDetails && !companyDetails.license_number && (
+                <DropdownMenuItem onClick={() => setConfirmAction("license_reminder")} disabled={sendingLicenseReminder}>
+                  <ShieldAlertIcon className="mr-2 size-4" />
+                  {sendingLicenseReminder ? "Sending..." : "License Reminder"}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <DownloadIcon className="mr-1.5 size-4" />
+                Download
+                <ChevronDownIcon className="ml-1.5 size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={downloadInvoice}>
+                <DownloadIcon className="mr-2 size-4" />
+                Invoice
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={downloadDeliveryAgreement}>
+                <FileSignatureIcon className="mr-2 size-4" />
+                Delivery Agreement
+              </DropdownMenuItem>
+              {order.payment_term_days != null && order.payment_term_days > 0 && (
+                <DropdownMenuItem onClick={downloadPaymentTerms}>
+                  <DownloadIcon className="mr-2 size-4" />
+                  Payment Terms
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -355,8 +427,14 @@ export default function AdminOrderDetailPage({
 
           {/* Line items */}
           <div className="rounded-lg border">
-            <div className="px-4 py-3 border-b bg-muted/50">
+            <div className="px-4 py-3 border-b bg-muted/50 flex items-center justify-between">
               <h3 className="font-semibold text-sm">Order Items</h3>
+              {!editingPrices && (
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditingPrices}>
+                  <PencilIcon className="mr-1 size-3" />
+                  Edit Prices
+                </Button>
+              )}
             </div>
             <div className="divide-y">
               {order.items.map((item) => (
@@ -377,16 +455,63 @@ export default function AdminOrderDetailPage({
                         </span>
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatPrice(item.unit_price)} x {item.quantity}
-                    </p>
+                    {editingPrices ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-xs text-muted-foreground">$</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="h-7 w-24 text-sm"
+                          value={priceDrafts[item.id] ?? ""}
+                          onChange={(e) => setPriceDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
+                        />
+                        <span className="text-xs text-muted-foreground">x {item.quantity}</span>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        {formatPrice(item.unit_price)} x {item.quantity}
+                      </p>
+                    )}
                   </div>
                   <div className="font-medium text-sm">
-                    {formatPrice(item.line_total)}
+                    {editingPrices
+                      ? formatPrice((parseFloat(priceDrafts[item.id] || "0") * item.quantity).toFixed(2))
+                      : formatPrice(item.line_total)}
                   </div>
                 </div>
               ))}
             </div>
+            {editingPrices && (
+              <div className="border-t px-4 py-3 space-y-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={sendPriceNotification}
+                    onChange={(e) => setSendPriceNotification(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  Send price update email to company
+                </label>
+                {sendPriceNotification && (
+                  <Textarea
+                    placeholder="Add a custom message to include in the email (optional)"
+                    value={priceCustomMessage}
+                    onChange={(e) => setPriceCustomMessage(e.target.value)}
+                    rows={3}
+                    className="text-sm"
+                  />
+                )}
+                <div className="flex gap-2">
+                  <Button size="sm" className="text-xs h-7" onClick={savePrices} disabled={savingPrices}>
+                    {savingPrices ? "Saving..." : "Save Prices"}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setEditingPrices(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="border-t px-4 py-3 space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
@@ -460,14 +585,21 @@ export default function AdminOrderDetailPage({
 
             {editingContacts ? (
               <div className="space-y-4">
-                {/* Show orderer as read-only */}
-                {order.order_users.filter((ou) => ou.role === "orderer").map((ou) => (
-                  <div key={ou.id} className="text-sm">
-                    <p className="font-medium">{ou.full_name || ou.email}</p>
-                    <p className="text-xs text-muted-foreground">{ou.email}</p>
-                    <Badge variant="outline" className="mt-1 text-xs">Ordered by</Badge>
-                  </div>
-                ))}
+                {/* Orderer selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Ordered by</Label>
+                  <select
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    value={selectedOrdererId ?? ""}
+                    onChange={(e) => setSelectedOrdererId(Number(e.target.value))}
+                  >
+                    {order.company_details?.members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.full_name || member.email}{member.company_title ? ` — ${member.company_title}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 {/* Editable contacts */}
                 <div className="border-t pt-3 space-y-3">

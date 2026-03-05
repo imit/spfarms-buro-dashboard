@@ -163,6 +163,7 @@ export interface Location {
   longitude: number | null;
   region: Region | null;
   phone_number: string | null;
+  license_number: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -955,7 +956,8 @@ export type NotificationType =
   | "cart_reminder"
   | "bank_info_send"
   | "payment_terms_agreement"
-  | "payment_received";
+  | "payment_received"
+  | "price_adjustment";
 
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   order_status: "Order Status",
@@ -968,6 +970,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   bank_info_send: "Bank Info",
   payment_terms_agreement: "Terms Agreement",
   payment_received: "Payment Received",
+  price_adjustment: "Price Adjustment",
 };
 
 export type NotificationChannel = "email_and_in_app" | "email_only" | "in_app_only";
@@ -2940,6 +2943,22 @@ export class ApiClient {
     const res = await this.request<JsonApiResponse<Order>>(
       `/api/v1/orders/${id}/update_contacts`,
       { method: "PATCH", body: JSON.stringify({ contacts }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateOrderOrderer(id: number, userId: number): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${id}/update_orderer`,
+      { method: "PATCH", body: JSON.stringify({ user_id: userId }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateOrderPrices(id: number, items: { id: number; unit_price: string }[], sendNotification: boolean, customMessage?: string): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${id}/update_prices`,
+      { method: "PATCH", body: JSON.stringify({ items, send_notification: sendNotification, custom_message: customMessage }) }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
