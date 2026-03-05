@@ -70,6 +70,10 @@ export default function AdminOrderDetailPage({
   const [contactDrafts, setContactDrafts] = useState<{ full_name: string; email: string; phone_number: string }[]>([]);
   const [savingContacts, setSavingContacts] = useState(false);
   const [selectedOrdererId, setSelectedOrdererId] = useState<number | null>(null);
+  const [editingLocations, setEditingLocations] = useState(false);
+  const [shippingLocationId, setShippingLocationId] = useState<string>("");
+  const [billingLocationId, setBillingLocationId] = useState<string>("");
+  const [savingLocations, setSavingLocations] = useState(false);
   const [editingPrices, setEditingPrices] = useState(false);
   const [priceDrafts, setPriceDrafts] = useState<Record<number, string>>({});
   const [savingPrices, setSavingPrices] = useState(false);
@@ -250,6 +254,31 @@ export default function AdminOrderDetailPage({
     }
   };
 
+  const startEditingLocations = () => {
+    if (!order) return;
+    setShippingLocationId(order.shipping_location?.id ? String(order.shipping_location.id) : "");
+    setBillingLocationId(order.billing_location?.id ? String(order.billing_location.id) : "");
+    setEditingLocations(true);
+  };
+
+  const saveLocations = async () => {
+    if (!order) return;
+    setSavingLocations(true);
+    try {
+      const data: { shipping_location_id?: number; billing_location_id?: number } = {};
+      if (shippingLocationId) data.shipping_location_id = Number(shippingLocationId);
+      if (billingLocationId) data.billing_location_id = Number(billingLocationId);
+      const updated = await apiClient.updateOrder(Number(id), data);
+      setOrder(updated);
+      setEditingLocations(false);
+      toast.success("Locations updated");
+    } catch {
+      showError("update the locations");
+    } finally {
+      setSavingLocations(false);
+    }
+  };
+
   const startEditingPrices = () => {
     if (!order) return;
     const drafts: Record<number, string> = {};
@@ -400,28 +429,92 @@ export default function AdminOrderDetailPage({
         {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Order info */}
-          <div className="grid grid-cols-2 gap-4 rounded-lg border p-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Status</p>
-              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
-                {ORDER_STATUS_LABELS[order.status]}
-              </span>
+          <div className="rounded-lg border p-4 text-sm space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-muted-foreground">Status</p>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
+                  {ORDER_STATUS_LABELS[order.status]}
+                </span>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Desired Delivery</p>
+                <p className="font-medium">
+                  {order.desired_delivery_date
+                    ? new Date(order.desired_delivery_date).toLocaleDateString()
+                    : "Not specified"}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-muted-foreground">Desired Delivery</p>
-              <p className="font-medium">
-                {order.desired_delivery_date
-                  ? new Date(order.desired_delivery_date).toLocaleDateString()
-                  : "Not specified"}
-              </p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Shipping</p>
-              <p className="font-medium">{formatLocation(order.shipping_location)}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Billing</p>
-              <p className="font-medium">{formatLocation(order.billing_location)}</p>
+            <div className="border-t pt-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-muted-foreground font-medium">Locations</p>
+                {!editingLocations && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditingLocations}>
+                    <PencilIcon className="mr-1 size-3" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+              {editingLocations ? (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Shipping Location</Label>
+                    <select
+                      value={shippingLocationId}
+                      onChange={(e) => setShippingLocationId(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="">Select a location</option>
+                      {companyDetails?.locations.map((loc) => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.name || loc.address} — {loc.city}, {loc.state} {loc.zip_code}{loc.license_number ? ` (OCM: ${loc.license_number})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Billing Location</Label>
+                    <select
+                      value={billingLocationId}
+                      onChange={(e) => setBillingLocationId(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="">Select a location</option>
+                      {companyDetails?.locations.map((loc) => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.name || loc.address} — {loc.city}, {loc.state} {loc.zip_code}{loc.license_number ? ` (OCM: ${loc.license_number})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="text-xs h-7" onClick={saveLocations} disabled={savingLocations}>
+                      {savingLocations ? "Saving..." : "Save"}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setEditingLocations(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Shipping</p>
+                    <p className="font-medium">{formatLocation(order.shipping_location)}</p>
+                    {order.shipping_location?.license_number && (
+                      <p className="text-xs text-muted-foreground">OCM: {order.shipping_location.license_number}</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Billing</p>
+                    <p className="font-medium">{formatLocation(order.billing_location)}</p>
+                    {order.billing_location?.license_number && (
+                      <p className="text-xs text-muted-foreground">OCM: {order.billing_location.license_number}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

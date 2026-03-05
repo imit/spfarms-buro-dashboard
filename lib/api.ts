@@ -708,6 +708,7 @@ export interface OrderUser {
 export interface OrderLocation {
   id: number;
   name: string | null;
+  license_number?: string | null;
   address: string | null;
   city: string | null;
   state: string | null;
@@ -2862,7 +2863,7 @@ export class ApiClient {
 
   async updateOrder(
     id: number,
-    data: { status?: string; internal_notes?: string }
+    data: { status?: string; internal_notes?: string; shipping_location_id?: number; billing_location_id?: number }
   ): Promise<Order> {
     const res = await this.request<JsonApiResponse<Order>>(
       `/api/v1/orders/${id}`,
