@@ -3864,6 +3864,26 @@ export class ApiClient {
       method: "DELETE",
     });
   }
+
+  // --- Order Comments ---
+
+  async getOrderComments(orderId: number): Promise<Comment[]> {
+    const res = await this.request<JsonApiCollectionResponse<Comment>>(
+      `/api/v1/orders/${orderId}/comments`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createOrderComment(orderId: number, body: string): Promise<Comment> {
+    const res = await this.request<JsonApiResponse<Comment>>(
+      `/api/v1/orders/${orderId}/comments`,
+      {
+        method: "POST",
+        body: JSON.stringify({ comment: { body } }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
 }
 
 export const apiClient = new ApiClient();

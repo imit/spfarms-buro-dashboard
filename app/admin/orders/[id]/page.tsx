@@ -3,8 +3,8 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon, FileSignatureIcon, ExternalLinkIcon, ShieldAlertIcon, PencilIcon, PlusIcon, Trash2Icon, MailIcon, ChevronDownIcon, EllipsisIcon } from "lucide-react";
-import { apiClient, type Order, type OrderStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
+import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon, FileSignatureIcon, ExternalLinkIcon, ShieldAlertIcon, PencilIcon, PlusIcon, Trash2Icon, MailIcon, ChevronDownIcon, EllipsisIcon, MessageSquareIcon, SendIcon } from "lucide-react";
+import { apiClient, type Order, type OrderStatus, type Comment, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -79,15 +79,22 @@ export default function AdminOrderDetailPage({
   const [savingPrices, setSavingPrices] = useState(false);
   const [sendPriceNotification, setSendPriceNotification] = useState(true);
   const [priceCustomMessage, setPriceCustomMessage] = useState("");
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [postingComment, setPostingComment] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
     async function load() {
       try {
-        const data = await apiClient.getOrder(Number(id));
+        const [data, commentsData] = await Promise.all([
+          apiClient.getOrder(Number(id)),
+          apiClient.getOrderComments(Number(id)),
+        ]);
         setOrder(data);
         setInternalNotes(data.internal_notes || "");
+        setComments(commentsData);
       } catch (err) {
         console.error("Failed to load order:", err);
       } finally {
@@ -279,6 +286,27 @@ export default function AdminOrderDetailPage({
     }
   };
 
+  const postComment = async () => {
+    if (!newComment.trim()) return;
+    setPostingComment(true);
+    try {
+      const comment = await apiClient.createOrderComment(Number(id), newComment.trim());
+      setComments((prev) => [comment, ...prev]);
+      setNewComment("");
+    } catch {
+      showError("add the comment");
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  const refreshComments = async () => {
+    try {
+      const data = await apiClient.getOrderComments(Number(id));
+      setComments(data);
+    } catch { /* ignore */ }
+  };
+
   const startEditingPrices = () => {
     if (!order) return;
     const drafts: Record<number, string> = {};
@@ -300,6 +328,7 @@ export default function AdminOrderDetailPage({
       const updated = await apiClient.updateOrderPrices(Number(id), items, sendPriceNotification, priceCustomMessage || undefined);
       setOrder(updated);
       setEditingPrices(false);
+      refreshComments();
       toast.success("Prices updated");
     } catch {
       showError("update the prices");
@@ -656,6 +685,40 @@ export default function AdminOrderDetailPage({
             <Button size="sm" onClick={saveInternalNotes} disabled={saving}>
               {saving ? "Saving..." : "Save Notes"}
             </Button>
+          </div>
+
+          {/* Activity Log */}
+          <div className="rounded-lg border p-4">
+            <h3 className="font-semibold text-sm mb-3">Activity Log</h3>
+            <div className="flex gap-2 mb-4">
+              <Input
+                placeholder="Add a note..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); postComment(); } }}
+                className="text-sm"
+              />
+              <Button size="sm" onClick={postComment} disabled={postingComment || !newComment.trim()}>
+                <SendIcon className="size-4" />
+              </Button>
+            </div>
+            {comments.length > 0 ? (
+              <div className="space-y-3">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="flex gap-3 text-sm">
+                    <MessageSquareIcon className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="whitespace-pre-wrap">{comment.body}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {comment.author.full_name || comment.author.email} — {new Date(comment.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No activity yet.</p>
+            )}
           </div>
 
           {/* Email History */}
