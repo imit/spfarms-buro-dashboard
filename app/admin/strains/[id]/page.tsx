@@ -354,21 +354,37 @@ export default function StrainDetailPage({
           </dl>
         </div>
 
-        {/* Image */}
+        {/* Images */}
         <div className="rounded-lg border bg-card p-5">
-          <h3 className="font-medium mb-3">Image</h3>
+          <h3 className="font-medium mb-3">Images</h3>
           <Separator className="mb-3" />
-          {strain.image_url ? (
-            <img
-              src={strain.image_url}
-              alt={strain.name}
-              className="h-48 w-full rounded-lg object-cover"
-            />
-          ) : (
-            <div className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed">
-              <p className="text-sm text-muted-foreground">No image uploaded</p>
-            </div>
-          )}
+          <div className="space-y-4">
+            {strain.image_url ? (
+              <img
+                src={strain.image_url}
+                alt={strain.name}
+                className="h-48 w-full rounded-lg object-cover"
+              />
+            ) : (
+              <div className="flex h-32 items-center justify-center rounded-lg border-2 border-dashed">
+                <p className="text-sm text-muted-foreground">No strain photo</p>
+              </div>
+            )}
+            {strain.title_image_url ? (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">Title Image</p>
+                <img
+                  src={strain.title_image_url}
+                  alt={`${strain.name} title`}
+                  className="h-20 rounded-lg object-contain"
+                />
+              </div>
+            ) : (
+              <div className="flex h-16 items-center justify-center rounded-lg border-2 border-dashed">
+                <p className="text-sm text-muted-foreground">No title image</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Cannabinoid Profile */}

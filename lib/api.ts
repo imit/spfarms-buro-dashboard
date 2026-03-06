@@ -271,6 +271,7 @@ export interface Strain {
   smell_tags: string[];
   active: boolean;
   image_url: string | null;
+  title_image_url: string | null;
   coas_count: number;
   current_coa: Coa | null;
   created_at: string;
@@ -327,6 +328,7 @@ export interface Product {
   product_uid: string | null;
   strain_id: number | null;
   strain_name: string | null;
+  strain_title_image_url: string | null;
   sku: string | null;
   barcode: string | null;
   unit_weight: string | null;

@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ImageIcon, XIcon } from "lucide-react";
+import { ImageIcon, TypeIcon, XIcon } from "lucide-react";
 
 const CATEGORIES = Object.entries(CATEGORY_LABELS) as [StrainCategory, string][];
 
@@ -33,12 +33,17 @@ interface StrainFormProps {
 export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const titleImageInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(
     strain?.image_url || null
   );
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [titleImagePreview, setTitleImagePreview] = useState<string | null>(
+    strain?.title_image_url || null
+  );
+  const [titleImageFile, setTitleImageFile] = useState<File | null>(null);
   const [smellTagInput, setSmellTagInput] = useState("");
 
   const [form, setForm] = useState({
@@ -76,6 +81,21 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
     setImageFile(null);
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function handleTitleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setTitleImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setTitleImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  function clearTitleImage() {
+    setTitleImageFile(null);
+    setTitleImagePreview(null);
+    if (titleImageInputRef.current) titleImageInputRef.current.value = "";
   }
 
   function addSmellTag(tag: string) {
@@ -120,6 +140,7 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
       if (form.total_thc) formData.append("strain[total_thc]", form.total_thc);
       if (form.total_cannabinoids) formData.append("strain[total_cannabinoids]", form.total_cannabinoids);
       if (imageFile) formData.append("strain[image]", imageFile);
+      if (titleImageFile) formData.append("strain[title_image]", titleImageFile);
 
       // Append smell_tags as array
       form.smell_tags.forEach((tag) => {
@@ -354,45 +375,84 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
         </FieldGroup>
       </section>
 
-      {/* Image */}
+      {/* Images */}
       <section className="space-y-4">
-        <h3 className="text-lg font-medium">Image</h3>
+        <h3 className="text-lg font-medium">Images</h3>
         <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="image">Strain Photo</FieldLabel>
-            {imagePreview ? (
-              <div className="relative inline-block">
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="h-32 w-32 rounded-lg object-cover border"
-                />
-                <button
-                  type="button"
-                  onClick={clearImage}
-                  className="absolute -top-2 -right-2 rounded-full bg-destructive p-1 text-destructive-foreground shadow-sm hover:bg-destructive/90"
+          <div className="grid gap-6 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="image">Strain Photo</FieldLabel>
+              {imagePreview ? (
+                <div className="relative inline-block">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="h-32 w-32 rounded-lg object-cover border"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute -top-2 -right-2 rounded-full bg-destructive p-1 text-destructive-foreground shadow-sm hover:bg-destructive/90"
+                  >
+                    <XIcon className="size-3" />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-32 w-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors"
                 >
-                  <XIcon className="size-3" />
-                </button>
-              </div>
-            ) : (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="flex h-32 w-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors"
-              >
-                <ImageIcon className="size-8 text-muted-foreground" />
-              </div>
-            )}
-            <input
-              ref={fileInputRef}
-              id="image"
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="hidden"
-              disabled={isSubmitting}
-            />
-          </Field>
+                  <ImageIcon className="size-8 text-muted-foreground" />
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                id="image"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+                disabled={isSubmitting}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="title_image">Title Image</FieldLabel>
+              <p className="text-xs text-muted-foreground -mt-1 mb-2">Stylized strain name for labels &amp; thumbnails</p>
+              {titleImagePreview ? (
+                <div className="relative inline-block">
+                  <img
+                    src={titleImagePreview}
+                    alt="Title preview"
+                    className="h-32 rounded-lg object-contain border bg-muted/30 px-2"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearTitleImage}
+                    className="absolute -top-2 -right-2 rounded-full bg-destructive p-1 text-destructive-foreground shadow-sm hover:bg-destructive/90"
+                  >
+                    <XIcon className="size-3" />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => titleImageInputRef.current?.click()}
+                  className="flex h-32 w-48 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                >
+                  <TypeIcon className="size-8 text-muted-foreground" />
+                </div>
+              )}
+              <input
+                ref={titleImageInputRef}
+                id="title_image"
+                type="file"
+                accept="image/*"
+                onChange={handleTitleImageChange}
+                className="hidden"
+                disabled={isSubmitting}
+              />
+            </Field>
+          </div>
         </FieldGroup>
       </section>
 
