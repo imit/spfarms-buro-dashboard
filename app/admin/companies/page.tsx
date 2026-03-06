@@ -17,7 +17,8 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { PlusIcon, AlertTriangleIcon, MessageSquareIcon } from "lucide-react";
+import { PlusIcon, AlertTriangleIcon, MessageSquareIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { type PaginationMeta } from "@/lib/api";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   idle: "bg-slate-100 text-slate-700",
@@ -49,6 +50,8 @@ export default function CompaniesPage() {
   const { isAuthenticated, isLoading: authLoading, user: currentUser } = useAuth();
   const router = useRouter();
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [typeFilter, setTypeFilter] = useState<CompanyType | "all">("all");
@@ -66,13 +69,16 @@ export default function CompaniesPage() {
 
     setIsLoading(true);
     apiClient
-      .getCompanies(showDeleted ? { include_deleted: true } : undefined)
-      .then(setCompanies)
+      .getCompanies({ include_deleted: showDeleted || undefined, page, per_page: 25 })
+      .then((res) => {
+        setCompanies(res.data);
+        setPagination(res.meta);
+      })
       .catch((err) =>
         setError(err instanceof Error ? err.message : "We couldn't load companies")
       )
       .finally(() => setIsLoading(false));
-  }, [isAuthenticated, showDeleted]);
+  }, [isAuthenticated, showDeleted, page]);
 
   const filtered = companies.filter((c) => {
     if (typeFilter !== "all" && c.company_type !== typeFilter) return false;
@@ -111,7 +117,7 @@ export default function CompaniesPage() {
             }`}
           >
             All
-            <span className="ml-1.5 opacity-70">{companies.length}</span>
+            <span className="ml-1.5 opacity-70">{pagination?.total ?? companies.length}</span>
           </button>
           {COMPANY_TYPES.map(([value, label]) => {
             const count = companies.filter((c) => c.company_type === value).length;
@@ -147,7 +153,7 @@ export default function CompaniesPage() {
               }`}
             >
               All
-              <span className="ml-1.5 opacity-70">{companies.length}</span>
+              <span className="ml-1.5 opacity-70">{pagination?.total ?? companies.length}</span>
             </button>
             {LEAD_STATUSES.map(([value, label]) => {
               const count = companies.filter((c) => c.lead_status === value).length;
@@ -298,6 +304,37 @@ export default function CompaniesPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {pagination && pagination.total_pages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {(pagination.page - 1) * pagination.per_page + 1}–{Math.min(pagination.page * pagination.per_page, pagination.total)} of {pagination.total}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              <ChevronLeftIcon className="size-4" />
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {pagination.page} of {pagination.total_pages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.page >= pagination.total_pages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+              <ChevronRightIcon className="size-4" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

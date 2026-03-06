@@ -205,8 +205,8 @@ export default function PostsPage() {
     Promise.all([
       apiClient.getChannels(),
       apiClient.getPosts({ channel_slug: selectedChannel || undefined }),
-      writable ? apiClient.getUsers().catch(() => []) : Promise.resolve([]),
-      writable ? apiClient.getCompanies().catch(() => []) : Promise.resolve([]),
+      writable ? apiClient.getUsers({ per_page: 100 }).then((r) => r.data).catch(() => []) : Promise.resolve([]),
+      writable ? apiClient.getCompanies({ per_page: 100 }).then((r) => r.data).catch(() => []) : Promise.resolve([]),
     ])
       .then(([channelsData, postsData, usersData, companiesData]) => {
         setChannels(channelsData);

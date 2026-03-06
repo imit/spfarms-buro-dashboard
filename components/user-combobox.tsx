@@ -36,8 +36,8 @@ export function UserCombobox({
 
   useEffect(() => {
     apiClient
-      .getUsers()
-      .then((all) => setUsers(all.filter((u) => u.role !== "account")))
+      .getUsers({ per_page: 100 })
+      .then((res) => setUsers(res.data.filter((u) => u.role !== "account")))
       .catch(() => {});
   }, []);
 

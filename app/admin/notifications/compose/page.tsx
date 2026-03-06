@@ -49,7 +49,7 @@ export default function ComposeNotificationPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    apiClient.getCompanies().then(setCompanies).catch(() => {});
+    apiClient.getCompanies({ per_page: 100 }).then((res) => setCompanies(res.data)).catch(() => {});
   }, [isAuthenticated]);
 
   async function handleSubmit(e: React.FormEvent) {

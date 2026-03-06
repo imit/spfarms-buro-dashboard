@@ -222,6 +222,22 @@ interface JsonApiCollectionResponse<T> {
   data: JsonApiRecord<T>[];
 }
 
+export interface PaginationMeta {
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+}
+
+interface JsonApiPaginatedResponse<T> extends JsonApiCollectionResponse<T> {
+  meta: PaginationMeta;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
 export interface Invitation {
   id: number;
   email: string;
@@ -1892,12 +1908,19 @@ export class ApiClient {
 
   // Users
 
-  async getUsers(opts?: { include_deleted?: boolean }): Promise<User[]> {
-    const query = opts?.include_deleted ? "?include_deleted=true" : "";
-    const res = await this.request<JsonApiCollectionResponse<User>>(
+  async getUsers(opts?: { include_deleted?: boolean; page?: number; per_page?: number }): Promise<PaginatedResult<User>> {
+    const params = new URLSearchParams();
+    if (opts?.include_deleted) params.set("include_deleted", "true");
+    if (opts?.page) params.set("page", String(opts.page));
+    if (opts?.per_page) params.set("per_page", String(opts.per_page));
+    const query = params.toString() ? `?${params}` : "";
+    const res = await this.request<JsonApiPaginatedResponse<User>>(
       `/api/v1/users${query}`
     );
-    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+    return {
+      data: res.data.map((d) => ({ ...d.attributes, id: Number(d.id) })),
+      meta: res.meta,
+    };
   }
 
   async getUser(id: number): Promise<User> {
@@ -1966,12 +1989,19 @@ export class ApiClient {
 
   // Companies
 
-  async getCompanies(opts?: { include_deleted?: boolean }): Promise<Company[]> {
-    const query = opts?.include_deleted ? "?include_deleted=true" : "";
-    const res = await this.request<JsonApiCollectionResponse<Company>>(
+  async getCompanies(opts?: { include_deleted?: boolean; page?: number; per_page?: number }): Promise<PaginatedResult<Company>> {
+    const params = new URLSearchParams();
+    if (opts?.include_deleted) params.set("include_deleted", "true");
+    if (opts?.page) params.set("page", String(opts.page));
+    if (opts?.per_page) params.set("per_page", String(opts.per_page));
+    const query = params.toString() ? `?${params}` : "";
+    const res = await this.request<JsonApiPaginatedResponse<Company>>(
       `/api/v1/companies${query}`
     );
-    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+    return {
+      data: res.data.map((d) => ({ ...d.attributes, id: Number(d.id) })),
+      meta: res.meta,
+    };
   }
 
   async getCompany(slug: string): Promise<Company> {

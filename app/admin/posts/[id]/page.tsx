@@ -145,8 +145,8 @@ export default function PostDetailPage({
         if (writable) {
           const [channelsData, usersData, companiesData] = await Promise.all([
             apiClient.getChannels().catch(() => []),
-            apiClient.getUsers().catch(() => []),
-            apiClient.getCompanies().catch(() => []),
+            apiClient.getUsers({ per_page: 100 }).then((r) => r.data).catch(() => []),
+            apiClient.getCompanies({ per_page: 100 }).then((r) => r.data).catch(() => []),
           ]);
           setChannels(channelsData);
           setUsers(usersData);

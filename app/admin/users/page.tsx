@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { PlusIcon, SendIcon } from "lucide-react";
+import { PlusIcon, SendIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { type PaginationMeta } from "@/lib/api";
 
 type RoleFilter = "all" | UserRole;
 
@@ -38,6 +39,8 @@ export default function UsersPage() {
   const { isAuthenticated, isLoading: authLoading, user: currentUser } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -61,13 +64,16 @@ export default function UsersPage() {
 
     setIsLoading(true);
     apiClient
-      .getUsers(showDeleted ? { include_deleted: true } : undefined)
-      .then(setUsers)
+      .getUsers({ include_deleted: showDeleted || undefined, page, per_page: 25 })
+      .then((res) => {
+        setUsers(res.data);
+        setPagination(res.meta);
+      })
       .catch((err) =>
         setError(err instanceof Error ? err.message : "We couldn't load users")
       )
       .finally(() => setIsLoading(false));
-  }, [isAuthenticated, showDeleted]);
+  }, [isAuthenticated, showDeleted, page]);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -302,6 +308,37 @@ export default function UsersPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {pagination && pagination.total_pages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {(pagination.page - 1) * pagination.per_page + 1}–{Math.min(pagination.page * pagination.per_page, pagination.total)} of {pagination.total}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              <ChevronLeftIcon className="size-4" />
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {pagination.page} of {pagination.total_pages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.page >= pagination.total_pages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+              <ChevronRightIcon className="size-4" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

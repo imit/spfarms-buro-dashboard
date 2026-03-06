@@ -86,7 +86,7 @@ export function OnboardRepresentativeForm() {
   const [sendEmail, setSendEmail] = useState(true);
 
   useEffect(() => {
-    apiClient.getCompanies().then(setCompanies).catch(() => {});
+    apiClient.getCompanies({ per_page: 100 }).then((res) => setCompanies(res.data)).catch(() => {});
   }, []);
 
   const selectedCompany = companies.find((c) => c.id === selectedCompanyId);

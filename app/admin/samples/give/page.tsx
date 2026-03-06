@@ -53,8 +53,8 @@ export default function GiveSamplesPage() {
     if (!isAuthenticated) return;
 
     Promise.all([
-      apiClient.getUsers(),
-      apiClient.getCompanies(),
+      apiClient.getUsers({ per_page: 100 }).then((r) => r.data),
+      apiClient.getCompanies({ per_page: 100 }).then((r) => r.data),
       apiClient.getSampleInventory(),
     ])
       .then(([u, c, inv]) => {
