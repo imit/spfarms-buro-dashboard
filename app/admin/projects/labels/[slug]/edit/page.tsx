@@ -172,9 +172,13 @@ export default function EditLabelPage({
             key={label.updated_at}
             label={label}
             mode="edit"
-            onSaved={() => {
-              refreshPreview();
-              fetchLabel();
+            onSaved={(updated) => {
+              if (updated.slug !== slug) {
+                router.replace(`/admin/projects/labels/${updated.slug}/edit`);
+              } else {
+                setLabel(updated);
+                refreshPreview();
+              }
             }}
           />
 

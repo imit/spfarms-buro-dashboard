@@ -511,6 +511,7 @@ export interface Label {
   slug: string;
   strain_id: number | null;
   strain_name: string | null;
+  strain_title_image_url: string | null;
   product_id: number | null;
   product_name: string | null;
   width_cm: string;

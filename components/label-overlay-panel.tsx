@@ -30,6 +30,9 @@ import {
   Trash2Icon,
   ChevronDownIcon,
   ChevronRightIcon,
+  LockIcon,
+  UnlockIcon,
+  FlowerIcon,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -43,6 +46,7 @@ export function LabelOverlayPanel({ label, onUpdated }: LabelOverlayPanelProps) 
   const [addType, setAddType] = useState<"image" | "svg_inline">("image");
   const [error, setError] = useState("");
   const [expandedOverlays, setExpandedOverlays] = useState<Set<number>>(new Set());
+  const [addingStrainImage, setAddingStrainImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // New overlay form state
@@ -114,6 +118,33 @@ export function LabelOverlayPanel({ label, onUpdated }: LabelOverlayPanelProps) 
     }
   }
 
+  async function handleAddStrainTitleImage() {
+    setError("");
+    setAddingStrainImage(true);
+    const formData = new FormData();
+    formData.append("label_overlay[name]", `${label.strain_name} Title Image`);
+    formData.append("label_overlay[position_x]", "0");
+    formData.append("label_overlay[position_y]", "0");
+    formData.append("label_overlay[width]", "100");
+    formData.append("label_overlay[height]", "100");
+    formData.append("label_overlay[rotation]", "0");
+    formData.append("label_overlay[z_index]", "0");
+    formData.append("label_overlay[opacity]", "1.0");
+    formData.append("label_overlay[overlay_type]", "image");
+    formData.append("label_overlay[from_strain_title_image]", "true");
+
+    try {
+      const updated = await apiClient.createLabelOverlay(label.slug, formData);
+      onUpdated(updated);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "We couldn't add the strain title image"
+      );
+    } finally {
+      setAddingStrainImage(false);
+    }
+  }
+
   async function handleUpdateOverlay(overlay: LabelOverlayData, updates: Record<string, string>) {
     setError("");
     const formData = new FormData();
@@ -151,18 +182,47 @@ export function LabelOverlayPanel({ label, onUpdated }: LabelOverlayPanelProps) 
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Overlays</h3>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setIsAdding(!isAdding)}
-        >
-          <ImagePlusIcon className="mr-2 size-4" />
-          Add Overlay
-        </Button>
+        <div className="flex gap-2">
+          {label.strain_title_image_url && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddStrainTitleImage}
+              disabled={addingStrainImage}
+            >
+              <FlowerIcon className="mr-2 size-4" />
+              {addingStrainImage ? "Adding..." : "Add Strain Image"}
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsAdding(!isAdding)}
+          >
+            <ImagePlusIcon className="mr-2 size-4" />
+            Add Overlay
+          </Button>
+        </div>
       </div>
 
       {error && <ErrorAlert message={error} />}
+
+      {/* Strain title image preview */}
+      {label.strain_title_image_url && (
+        <div className="rounded-lg border bg-muted/30 p-3 flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={label.strain_title_image_url}
+            alt={`${label.strain_name} title image`}
+            className="max-h-10 max-w-[80px] object-contain rounded"
+          />
+          <span className="text-xs text-muted-foreground">
+            Strain title image available for {label.strain_name}
+          </span>
+        </div>
+      )}
 
       {/* Add new overlay form */}
       {isAdding && (
@@ -363,6 +423,29 @@ function OverlayItem({
     z_index: overlay.z_index.toString(),
     opacity: overlay.opacity,
   });
+  const [aspectLocked, setAspectLocked] = useState(true);
+
+  const aspectRatio = parseFloat(overlay.width) / parseFloat(overlay.height) || 1;
+
+  function handleWidthChange(newWidth: string) {
+    const w = parseFloat(newWidth);
+    if (aspectLocked && !isNaN(w) && w > 0) {
+      const h = Math.round((w / aspectRatio) * 10) / 10;
+      setEdits((p) => ({ ...p, width: newWidth, height: String(h) }));
+    } else {
+      setEdits((p) => ({ ...p, width: newWidth }));
+    }
+  }
+
+  function handleHeightChange(newHeight: string) {
+    const h = parseFloat(newHeight);
+    if (aspectLocked && !isNaN(h) && h > 0) {
+      const w = Math.round(h * aspectRatio * 10) / 10;
+      setEdits((p) => ({ ...p, height: newHeight, width: String(w) }));
+    } else {
+      setEdits((p) => ({ ...p, height: newHeight }));
+    }
+  }
 
   const displayName = overlay.name || `${overlay.overlay_type} overlay`;
   const isDirty =
@@ -452,20 +535,30 @@ function OverlayItem({
                 type="number"
                 min="1"
                 value={edits.width}
-                onChange={(e) =>
-                  setEdits((p) => ({ ...p, width: e.target.value }))
-                }
+                onChange={(e) => handleWidthChange(e.target.value)}
               />
             </Field>
             <Field>
-              <FieldLabel>Height</FieldLabel>
+              <div className="flex items-center gap-1">
+                <FieldLabel>Height</FieldLabel>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setAspectLocked((v) => !v)}
+                  title={aspectLocked ? "Unlock aspect ratio" : "Lock aspect ratio"}
+                >
+                  {aspectLocked ? (
+                    <LockIcon className="size-3" />
+                  ) : (
+                    <UnlockIcon className="size-3" />
+                  )}
+                </button>
+              </div>
               <Input
                 type="number"
                 min="1"
                 value={edits.height}
-                onChange={(e) =>
-                  setEdits((p) => ({ ...p, height: e.target.value }))
-                }
+                onChange={(e) => handleHeightChange(e.target.value)}
               />
             </Field>
           </div>

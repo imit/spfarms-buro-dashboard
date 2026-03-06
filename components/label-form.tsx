@@ -34,7 +34,7 @@ const AVAILABLE_FONTS = [
 interface LabelFormProps {
   label?: Label;
   mode?: "create" | "edit";
-  onSaved?: () => void;
+  onSaved?: (updatedLabel: Label) => void;
 }
 
 export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
@@ -189,11 +189,11 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
       }
 
       if (isEdit && label) {
-        await apiClient.updateLabel(label.slug, data);
+        const updated = await apiClient.updateLabel(label.slug, data);
         if (onSaved) {
-          onSaved();
+          onSaved(updated);
         } else {
-          router.push(`/admin/projects/labels/${label.slug}`);
+          router.push(`/admin/projects/labels/${updated.slug}`);
         }
       } else {
         const created = await apiClient.createLabel(data);
