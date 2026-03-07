@@ -8,7 +8,10 @@ import {
   type LabelStatus,
   type Strain,
   type Product,
+  type CannabinoidField,
+  type CannabinoidColumn,
   LABEL_STATUS_LABELS,
+  CANNABINOID_FIELD_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/error-alert";
@@ -85,6 +88,60 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
     height: label?.design?.logo?.height?.toString() ?? "36",
   });
 
+  // Cannabinoid Info
+  const defaultColumns: CannabinoidColumn[] = label?.design?.cannabinoid_info?.columns ?? [
+    { field: "category", label: "" },
+    { field: "total_thc", label: "THC" },
+    { field: "cbg", label: "CBG" },
+  ];
+  const [cannabinoidInfo, setCannabinoidInfo] = useState({
+    enabled: label?.design?.cannabinoid_info?.enabled ?? false,
+    x: label?.design?.cannabinoid_info?.x?.toString() ?? "0",
+    y: label?.design?.cannabinoid_info?.y?.toString() ?? "140",
+    width: label?.design?.cannabinoid_info?.width?.toString() ?? "160",
+    height: label?.design?.cannabinoid_info?.height?.toString() ?? "40",
+    font_size: label?.design?.cannabinoid_info?.font_size?.toString() ?? "",
+    text_color: label?.design?.cannabinoid_info?.text_color ?? "#1a1a1a",
+    label_color: label?.design?.cannabinoid_info?.label_color ?? "#1a1a1a",
+    columns: defaultColumns,
+  });
+
+  function updateColumn(index: number, updates: Partial<CannabinoidColumn>) {
+    setCannabinoidInfo((prev) => {
+      const cols = [...prev.columns];
+      cols[index] = { ...cols[index], ...updates };
+      return { ...prev, columns: cols };
+    });
+  }
+
+  function addColumn() {
+    setCannabinoidInfo((prev) => ({
+      ...prev,
+      columns: [...prev.columns, { field: "cbd" as CannabinoidField, label: "CBD" }],
+    }));
+  }
+
+  function removeColumn(index: number) {
+    setCannabinoidInfo((prev) => ({
+      ...prev,
+      columns: prev.columns.filter((_, i) => i !== index),
+    }));
+  }
+
+  // Product Info
+  const [productInfo, setProductInfo] = useState({
+    enabled: label?.design?.product_info?.enabled ?? false,
+    x: label?.design?.product_info?.x?.toString() ?? "0",
+    y: label?.design?.product_info?.y?.toString() ?? "160",
+    width: label?.design?.product_info?.width?.toString() ?? "200",
+    height: label?.design?.product_info?.height?.toString() ?? "30",
+    font_size: label?.design?.product_info?.font_size?.toString() ?? "",
+    text_color: label?.design?.product_info?.text_color ?? "#1a1a1a",
+    bg_color: label?.design?.product_info?.bg_color ?? "#ffffff",
+    left_text: label?.design?.product_info?.left_text ?? "indoor, live-soil flower",
+    right_text: label?.design?.product_info?.right_text ?? "",
+  });
+
   // METRC Zone
   const [metrcZone, setMetrcZone] = useState({
     enabled: label?.design?.metrc_zone?.enabled ?? false,
@@ -152,6 +209,39 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
         };
       } else {
         designPayload.logo = { visible: false };
+      }
+
+      if (cannabinoidInfo.enabled) {
+        designPayload.cannabinoid_info = {
+          enabled: true,
+          x: parseFloat(cannabinoidInfo.x) || 0,
+          y: parseFloat(cannabinoidInfo.y) || 0,
+          width: parseFloat(cannabinoidInfo.width) || 160,
+          height: parseFloat(cannabinoidInfo.height) || 40,
+          font_size: parseFloat(cannabinoidInfo.font_size) || undefined,
+          text_color: cannabinoidInfo.text_color,
+          label_color: cannabinoidInfo.label_color,
+          columns: cannabinoidInfo.columns,
+        };
+      } else {
+        designPayload.cannabinoid_info = { enabled: false };
+      }
+
+      if (productInfo.enabled) {
+        designPayload.product_info = {
+          enabled: true,
+          x: parseFloat(productInfo.x) || 0,
+          y: parseFloat(productInfo.y) || 0,
+          width: parseFloat(productInfo.width) || 200,
+          height: parseFloat(productInfo.height) || 30,
+          font_size: parseFloat(productInfo.font_size) || undefined,
+          text_color: productInfo.text_color,
+          bg_color: productInfo.bg_color,
+          left_text: productInfo.left_text,
+          right_text: productInfo.right_text,
+        };
+      } else {
+        designPayload.product_info = { enabled: false };
       }
 
       if (metrcZone.enabled) {
@@ -598,6 +688,411 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
                     onChange={(e) => updateLogo("height", e.target.value)}
                     disabled={isSubmitting}
                   />
+                </Field>
+              </div>
+            </>
+          )}
+        </FieldGroup>
+      </section>
+
+      <Separator />
+
+      {/* Cannabinoid Info */}
+      <section className="space-y-4">
+        <h3 className="text-lg font-medium">Cannabinoid Info</h3>
+        <FieldGroup>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="cannabinoid_enabled"
+              checked={cannabinoidInfo.enabled}
+              onCheckedChange={(checked) =>
+                setCannabinoidInfo((p) => ({ ...p, enabled: checked === true }))
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor="cannabinoid_enabled" className="text-sm font-medium">
+              Show Cannabinoid Info
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Displays strain cannabinoid values (THC, CBG, CBD, etc.) as text columns on the label.
+          </p>
+
+          {cannabinoidInfo.enabled && (
+            <>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Columns</span>
+                  {cannabinoidInfo.columns.length < 3 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addColumn}
+                      disabled={isSubmitting}
+                    >
+                      Add Column
+                    </Button>
+                  )}
+                </div>
+                {cannabinoidInfo.columns.map((col, i) => (
+                  <div key={i} className="grid gap-2 grid-cols-[1fr_1fr_auto] items-end">
+                    <Field>
+                      <FieldLabel>Field</FieldLabel>
+                      <Select
+                        value={col.field}
+                        onValueChange={(v) =>
+                          updateColumn(i, {
+                            field: v as CannabinoidField,
+                            label: CANNABINOID_FIELD_LABELS[v as CannabinoidField],
+                          })
+                        }
+                        disabled={isSubmitting}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(CANNABINOID_FIELD_LABELS).map(
+                            ([value, fieldLabel]) => (
+                              <SelectItem key={value} value={value}>
+                                {fieldLabel}
+                              </SelectItem>
+                            )
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field>
+                      <FieldLabel>Label</FieldLabel>
+                      <Input
+                        value={col.label ?? ""}
+                        onChange={(e) =>
+                          updateColumn(i, { label: e.target.value })
+                        }
+                        placeholder="Display label"
+                        disabled={isSubmitting}
+                      />
+                    </Field>
+                    {cannabinoidInfo.columns.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeColumn(i)}
+                        disabled={isSubmitting}
+                        className="text-destructive"
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="cann_x">Position X</FieldLabel>
+                  <Input
+                    id="cann_x"
+                    type="number"
+                    value={cannabinoidInfo.x}
+                    onChange={(e) =>
+                      setCannabinoidInfo((p) => ({ ...p, x: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="cann_y">Position Y</FieldLabel>
+                  <Input
+                    id="cann_y"
+                    type="number"
+                    value={cannabinoidInfo.y}
+                    onChange={(e) =>
+                      setCannabinoidInfo((p) => ({ ...p, y: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="cann_width">Width</FieldLabel>
+                  <Input
+                    id="cann_width"
+                    type="number"
+                    min="1"
+                    value={cannabinoidInfo.width}
+                    onChange={(e) =>
+                      setCannabinoidInfo((p) => ({ ...p, width: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="cann_height">Height</FieldLabel>
+                  <Input
+                    id="cann_height"
+                    type="number"
+                    min="1"
+                    value={cannabinoidInfo.height}
+                    onChange={(e) =>
+                      setCannabinoidInfo((p) => ({ ...p, height: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <Field>
+                <FieldLabel htmlFor="cann_font_size">Font Size (auto if empty)</FieldLabel>
+                <Input
+                  id="cann_font_size"
+                  type="number"
+                  step="0.5"
+                  min="1"
+                  value={cannabinoidInfo.font_size}
+                  onChange={(e) =>
+                    setCannabinoidInfo((p) => ({ ...p, font_size: e.target.value }))
+                  }
+                  placeholder="Auto"
+                  disabled={isSubmitting}
+                />
+              </Field>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="cann_text_color">Value Color</FieldLabel>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={cannabinoidInfo.text_color}
+                      onChange={(e) =>
+                        setCannabinoidInfo((p) => ({
+                          ...p,
+                          text_color: e.target.value,
+                        }))
+                      }
+                      className="h-9 w-12 rounded border cursor-pointer"
+                      disabled={isSubmitting}
+                    />
+                    <Input
+                      id="cann_text_color"
+                      value={cannabinoidInfo.text_color}
+                      onChange={(e) =>
+                        setCannabinoidInfo((p) => ({
+                          ...p,
+                          text_color: e.target.value,
+                        }))
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="cann_label_color">Label Color</FieldLabel>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={cannabinoidInfo.label_color}
+                      onChange={(e) =>
+                        setCannabinoidInfo((p) => ({
+                          ...p,
+                          label_color: e.target.value,
+                        }))
+                      }
+                      className="h-9 w-12 rounded border cursor-pointer"
+                      disabled={isSubmitting}
+                    />
+                    <Input
+                      id="cann_label_color"
+                      value={cannabinoidInfo.label_color}
+                      onChange={(e) =>
+                        setCannabinoidInfo((p) => ({
+                          ...p,
+                          label_color: e.target.value,
+                        }))
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </Field>
+              </div>
+            </>
+          )}
+        </FieldGroup>
+      </section>
+
+      <Separator />
+
+      {/* Product Info */}
+      <section className="space-y-4">
+        <h3 className="text-lg font-medium">Product Info Bar</h3>
+        <FieldGroup>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="product_info_enabled"
+              checked={productInfo.enabled}
+              onCheckedChange={(checked) =>
+                setProductInfo((p) => ({ ...p, enabled: checked === true }))
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor="product_info_enabled" className="text-sm font-medium">
+              Show Product Info Bar
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            A two-part bar: left-aligned description text and right-aligned weight/details.
+          </p>
+
+          {productInfo.enabled && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="pi_left_text">Left Text</FieldLabel>
+                  <Input
+                    id="pi_left_text"
+                    value={productInfo.left_text}
+                    onChange={(e) =>
+                      setProductInfo((p) => ({ ...p, left_text: e.target.value }))
+                    }
+                    placeholder="indoor, live-soil flower"
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="pi_right_text">Right Text</FieldLabel>
+                  <Input
+                    id="pi_right_text"
+                    value={productInfo.right_text}
+                    onChange={(e) =>
+                      setProductInfo((p) => ({ ...p, right_text: e.target.value }))
+                    }
+                    placeholder="3.5 grams"
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="pi_x">Position X</FieldLabel>
+                  <Input
+                    id="pi_x"
+                    type="number"
+                    value={productInfo.x}
+                    onChange={(e) =>
+                      setProductInfo((p) => ({ ...p, x: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="pi_y">Position Y</FieldLabel>
+                  <Input
+                    id="pi_y"
+                    type="number"
+                    value={productInfo.y}
+                    onChange={(e) =>
+                      setProductInfo((p) => ({ ...p, y: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="pi_width">Width</FieldLabel>
+                  <Input
+                    id="pi_width"
+                    type="number"
+                    min="1"
+                    value={productInfo.width}
+                    onChange={(e) =>
+                      setProductInfo((p) => ({ ...p, width: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="pi_height">Height</FieldLabel>
+                  <Input
+                    id="pi_height"
+                    type="number"
+                    min="1"
+                    value={productInfo.height}
+                    onChange={(e) =>
+                      setProductInfo((p) => ({ ...p, height: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <Field>
+                <FieldLabel htmlFor="pi_font_size">Font Size (auto if empty)</FieldLabel>
+                <Input
+                  id="pi_font_size"
+                  type="number"
+                  step="0.5"
+                  min="1"
+                  value={productInfo.font_size}
+                  onChange={(e) =>
+                    setProductInfo((p) => ({ ...p, font_size: e.target.value }))
+                  }
+                  placeholder="Auto"
+                  disabled={isSubmitting}
+                />
+              </Field>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="pi_text_color">Text Color</FieldLabel>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={productInfo.text_color}
+                      onChange={(e) =>
+                        setProductInfo((p) => ({ ...p, text_color: e.target.value }))
+                      }
+                      className="h-9 w-12 rounded border cursor-pointer"
+                      disabled={isSubmitting}
+                    />
+                    <Input
+                      id="pi_text_color"
+                      value={productInfo.text_color}
+                      onChange={(e) =>
+                        setProductInfo((p) => ({ ...p, text_color: e.target.value }))
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="pi_bg_color">Background Color</FieldLabel>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={productInfo.bg_color}
+                      onChange={(e) =>
+                        setProductInfo((p) => ({ ...p, bg_color: e.target.value }))
+                      }
+                      className="h-9 w-12 rounded border cursor-pointer"
+                      disabled={isSubmitting}
+                    />
+                    <Input
+                      id="pi_bg_color"
+                      value={productInfo.bg_color}
+                      onChange={(e) =>
+                        setProductInfo((p) => ({ ...p, bg_color: e.target.value }))
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </div>
                 </Field>
               </div>
             </>

@@ -476,6 +476,51 @@ export interface LabelDesign {
     height?: number;
     render_as?: "original_image" | "qr_code" | "barcode" | "text";
   };
+  cannabinoid_info?: {
+    enabled?: boolean;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    font_size?: number;
+    text_color?: string;
+    label_color?: string;
+    columns?: CannabinoidColumn[];
+  };
+  product_info?: {
+    enabled?: boolean;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    font_size?: number;
+    text_color?: string;
+    bg_color?: string;
+    left_text?: string;
+    right_text?: string;
+  };
+}
+
+export type CannabinoidField =
+  | "category"
+  | "total_thc"
+  | "cbg"
+  | "cbd"
+  | "total_cannabinoids"
+  | "total_terpenes";
+
+export const CANNABINOID_FIELD_LABELS: Record<CannabinoidField, string> = {
+  category: "Category",
+  total_thc: "THC",
+  cbg: "CBG",
+  cbd: "CBD",
+  total_cannabinoids: "Total Cannabinoids",
+  total_terpenes: "Total Terpenes",
+};
+
+export interface CannabinoidColumn {
+  field: CannabinoidField;
+  label?: string;
 }
 
 // ---- METRC Label Sets ----
@@ -2606,6 +2651,13 @@ export class ApiClient {
   }
 
   // Profile
+
+  async getProfile(): Promise<User> {
+    const res = await this.request<JsonApiResponse<User>>(
+      "/api/v1/profile"
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
 
   async updateProfile(data: { full_name?: string; phone_number?: string }): Promise<User> {
     const res = await this.request<JsonApiResponse<User>>(

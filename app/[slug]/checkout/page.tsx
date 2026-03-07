@@ -220,10 +220,11 @@ export default function CheckoutPage({
     preview?.items ?? cart?.items ?? []
   );
 
-  const missingLicense = !company?.license_number;
+  const hasCompanyLicense = !!company?.license_number;
+  const hasLocationLicense = !!company?.locations?.some((loc) => loc.license_number);
+  const missingLicense = !hasCompanyLicense && !hasLocationLicense;
   const missingName = !user?.full_name;
-  const missingPhone = !user?.phone_number;
-  const hasMissingInfo = missingLicense || missingName || missingPhone;
+  const hasMissingInfo = missingLicense || missingName;
 
   if (isLoading) {
     return <p className="text-muted-foreground">Loading checkout...</p>;
@@ -273,9 +274,8 @@ export default function CheckoutPage({
                 </a>:
               </p>
               <ul className="text-sm text-amber-700 dark:text-amber-300 list-disc list-inside">
-                {missingLicense && <li>Company OCM license number</li>}
+                {missingLicense && <li>OCM license number (company or location)</li>}
                 {missingName && <li>Your full name</li>}
-                {missingPhone && <li>Your phone number</li>}
               </ul>
             </div>
           </div>

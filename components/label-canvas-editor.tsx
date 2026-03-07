@@ -13,6 +13,7 @@ interface DragHandle {
   width: number
   height: number
   color: string
+  zIndex?: number
 }
 
 interface LabelCanvasEditorProps {
@@ -71,6 +72,7 @@ export function LabelCanvasEditor({
       width: size,
       height: size,
       color: "#8b5cf6",
+      zIndex: 14,
     })
   }
 
@@ -84,6 +86,7 @@ export function LabelCanvasEditor({
       width: logo.width ?? 36,
       height: logo.height ?? 36,
       color: "#f59e0b",
+      zIndex: 15,
     })
   }
 
@@ -97,6 +100,35 @@ export function LabelCanvasEditor({
       width: mz.width ?? 80,
       height: mz.height ?? 30,
       color: "#10b981",
+      zIndex: 13,
+    })
+  }
+
+  if (d?.product_info?.enabled) {
+    const pi = d.product_info
+    handles.push({
+      key: "product_info",
+      label: "Product Info",
+      x: pi.x ?? 0,
+      y: pi.y ?? 160,
+      width: pi.width ?? 200,
+      height: pi.height ?? 30,
+      color: "#f97316",
+      zIndex: 11,
+    })
+  }
+
+  if (d?.cannabinoid_info?.enabled) {
+    const ci = d.cannabinoid_info
+    handles.push({
+      key: "cannabinoid_info",
+      label: "Cannabinoids",
+      x: ci.x ?? 0,
+      y: ci.y ?? 140,
+      width: ci.width ?? 160,
+      height: ci.height ?? 40,
+      color: "#06b6d4",
+      zIndex: 12,
     })
   }
 
@@ -109,6 +141,7 @@ export function LabelCanvasEditor({
       width: parseFloat(ov.width) || 40,
       height: parseFloat(ov.height) || 40,
       color: "#ec4899",
+      zIndex: 20 + (ov.z_index ?? 0),
     })
   }
 
@@ -186,7 +219,7 @@ export function LabelCanvasEditor({
               width: h.width * scale,
               height: h.height * scale,
               cursor: isDragging ? "grabbing" : "grab",
-              zIndex: isDragging ? 50 : 10,
+              zIndex: isDragging ? 50 : (h.zIndex ?? 10),
             }}
             onPointerDown={(e) => onPointerDown(e, h)}
           >

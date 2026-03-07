@@ -98,6 +98,12 @@ export default function EditLabelPage({
       } else if (key === "metrc_zone" && design.metrc_zone) {
         design.metrc_zone.x = x;
         design.metrc_zone.y = y;
+      } else if (key === "cannabinoid_info" && design.cannabinoid_info) {
+        design.cannabinoid_info.x = x;
+        design.cannabinoid_info.y = y;
+      } else if (key === "product_info" && design.product_info) {
+        design.product_info.x = x;
+        design.product_info.y = y;
       }
 
       try {

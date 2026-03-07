@@ -104,14 +104,20 @@ export default function SettingsPage({
   useEffect(() => {
     async function load() {
       try {
-        const data = await apiClient.getCompany(slug);
-        setCompany(data);
-        setCompanyName(data.name);
-        setLicenseNumber(data.license_number || "");
-        setCompanyEmail(data.email || "");
-        setCompanyPhone(data.phone_number || "");
+        const [companyData, profileData] = await Promise.all([
+          apiClient.getCompany(slug),
+          apiClient.getProfile(),
+        ]);
+        setCompany(companyData);
+        setCompanyName(companyData.name);
+        setLicenseNumber(companyData.license_number || "");
+        setCompanyEmail(companyData.email || "");
+        setCompanyPhone(companyData.phone_number || "");
+
+        // Refresh user data from server to avoid stale localStorage
+        updateUser(profileData);
       } catch (err) {
-        console.error("Failed to load company:", err);
+        console.error("Failed to load settings:", err);
       } finally {
         setIsLoading(false);
       }
