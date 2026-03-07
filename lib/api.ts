@@ -424,14 +424,6 @@ export interface ExtractedSheetLayout {
 
 // ---- Labels ----
 
-export type LabelStatus = "draft" | "active" | "archived";
-
-export const LABEL_STATUS_LABELS: Record<LabelStatus, string> = {
-  draft: "Draft",
-  active: "Active",
-  archived: "Archived",
-};
-
 export interface LabelOverlayData {
   id: number;
   name: string | null;
@@ -497,7 +489,18 @@ export interface LabelDesign {
     text_color?: string;
     bg_color?: string;
     left_text?: string;
-    right_text?: string;
+  };
+  weight_info?: {
+    enabled?: boolean;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    font_size?: number;
+    text_color?: string;
+    text?: string;
+    font_weight?: string;
+    text_anchor?: string;
   };
 }
 
@@ -521,6 +524,33 @@ export const CANNABINOID_FIELD_LABELS: Record<CannabinoidField, string> = {
 export interface CannabinoidColumn {
   field: CannabinoidField;
   label?: string;
+}
+
+// ---- Label Presets ----
+
+export interface LabelPreset {
+  id: number;
+  name: string;
+  config: {
+    width_cm: number;
+    height_cm: number;
+    corner_radius_mm: number;
+    design: LabelDesign;
+    overlays: Array<{
+      name: string;
+      kind: string;
+      position_x: number;
+      position_y: number;
+      width: number;
+      height: number;
+      z_index: number;
+      rotation: number;
+      opacity: number;
+      svg_content: string | null;
+    }>;
+  };
+  created_at: string;
+  updated_at: string;
 }
 
 // ---- METRC Label Sets ----
@@ -563,7 +593,6 @@ export interface Label {
   height_cm: string;
   corner_radius_mm: string;
   design: LabelDesign;
-  status: LabelStatus;
   logo_url: string | null;
   overlays: LabelOverlayData[];
   render_data: Record<string, unknown>;
@@ -1122,6 +1151,22 @@ export interface PartnershipRegistrationParams {
     phone_number?: string;
     title?: string;
   };
+}
+
+// ---- Gallery ----
+
+export interface GalleryFile {
+  id: number;
+  title: string | null;
+  alt_text: string | null;
+  folder: string | null;
+  filename: string;
+  content_type: string;
+  byte_size: number;
+  url: string;
+  uploaded_by_name: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateOrderParams {
@@ -2422,6 +2467,38 @@ export class ApiClient {
     const res = await this.request<JsonApiResponse<Label>>(
       `/api/v1/labels/${labelSlug}/label_overlays/${overlayId}`,
       { method: "DELETE" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  // Label Presets
+
+  async getLabelPresets(): Promise<LabelPreset[]> {
+    const res = await this.request<JsonApiCollectionResponse<LabelPreset>>(
+      "/api/v1/label_presets"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createLabelPreset(labelSlug: string, name: string): Promise<LabelPreset> {
+    const res = await this.request<JsonApiResponse<LabelPreset>>(
+      "/api/v1/label_presets",
+      {
+        method: "POST",
+        body: JSON.stringify({ label_slug: labelSlug, name }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteLabelPreset(id: number): Promise<void> {
+    await this.request("/api/v1/label_presets/" + id, { method: "DELETE" });
+  }
+
+  async applyLabelPreset(slug: string, presetId: number): Promise<Label> {
+    const res = await this.request<JsonApiResponse<Label>>(
+      `/api/v1/labels/${slug}/apply_preset`,
+      { method: "POST", body: JSON.stringify({ preset_id: presetId }) }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
@@ -3968,6 +4045,57 @@ export class ApiClient {
       }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  // Gallery Files
+
+  async getGalleryFiles(params?: {
+    page?: number;
+    per_page?: number;
+    folder?: string;
+    search?: string;
+    content_type?: string;
+  }): Promise<{ files: GalleryFile[]; meta: { page: number; per_page: number; total: number; total_pages: number } }> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.per_page) query.set("per_page", String(params.per_page));
+    if (params?.folder) query.set("folder", params.folder);
+    if (params?.search) query.set("search", params.search);
+    if (params?.content_type) query.set("content_type", params.content_type);
+    const qs = query.toString();
+    const res = await this.request<{ data: JsonApiRecord<GalleryFile>[]; meta: { page: number; per_page: number; total: number; total_pages: number } }>(
+      `/api/v1/gallery_files${qs ? `?${qs}` : ""}`
+    );
+    return {
+      files: res.data.map((r) => ({ ...r.attributes, id: Number(r.id) })),
+      meta: res.meta,
+    };
+  }
+
+  async uploadGalleryFiles(files: File[], folder?: string): Promise<GalleryFile[]> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files[]", file));
+    if (folder) formData.append("folder", folder);
+    const res = await this.requestFormData<{ data: JsonApiRecord<GalleryFile>[] }>(
+      "/api/v1/gallery_files",
+      { method: "POST", body: formData }
+    );
+    return res.data.map((r) => ({ ...r.attributes, id: Number(r.id) }));
+  }
+
+  async updateGalleryFile(id: number, data: { title?: string; alt_text?: string; folder?: string }): Promise<GalleryFile> {
+    const res = await this.request<JsonApiResponse<GalleryFile>>(
+      `/api/v1/gallery_files/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ gallery_file: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteGalleryFile(id: number): Promise<void> {
+    await this.request(`/api/v1/gallery_files/${id}`, { method: "DELETE" });
   }
 }
 

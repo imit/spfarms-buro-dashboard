@@ -8,7 +8,6 @@ import { useAuth } from "@/contexts/auth-context";
 import {
   apiClient,
   type Label,
-  LABEL_STATUS_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,19 +49,6 @@ function DetailRow({
       <dd className="col-span-2 text-sm">{value}</dd>
     </div>
   );
-}
-
-function statusVariant(status: string) {
-  switch (status) {
-    case "active":
-      return "default" as const;
-    case "draft":
-      return "secondary" as const;
-    case "archived":
-      return "outline" as const;
-    default:
-      return "outline" as const;
-  }
 }
 
 export default function LabelDetailPage({
@@ -220,9 +206,6 @@ export default function LabelDetailPage({
                 </p>
               )}
             </div>
-            <Badge variant={statusVariant(label.status)}>
-              {LABEL_STATUS_LABELS[label.status]}
-            </Badge>
           </div>
         </div>
         <div className="flex gap-2">

@@ -9,7 +9,6 @@ import {
   type Label,
   type QrCode,
   type SheetLayout,
-  LABEL_STATUS_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -148,7 +147,6 @@ function LabelsTable({ labels }: { labels: Label[] }) {
             <th className="px-4 py-3 text-left font-medium">Name</th>
             <th className="px-4 py-3 text-left font-medium">Strain</th>
             <th className="px-4 py-3 text-left font-medium">Size</th>
-            <th className="px-4 py-3 text-left font-medium">Status</th>
             <th className="px-4 py-3 text-left font-medium">Created</th>
           </tr>
         </thead>
@@ -163,11 +161,6 @@ function LabelsTable({ labels }: { labels: Label[] }) {
               <td className="px-4 py-3 text-muted-foreground">{label.strain_name || "—"}</td>
               <td className="px-4 py-3 text-muted-foreground">
                 {label.width_cm} × {label.height_cm} cm
-              </td>
-              <td className="px-4 py-3">
-                <Badge variant={label.status === "active" ? "default" : "secondary"}>
-                  {LABEL_STATUS_LABELS[label.status]}
-                </Badge>
               </td>
               <td className="px-4 py-3 text-muted-foreground">
                 {new Date(label.created_at).toLocaleDateString()}

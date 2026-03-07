@@ -118,6 +118,20 @@ export function LabelCanvasEditor({
     })
   }
 
+  if (d?.weight_info?.enabled) {
+    const wi = d.weight_info
+    handles.push({
+      key: "weight_info",
+      label: "Weight",
+      x: wi.x ?? 0,
+      y: wi.y ?? 160,
+      width: wi.width ?? 100,
+      height: wi.height ?? 30,
+      color: "#a855f7",
+      zIndex: 10,
+    })
+  }
+
   if (d?.cannabinoid_info?.enabled) {
     const ci = d.cannabinoid_info
     handles.push({

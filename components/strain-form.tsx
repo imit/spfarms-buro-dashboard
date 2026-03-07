@@ -6,6 +6,7 @@ import {
   apiClient,
   type Strain,
   type StrainCategory,
+  type GalleryFile,
   CATEGORY_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ImageIcon, TypeIcon, XIcon } from "lucide-react";
+import { GalleryPicker } from "@/components/gallery-picker";
+import { ImageIcon, TypeIcon, XIcon, FolderOpenIcon } from "lucide-react";
 
 const CATEGORIES = Object.entries(CATEGORY_LABELS) as [StrainCategory, string][];
 
@@ -44,6 +46,9 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
     strain?.title_image_url || null
   );
   const [titleImageFile, setTitleImageFile] = useState<File | null>(null);
+  const [imageGalleryFileId, setImageGalleryFileId] = useState<number | null>(null);
+  const [titleImageGalleryFileId, setTitleImageGalleryFileId] = useState<number | null>(null);
+  const [galleryPickerOpen, setGalleryPickerOpen] = useState<"image" | "title_image" | null>(null);
   const [smellTagInput, setSmellTagInput] = useState("");
 
   const [form, setForm] = useState({
@@ -80,6 +85,7 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
   function clearImage() {
     setImageFile(null);
     setImagePreview(null);
+    setImageGalleryFileId(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -95,7 +101,20 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
   function clearTitleImage() {
     setTitleImageFile(null);
     setTitleImagePreview(null);
+    setTitleImageGalleryFileId(null);
     if (titleImageInputRef.current) titleImageInputRef.current.value = "";
+  }
+
+  function handleGallerySelect(file: GalleryFile) {
+    if (galleryPickerOpen === "image") {
+      setImagePreview(file.url);
+      setImageFile(null);
+      setImageGalleryFileId(file.id);
+    } else if (galleryPickerOpen === "title_image") {
+      setTitleImagePreview(file.url);
+      setTitleImageFile(null);
+      setTitleImageGalleryFileId(file.id);
+    }
   }
 
   function addSmellTag(tag: string) {
@@ -140,7 +159,9 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
       if (form.total_thc) formData.append("strain[total_thc]", form.total_thc);
       if (form.total_cannabinoids) formData.append("strain[total_cannabinoids]", form.total_cannabinoids);
       if (imageFile) formData.append("strain[image]", imageFile);
+      else if (imageGalleryFileId) formData.append("image_gallery_file_id", String(imageGalleryFileId));
       if (titleImageFile) formData.append("strain[title_image]", titleImageFile);
+      else if (titleImageGalleryFileId) formData.append("title_image_gallery_file_id", String(titleImageGalleryFileId));
 
       // Append smell_tags as array
       form.smell_tags.forEach((tag) => {
@@ -398,11 +419,21 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
                   </button>
                 </div>
               ) : (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex h-32 w-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors"
-                >
-                  <ImageIcon className="size-8 text-muted-foreground" />
+                <div className="flex gap-2">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex h-32 w-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                  >
+                    <ImageIcon className="size-8 text-muted-foreground" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setGalleryPickerOpen("image")}
+                    className="flex h-32 w-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors flex-col gap-1"
+                  >
+                    <FolderOpenIcon className="size-6 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Gallery</span>
+                  </button>
                 </div>
               )}
               <input
@@ -435,11 +466,21 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
                   </button>
                 </div>
               ) : (
-                <div
-                  onClick={() => titleImageInputRef.current?.click()}
-                  className="flex h-32 w-48 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors"
-                >
-                  <TypeIcon className="size-8 text-muted-foreground" />
+                <div className="flex gap-2">
+                  <div
+                    onClick={() => titleImageInputRef.current?.click()}
+                    className="flex h-32 w-48 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                  >
+                    <TypeIcon className="size-8 text-muted-foreground" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setGalleryPickerOpen("title_image")}
+                    className="flex h-32 w-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors flex-col gap-1"
+                  >
+                    <FolderOpenIcon className="size-6 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Gallery</span>
+                  </button>
                 </div>
               )}
               <input
@@ -482,6 +523,13 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
           Cancel
         </Button>
       </div>
+
+      <GalleryPicker
+        open={!!galleryPickerOpen}
+        onOpenChange={(open) => { if (!open) setGalleryPickerOpen(null); }}
+        onSelect={handleGallerySelect}
+        accept="image/*"
+      />
     </form>
   );
 }

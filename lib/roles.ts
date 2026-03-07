@@ -18,7 +18,8 @@ export type Resource =
   | "products"
   | "notifications"
   | "quick_onboard"
-  | "settings";
+  | "settings"
+  | "gallery";
 
 type RoleAccessMap = Record<Resource, Partial<Record<UserRole, AccessLevel>>>;
 
@@ -39,6 +40,7 @@ export const ROLE_ACCESS: RoleAccessMap = {
   notifications: { admin: "full", observer_admin: "read", editor: "full", sales: "send_only" },
   quick_onboard: { admin: "full", editor: "full", sales: "full" },
   settings:      { admin: "full", observer_admin: "read" },
+  gallery:       { admin: "full", observer_admin: "read", editor: "full", cultivator: "read", processing: "read", sales: "read" },
 };
 
 export const ADMIN_LAYOUT_ROLES: UserRole[] = [

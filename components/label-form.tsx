@@ -5,12 +5,11 @@ import { useRouter } from "next/navigation";
 import {
   apiClient,
   type Label,
-  type LabelStatus,
+  type LabelPreset,
   type Strain,
   type Product,
   type CannabinoidField,
   type CannabinoidColumn,
-  LABEL_STATUS_LABELS,
   CANNABINOID_FIELD_LABELS,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -26,8 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const STATUSES = Object.entries(LABEL_STATUS_LABELS) as [LabelStatus, string][];
 
 const AVAILABLE_FONTS = [
   { label: "Circular Std", value: "Circular Std, sans-serif" },
@@ -53,7 +50,6 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
     name: label?.name ?? "",
     strain_id: label?.strain_id?.toString() ?? "",
     product_id: label?.product_id?.toString() ?? "",
-    status: (label?.status ?? "draft") as LabelStatus,
     width_cm: label?.width_cm ?? "7.6",
     height_cm: label?.height_cm ?? "5.0",
     corner_radius_mm: label?.corner_radius_mm ?? "3.0",
@@ -139,7 +135,20 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
     text_color: label?.design?.product_info?.text_color ?? "#1a1a1a",
     bg_color: label?.design?.product_info?.bg_color ?? "#ffffff",
     left_text: label?.design?.product_info?.left_text ?? "indoor, live-soil flower",
-    right_text: label?.design?.product_info?.right_text ?? "",
+  });
+
+  // Weight Info
+  const [weightInfo, setWeightInfo] = useState({
+    enabled: label?.design?.weight_info?.enabled ?? false,
+    x: label?.design?.weight_info?.x?.toString() ?? "0",
+    y: label?.design?.weight_info?.y?.toString() ?? "160",
+    width: label?.design?.weight_info?.width?.toString() ?? "100",
+    height: label?.design?.weight_info?.height?.toString() ?? "30",
+    font_size: label?.design?.weight_info?.font_size?.toString() ?? "",
+    text_color: label?.design?.weight_info?.text_color ?? "#1a1a1a",
+    text: label?.design?.weight_info?.text ?? "",
+    font_weight: label?.design?.weight_info?.font_weight ?? "700",
+    text_anchor: label?.design?.weight_info?.text_anchor ?? "end",
   });
 
   // METRC Zone
@@ -159,7 +168,46 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
   useEffect(() => {
     apiClient.getStrains().then(setStrains).catch(() => {});
     apiClient.getProducts().then(setProducts).catch(() => {});
+    apiClient.getLabelPresets().then(setPresets).catch(() => {});
   }, []);
+
+  // Presets
+  const [presets, setPresets] = useState<LabelPreset[]>([]);
+  const [presetName, setPresetName] = useState("");
+  const [savingPreset, setSavingPreset] = useState(false);
+
+  async function saveAsPreset() {
+    if (!label || !presetName.trim()) return;
+    setSavingPreset(true);
+    try {
+      const created = await apiClient.createLabelPreset(label.slug, presetName.trim());
+      setPresets((prev) => [created, ...prev]);
+      setPresetName("");
+    } catch {
+      // silently fail
+    } finally {
+      setSavingPreset(false);
+    }
+  }
+
+  async function loadPreset(preset: LabelPreset) {
+    if (!label) return;
+    try {
+      const updated = await apiClient.applyLabelPreset(label.slug, preset.id);
+      if (onSaved) onSaved(updated);
+    } catch {
+      setError("Failed to apply preset");
+    }
+  }
+
+  async function deletePreset(id: number) {
+    try {
+      await apiClient.deleteLabelPreset(id);
+      setPresets((prev) => prev.filter((p) => p.id !== id));
+    } catch {
+      // silently fail
+    }
+  }
 
   function updateFormField(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -238,10 +286,26 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
           text_color: productInfo.text_color,
           bg_color: productInfo.bg_color,
           left_text: productInfo.left_text,
-          right_text: productInfo.right_text,
         };
       } else {
         designPayload.product_info = { enabled: false };
+      }
+
+      if (weightInfo.enabled) {
+        designPayload.weight_info = {
+          enabled: true,
+          x: parseFloat(weightInfo.x) || 0,
+          y: parseFloat(weightInfo.y) || 0,
+          width: parseFloat(weightInfo.width) || 100,
+          height: parseFloat(weightInfo.height) || 30,
+          font_size: parseFloat(weightInfo.font_size) || undefined,
+          text_color: weightInfo.text_color,
+          text: weightInfo.text,
+          font_weight: weightInfo.font_weight,
+          text_anchor: weightInfo.text_anchor,
+        };
+      } else {
+        designPayload.weight_info = { enabled: false };
       }
 
       if (metrcZone.enabled) {
@@ -259,7 +323,6 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
 
       const data: Record<string, unknown> = {
         name: form.name,
-        status: form.status,
         width_cm: form.width_cm,
         height_cm: form.height_cm,
         corner_radius_mm: form.corner_radius_mm,
@@ -303,6 +366,74 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {error && <ErrorAlert message={error} />}
+
+      {/* Layout Presets */}
+      <section className="space-y-4">
+        <h3 className="text-lg font-medium">Layout Presets</h3>
+        <FieldGroup>
+          {presets.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Load a saved layout to apply positions, sizes, and design settings.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {presets.map((p) => (
+                  <div key={p.id} className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => loadPreset(p)}
+                    >
+                      {p.name}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => deletePreset(p.id)}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isEdit && label && (
+            <div className="flex gap-2 items-end">
+              <Field className="flex-1">
+                <FieldLabel htmlFor="preset_name">Save Current Layout as Preset</FieldLabel>
+                <Input
+                  id="preset_name"
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  placeholder="Preset name"
+                  disabled={savingPreset}
+                />
+              </Field>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={saveAsPreset}
+                disabled={savingPreset || !presetName.trim()}
+              >
+                {savingPreset ? "Saving..." : "Save Preset"}
+              </Button>
+            </div>
+          )}
+
+          {!isEdit && presets.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No presets saved yet. Edit a label and save its layout as a preset to reuse it here.
+            </p>
+          )}
+        </FieldGroup>
+      </section>
+
+      <Separator />
 
       {/* Basic Info */}
       <section className="space-y-4">
@@ -359,24 +490,6 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
             </Field>
           </div>
 
-          <Field>
-            <FieldLabel htmlFor="status">Status</FieldLabel>
-            <Select
-              value={form.status}
-              onValueChange={(v) => updateFormField("status", v)}
-            >
-              <SelectTrigger id="status" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUSES.map(([value, statusLabel]) => (
-                  <SelectItem key={value} value={value}>
-                    {statusLabel}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
         </FieldGroup>
       </section>
 
@@ -945,37 +1058,23 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
             </label>
           </div>
           <p className="text-xs text-muted-foreground">
-            A two-part bar: left-aligned description text and right-aligned weight/details.
+            A text bar for product description (e.g. &quot;indoor, live-soil flower&quot;).
           </p>
 
           {productInfo.enabled && (
             <>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field>
-                  <FieldLabel htmlFor="pi_left_text">Left Text</FieldLabel>
-                  <Input
-                    id="pi_left_text"
-                    value={productInfo.left_text}
-                    onChange={(e) =>
-                      setProductInfo((p) => ({ ...p, left_text: e.target.value }))
-                    }
-                    placeholder="indoor, live-soil flower"
-                    disabled={isSubmitting}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="pi_right_text">Right Text</FieldLabel>
-                  <Input
-                    id="pi_right_text"
-                    value={productInfo.right_text}
-                    onChange={(e) =>
-                      setProductInfo((p) => ({ ...p, right_text: e.target.value }))
-                    }
-                    placeholder="3.5 grams"
-                    disabled={isSubmitting}
-                  />
-                </Field>
-              </div>
+              <Field>
+                <FieldLabel htmlFor="pi_left_text">Text</FieldLabel>
+                <Input
+                  id="pi_left_text"
+                  value={productInfo.left_text}
+                  onChange={(e) =>
+                    setProductInfo((p) => ({ ...p, left_text: e.target.value }))
+                  }
+                  placeholder="indoor, live-soil flower"
+                  disabled={isSubmitting}
+                />
+              </Field>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field>
@@ -1102,6 +1201,186 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
 
       <Separator />
 
+      {/* Weight Info */}
+      <section className="space-y-4">
+        <h3 className="text-lg font-medium">Weight / Details Text</h3>
+        <FieldGroup>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="weight_info_enabled"
+              checked={weightInfo.enabled}
+              onCheckedChange={(checked) =>
+                setWeightInfo((p) => ({ ...p, enabled: checked === true }))
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor="weight_info_enabled" className="text-sm font-medium">
+              Show Weight / Details
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            A standalone text element for weight or other details (e.g. &quot;3.5 grams&quot;).
+          </p>
+
+          {weightInfo.enabled && (
+            <>
+              <Field>
+                <FieldLabel htmlFor="wi_text">Text</FieldLabel>
+                <Input
+                  id="wi_text"
+                  value={weightInfo.text}
+                  onChange={(e) =>
+                    setWeightInfo((p) => ({ ...p, text: e.target.value }))
+                  }
+                  placeholder="3.5 grams"
+                  disabled={isSubmitting}
+                />
+              </Field>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="wi_x">Position X</FieldLabel>
+                  <Input
+                    id="wi_x"
+                    type="number"
+                    value={weightInfo.x}
+                    onChange={(e) =>
+                      setWeightInfo((p) => ({ ...p, x: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="wi_y">Position Y</FieldLabel>
+                  <Input
+                    id="wi_y"
+                    type="number"
+                    value={weightInfo.y}
+                    onChange={(e) =>
+                      setWeightInfo((p) => ({ ...p, y: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="wi_width">Width</FieldLabel>
+                  <Input
+                    id="wi_width"
+                    type="number"
+                    min="1"
+                    value={weightInfo.width}
+                    onChange={(e) =>
+                      setWeightInfo((p) => ({ ...p, width: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="wi_height">Height</FieldLabel>
+                  <Input
+                    id="wi_height"
+                    type="number"
+                    min="1"
+                    value={weightInfo.height}
+                    onChange={(e) =>
+                      setWeightInfo((p) => ({ ...p, height: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="wi_font_size">Font Size (auto if empty)</FieldLabel>
+                  <Input
+                    id="wi_font_size"
+                    type="number"
+                    step="0.5"
+                    min="1"
+                    value={weightInfo.font_size}
+                    onChange={(e) =>
+                      setWeightInfo((p) => ({ ...p, font_size: e.target.value }))
+                    }
+                    placeholder="Auto"
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="wi_text_anchor">Text Align</FieldLabel>
+                  <Select
+                    value={weightInfo.text_anchor}
+                    onValueChange={(v) =>
+                      setWeightInfo((p) => ({ ...p, text_anchor: v }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id="wi_text_anchor">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="start">Left</SelectItem>
+                      <SelectItem value="middle">Center</SelectItem>
+                      <SelectItem value="end">Right</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="wi_font_weight">Font Weight</FieldLabel>
+                  <Select
+                    value={weightInfo.font_weight}
+                    onValueChange={(v) =>
+                      setWeightInfo((p) => ({ ...p, font_weight: v }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id="wi_font_weight">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="400">Normal</SelectItem>
+                      <SelectItem value="500">Medium</SelectItem>
+                      <SelectItem value="600">Semi-Bold</SelectItem>
+                      <SelectItem value="700">Bold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="wi_text_color">Text Color</FieldLabel>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={weightInfo.text_color}
+                      onChange={(e) =>
+                        setWeightInfo((p) => ({ ...p, text_color: e.target.value }))
+                      }
+                      className="h-9 w-12 rounded border cursor-pointer"
+                      disabled={isSubmitting}
+                    />
+                    <Input
+                      id="wi_text_color"
+                      value={weightInfo.text_color}
+                      onChange={(e) =>
+                        setWeightInfo((p) => ({ ...p, text_color: e.target.value }))
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </Field>
+              </div>
+            </>
+          )}
+        </FieldGroup>
+      </section>
+
+      <Separator />
+
       {/* METRC Zone */}
       <section className="space-y-4">
         <h3 className="text-lg font-medium">METRC Zone</h3>
@@ -1213,9 +1492,12 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
         </FieldGroup>
       </section>
 
-      {/* Actions */}
-      <div className="flex gap-3">
-        <Button type="submit" disabled={isSubmitting}>
+      {/* Spacer for sticky bar */}
+      <div className="h-24" />
+
+      {/* Sticky Actions */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 px-10 py-4 flex justify-center gap-3">
+        <Button type="submit" size="lg" disabled={isSubmitting}>
           {isSubmitting
             ? isEdit
               ? "Saving..."

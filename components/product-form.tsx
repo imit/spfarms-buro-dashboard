@@ -8,6 +8,7 @@ import {
   type ProductType,
   type ProductStatus,
   type Strain,
+  type GalleryFile,
   PRODUCT_TYPE_LABELS,
   PRODUCT_STATUS_LABELS,
 } from "@/lib/api";
@@ -24,6 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { GalleryPicker } from "@/components/gallery-picker";
+import { FolderOpenIcon, ImageIcon, XIcon } from "lucide-react";
 
 const PRODUCT_TYPES = Object.entries(PRODUCT_TYPE_LABELS) as [ProductType, string][];
 const STATUSES = Object.entries(PRODUCT_STATUS_LABELS) as [ProductStatus, string][];
@@ -72,7 +75,11 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
   });
 
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(product?.thumbnail_url || null);
+  const [thumbnailGalleryFileId, setThumbnailGalleryFileId] = useState<number | null>(null);
   const [imageFiles, setImageFiles] = useState<FileList | null>(null);
+  const [imageGalleryFileIds, setImageGalleryFileIds] = useState<{ id: number; url: string; filename: string }[]>([]);
+  const [galleryPickerOpen, setGalleryPickerOpen] = useState<"thumbnail" | "images" | null>(null);
 
   useEffect(() => {
     apiClient.getStrains().then(setStrains).catch(() => {});
@@ -173,6 +180,8 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
 
       if (thumbnailFile) {
         formData.append("product[thumbnail]", thumbnailFile);
+      } else if (thumbnailGalleryFileId) {
+        formData.append("thumbnail_gallery_file_id", String(thumbnailGalleryFileId));
       }
 
       if (imageFiles) {
@@ -180,6 +189,9 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
           formData.append("product[images][]", file);
         });
       }
+      imageGalleryFileIds.forEach((g) => {
+        formData.append("image_gallery_file_ids[]", String(g.id));
+      });
 
       if (isEdit && product) {
         await apiClient.updateProduct(product.slug, formData);
@@ -565,30 +577,114 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
         <h3 className="text-lg font-medium">Images</h3>
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="thumbnail">Thumbnail</FieldLabel>
-            <Input
+            <FieldLabel>Thumbnail</FieldLabel>
+            {thumbnailPreview ? (
+              <div className="relative inline-block">
+                <img
+                  src={thumbnailPreview}
+                  alt="Thumbnail"
+                  className="h-32 w-32 rounded-lg object-cover border"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThumbnailFile(null);
+                    setThumbnailPreview(null);
+                    setThumbnailGalleryFileId(null);
+                  }}
+                  className="absolute -top-2 -right-2 rounded-full bg-destructive p-1 text-destructive-foreground shadow-sm hover:bg-destructive/90"
+                >
+                  <XIcon className="size-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <label
+                  htmlFor="thumbnail"
+                  className="flex h-32 w-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                >
+                  <ImageIcon className="size-8 text-muted-foreground" />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setGalleryPickerOpen("thumbnail")}
+                  className="flex h-32 w-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors flex-col gap-1"
+                >
+                  <FolderOpenIcon className="size-6 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Gallery</span>
+                </button>
+              </div>
+            )}
+            <input
               id="thumbnail"
               type="file"
               accept="image/*"
-              onChange={(e) => setThumbnailFile(e.target.files?.[0] ?? null)}
+              className="hidden"
               disabled={isSubmitting}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setThumbnailFile(file);
+                setThumbnailGalleryFileId(null);
+                const reader = new FileReader();
+                reader.onloadend = () => setThumbnailPreview(reader.result as string);
+                reader.readAsDataURL(file);
+              }}
             />
-            {isEdit && product?.thumbnail_url && !thumbnailFile && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Current thumbnail set. Upload to replace.
-              </p>
-            )}
           </Field>
           <Field>
-            <FieldLabel htmlFor="images">Gallery Images</FieldLabel>
-            <Input
+            <FieldLabel>Gallery Images</FieldLabel>
+            <div className="flex gap-2 flex-wrap">
+              {/* Existing images */}
+              {isEdit && product?.image_urls?.map((url, i) => (
+                <div key={`existing-${i}`} className="relative">
+                  <img src={url} alt="" className="h-20 w-20 rounded-md object-cover border" />
+                </div>
+              ))}
+              {/* Gallery-picked images */}
+              {imageGalleryFileIds.map((g) => (
+                <div key={`gallery-${g.id}`} className="relative">
+                  <img src={g.url} alt="" className="h-20 w-20 rounded-md object-cover border" />
+                  <button
+                    type="button"
+                    onClick={() => setImageGalleryFileIds((prev) => prev.filter((x) => x.id !== g.id))}
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground shadow-sm hover:bg-destructive/90"
+                  >
+                    <XIcon className="size-2.5" />
+                  </button>
+                </div>
+              ))}
+              {/* Upload placeholder */}
+              <label
+                htmlFor="images"
+                className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors"
+              >
+                <ImageIcon className="size-5 text-muted-foreground" />
+              </label>
+              {/* Gallery pick */}
+              <button
+                type="button"
+                onClick={() => setGalleryPickerOpen("images")}
+                className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors flex-col gap-0.5"
+              >
+                <FolderOpenIcon className="size-4 text-muted-foreground" />
+                <span className="text-[10px] text-muted-foreground">Gallery</span>
+              </button>
+            </div>
+            <input
               id="images"
               type="file"
               accept="image/*"
               multiple
-              onChange={(e) => setImageFiles(e.target.files)}
+              className="hidden"
               disabled={isSubmitting}
+              onChange={(e) => setImageFiles(e.target.files)}
             />
+            {imageFiles && imageFiles.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {imageFiles.length} file{imageFiles.length > 1 ? "s" : ""} selected for upload
+              </p>
+            )}
           </Field>
         </FieldGroup>
       </section>
@@ -649,6 +745,23 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
           Cancel
         </Button>
       </div>
+
+      <GalleryPicker
+        open={!!galleryPickerOpen}
+        onOpenChange={(open) => { if (!open) setGalleryPickerOpen(null); }}
+        onSelect={(file: GalleryFile) => {
+          if (galleryPickerOpen === "thumbnail") {
+            setThumbnailPreview(file.url);
+            setThumbnailFile(null);
+            setThumbnailGalleryFileId(file.id);
+          } else if (galleryPickerOpen === "images") {
+            if (!imageGalleryFileIds.some((g) => g.id === file.id)) {
+              setImageGalleryFileIds((prev) => [...prev, { id: file.id, url: file.url, filename: file.filename }]);
+            }
+          }
+        }}
+        accept="image/*"
+      />
     </form>
   );
 }

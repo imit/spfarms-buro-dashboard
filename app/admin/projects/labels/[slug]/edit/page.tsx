@@ -104,6 +104,9 @@ export default function EditLabelPage({
       } else if (key === "product_info" && design.product_info) {
         design.product_info.x = x;
         design.product_info.y = y;
+      } else if (key === "weight_info" && design.weight_info) {
+        design.weight_info.x = x;
+        design.weight_info.y = y;
       }
 
       try {
@@ -173,7 +176,7 @@ export default function EditLabelPage({
         </div>
 
         {/* Right: Form + Overlays */}
-        <div className="space-y-8">
+        <div className="space-y-8 pb-28">
           <LabelForm
             key={label.updated_at}
             label={label}
