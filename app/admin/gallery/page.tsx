@@ -79,7 +79,7 @@ export default function GalleryPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const loadFiles = useCallback(async (p = 1, q = search) => {
     try {
