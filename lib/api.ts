@@ -478,6 +478,8 @@ export interface LabelDesign {
     text_color?: string;
     label_color?: string;
     columns?: CannabinoidColumn[];
+    label_font_weight?: string;
+    value_font_weight?: string;
   };
   product_info?: {
     enabled?: boolean;
@@ -489,6 +491,7 @@ export interface LabelDesign {
     text_color?: string;
     bg_color?: string;
     left_text?: string;
+    font_weight?: string;
   };
   weight_info?: {
     enabled?: boolean;

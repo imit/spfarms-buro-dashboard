@@ -99,6 +99,8 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
     font_size: label?.design?.cannabinoid_info?.font_size?.toString() ?? "",
     text_color: label?.design?.cannabinoid_info?.text_color ?? "#1a1a1a",
     label_color: label?.design?.cannabinoid_info?.label_color ?? "#1a1a1a",
+    label_font_weight: label?.design?.cannabinoid_info?.label_font_weight ?? "500",
+    value_font_weight: label?.design?.cannabinoid_info?.value_font_weight ?? "700",
     columns: defaultColumns,
   });
 
@@ -135,6 +137,7 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
     text_color: label?.design?.product_info?.text_color ?? "#1a1a1a",
     bg_color: label?.design?.product_info?.bg_color ?? "#ffffff",
     left_text: label?.design?.product_info?.left_text ?? "indoor, live-soil flower",
+    font_weight: label?.design?.product_info?.font_weight ?? "600",
   });
 
   // Weight Info
@@ -283,6 +286,8 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
           font_size: parseFloat(cannabinoidInfo.font_size) || undefined,
           text_color: cannabinoidInfo.text_color,
           label_color: cannabinoidInfo.label_color,
+          label_font_weight: cannabinoidInfo.label_font_weight,
+          value_font_weight: cannabinoidInfo.value_font_weight,
           columns: cannabinoidInfo.columns,
         };
       } else {
@@ -300,6 +305,7 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
           text_color: productInfo.text_color,
           bg_color: productInfo.bg_color,
           left_text: productInfo.left_text,
+          font_weight: productInfo.font_weight,
         };
       } else {
         designPayload.product_info = { enabled: false };
@@ -1064,6 +1070,49 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
                   </div>
                 </Field>
               </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="cann_label_font_weight">Label Font Weight</FieldLabel>
+                  <Select
+                    value={cannabinoidInfo.label_font_weight}
+                    onValueChange={(v) =>
+                      setCannabinoidInfo((p) => ({ ...p, label_font_weight: v }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id="cann_label_font_weight">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="400">Normal</SelectItem>
+                      <SelectItem value="500">Medium</SelectItem>
+                      <SelectItem value="600">Semi-Bold</SelectItem>
+                      <SelectItem value="700">Bold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="cann_value_font_weight">Value Font Weight</FieldLabel>
+                  <Select
+                    value={cannabinoidInfo.value_font_weight}
+                    onValueChange={(v) =>
+                      setCannabinoidInfo((p) => ({ ...p, value_font_weight: v }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id="cann_value_font_weight">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="400">Normal</SelectItem>
+                      <SelectItem value="500">Medium</SelectItem>
+                      <SelectItem value="600">Semi-Bold</SelectItem>
+                      <SelectItem value="700">Bold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
             </>
           )}
         </FieldGroup>
@@ -1177,6 +1226,27 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
                   placeholder="Auto"
                   disabled={isSubmitting}
                 />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="pi_font_weight">Font Weight</FieldLabel>
+                <Select
+                  value={productInfo.font_weight}
+                  onValueChange={(v) =>
+                    setProductInfo((p) => ({ ...p, font_weight: v }))
+                  }
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger id="pi_font_weight">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="400">Normal</SelectItem>
+                    <SelectItem value="500">Medium</SelectItem>
+                    <SelectItem value="600">Semi-Bold</SelectItem>
+                    <SelectItem value="700">Bold</SelectItem>
+                  </SelectContent>
+                </Select>
               </Field>
 
               <div className="grid gap-4 sm:grid-cols-2">
