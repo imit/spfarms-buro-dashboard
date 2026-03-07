@@ -489,7 +489,6 @@ export interface LabelDesign {
     height?: number;
     font_size?: number;
     text_color?: string;
-    bg_color?: string;
     left_text?: string;
     font_weight?: string;
   };

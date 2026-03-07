@@ -135,7 +135,6 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
     height: label?.design?.product_info?.height?.toString() ?? "30",
     font_size: label?.design?.product_info?.font_size?.toString() ?? "",
     text_color: label?.design?.product_info?.text_color ?? "#1a1a1a",
-    bg_color: label?.design?.product_info?.bg_color ?? "#ffffff",
     left_text: label?.design?.product_info?.left_text ?? "indoor, live-soil flower",
     font_weight: label?.design?.product_info?.font_weight ?? "600",
   });
@@ -303,7 +302,6 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
           height: parseFloat(productInfo.height) || 30,
           font_size: parseFloat(productInfo.font_size) || undefined,
           text_color: productInfo.text_color,
-          bg_color: productInfo.bg_color,
           left_text: productInfo.left_text,
           font_weight: productInfo.font_weight,
         };
@@ -1267,28 +1265,6 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
                       value={productInfo.text_color}
                       onChange={(e) =>
                         setProductInfo((p) => ({ ...p, text_color: e.target.value }))
-                      }
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="pi_bg_color">Background Color</FieldLabel>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={productInfo.bg_color}
-                      onChange={(e) =>
-                        setProductInfo((p) => ({ ...p, bg_color: e.target.value }))
-                      }
-                      className="h-9 w-12 rounded border cursor-pointer"
-                      disabled={isSubmitting}
-                    />
-                    <Input
-                      id="pi_bg_color"
-                      value={productInfo.bg_color}
-                      onChange={(e) =>
-                        setProductInfo((p) => ({ ...p, bg_color: e.target.value }))
                       }
                       disabled={isSubmitting}
                     />
