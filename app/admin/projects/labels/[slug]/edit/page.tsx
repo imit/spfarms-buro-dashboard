@@ -107,6 +107,9 @@ export default function EditLabelPage({
       } else if (key === "weight_info" && design.weight_info) {
         design.weight_info.x = x;
         design.weight_info.y = y;
+      } else if (key === "expiration_date" && design.expiration_date) {
+        design.expiration_date.x = x;
+        design.expiration_date.y = y;
       }
 
       try {

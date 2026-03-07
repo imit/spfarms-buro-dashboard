@@ -132,6 +132,20 @@ export function LabelCanvasEditor({
     })
   }
 
+  if (d?.expiration_date?.enabled) {
+    const ed = d.expiration_date
+    handles.push({
+      key: "expiration_date",
+      label: "Exp. Date",
+      x: ed.x ?? 0,
+      y: ed.y ?? 170,
+      width: ed.width ?? 100,
+      height: ed.height ?? 20,
+      color: "#ef4444",
+      zIndex: 9,
+    })
+  }
+
   if (d?.cannabinoid_info?.enabled) {
     const ci = d.cannabinoid_info
     handles.push({

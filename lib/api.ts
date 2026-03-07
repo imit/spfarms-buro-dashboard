@@ -502,6 +502,18 @@ export interface LabelDesign {
     font_weight?: string;
     text_anchor?: string;
   };
+  expiration_date?: {
+    enabled?: boolean;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    font_size?: number;
+    text_color?: string;
+    text?: string;
+    font_weight?: string;
+    text_anchor?: string;
+  };
 }
 
 export type CannabinoidField =

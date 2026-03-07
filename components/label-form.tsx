@@ -151,6 +151,20 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
     text_anchor: label?.design?.weight_info?.text_anchor ?? "end",
   });
 
+  // Expiration Date
+  const [expirationDate, setExpirationDate] = useState({
+    enabled: label?.design?.expiration_date?.enabled ?? false,
+    x: label?.design?.expiration_date?.x?.toString() ?? "0",
+    y: label?.design?.expiration_date?.y?.toString() ?? "170",
+    width: label?.design?.expiration_date?.width?.toString() ?? "100",
+    height: label?.design?.expiration_date?.height?.toString() ?? "20",
+    font_size: label?.design?.expiration_date?.font_size?.toString() ?? "",
+    text_color: label?.design?.expiration_date?.text_color ?? "#1a1a1a",
+    text: label?.design?.expiration_date?.text ?? "",
+    font_weight: label?.design?.expiration_date?.font_weight ?? "400",
+    text_anchor: label?.design?.expiration_date?.text_anchor ?? "start",
+  });
+
   // METRC Zone
   const [metrcZone, setMetrcZone] = useState({
     enabled: label?.design?.metrc_zone?.enabled ?? false,
@@ -306,6 +320,23 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
         };
       } else {
         designPayload.weight_info = { enabled: false };
+      }
+
+      if (expirationDate.enabled) {
+        designPayload.expiration_date = {
+          enabled: true,
+          x: parseFloat(expirationDate.x) || 0,
+          y: parseFloat(expirationDate.y) || 0,
+          width: parseFloat(expirationDate.width) || 100,
+          height: parseFloat(expirationDate.height) || 20,
+          font_size: parseFloat(expirationDate.font_size) || undefined,
+          text_color: expirationDate.text_color,
+          text: expirationDate.text,
+          font_weight: expirationDate.font_weight,
+          text_anchor: expirationDate.text_anchor,
+        };
+      } else {
+        designPayload.expiration_date = { enabled: false };
       }
 
       if (metrcZone.enabled) {
@@ -1368,6 +1399,186 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
                       value={weightInfo.text_color}
                       onChange={(e) =>
                         setWeightInfo((p) => ({ ...p, text_color: e.target.value }))
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </Field>
+              </div>
+            </>
+          )}
+        </FieldGroup>
+      </section>
+
+      <Separator />
+
+      {/* Expiration Date */}
+      <section className="space-y-4">
+        <h3 className="text-lg font-medium">Expiration Date</h3>
+        <FieldGroup>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="expiration_date_enabled"
+              checked={expirationDate.enabled}
+              onCheckedChange={(checked) =>
+                setExpirationDate((p) => ({ ...p, enabled: checked === true }))
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor="expiration_date_enabled" className="text-sm font-medium">
+              Show Expiration Date
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            A text element for expiration or best-by date.
+          </p>
+
+          {expirationDate.enabled && (
+            <>
+              <Field>
+                <FieldLabel htmlFor="exp_text">Text</FieldLabel>
+                <Input
+                  id="exp_text"
+                  value={expirationDate.text}
+                  onChange={(e) =>
+                    setExpirationDate((p) => ({ ...p, text: e.target.value }))
+                  }
+                  placeholder="EXP: 03/07/2027"
+                  disabled={isSubmitting}
+                />
+              </Field>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="exp_x">Position X</FieldLabel>
+                  <Input
+                    id="exp_x"
+                    type="number"
+                    value={expirationDate.x}
+                    onChange={(e) =>
+                      setExpirationDate((p) => ({ ...p, x: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="exp_y">Position Y</FieldLabel>
+                  <Input
+                    id="exp_y"
+                    type="number"
+                    value={expirationDate.y}
+                    onChange={(e) =>
+                      setExpirationDate((p) => ({ ...p, y: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="exp_width">Width</FieldLabel>
+                  <Input
+                    id="exp_width"
+                    type="number"
+                    min="1"
+                    value={expirationDate.width}
+                    onChange={(e) =>
+                      setExpirationDate((p) => ({ ...p, width: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="exp_height">Height</FieldLabel>
+                  <Input
+                    id="exp_height"
+                    type="number"
+                    min="1"
+                    value={expirationDate.height}
+                    onChange={(e) =>
+                      setExpirationDate((p) => ({ ...p, height: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="exp_font_size">Font Size (auto if empty)</FieldLabel>
+                  <Input
+                    id="exp_font_size"
+                    type="number"
+                    step="0.5"
+                    min="1"
+                    value={expirationDate.font_size}
+                    onChange={(e) =>
+                      setExpirationDate((p) => ({ ...p, font_size: e.target.value }))
+                    }
+                    placeholder="Auto"
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="exp_text_anchor">Text Align</FieldLabel>
+                  <Select
+                    value={expirationDate.text_anchor}
+                    onValueChange={(v) =>
+                      setExpirationDate((p) => ({ ...p, text_anchor: v }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id="exp_text_anchor">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="start">Left</SelectItem>
+                      <SelectItem value="middle">Center</SelectItem>
+                      <SelectItem value="end">Right</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="exp_font_weight">Font Weight</FieldLabel>
+                  <Select
+                    value={expirationDate.font_weight}
+                    onValueChange={(v) =>
+                      setExpirationDate((p) => ({ ...p, font_weight: v }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id="exp_font_weight">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="400">Normal</SelectItem>
+                      <SelectItem value="500">Medium</SelectItem>
+                      <SelectItem value="600">Semi-Bold</SelectItem>
+                      <SelectItem value="700">Bold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="exp_text_color">Text Color</FieldLabel>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={expirationDate.text_color}
+                      onChange={(e) =>
+                        setExpirationDate((p) => ({ ...p, text_color: e.target.value }))
+                      }
+                      className="h-9 w-12 rounded border cursor-pointer"
+                      disabled={isSubmitting}
+                    />
+                    <Input
+                      id="exp_text_color"
+                      value={expirationDate.text_color}
+                      onChange={(e) =>
+                        setExpirationDate((p) => ({ ...p, text_color: e.target.value }))
                       }
                       disabled={isSubmitting}
                     />
