@@ -46,7 +46,7 @@ export function GalleryPicker({
   const [uploading, setUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const loadFiles = useCallback(
     async (p = 1, q = search) => {
