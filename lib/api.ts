@@ -856,8 +856,13 @@ export interface SupportTicket {
   subject: string | null;
   message: string;
   status: "open" | "in_progress" | "resolved" | "closed";
+  company_id: number | null;
   company_name: string | null;
+  company_slug: string | null;
+  user_id: number | null;
   user_email: string | null;
+  user_full_name: string | null;
+  user_phone_number: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -2124,11 +2129,12 @@ export class ApiClient {
 
   // Companies
 
-  async getCompanies(opts?: { include_deleted?: boolean; page?: number; per_page?: number }): Promise<PaginatedResult<Company>> {
+  async getCompanies(opts?: { include_deleted?: boolean; page?: number; per_page?: number; q?: string }): Promise<PaginatedResult<Company>> {
     const params = new URLSearchParams();
     if (opts?.include_deleted) params.set("include_deleted", "true");
     if (opts?.page) params.set("page", String(opts.page));
     if (opts?.per_page) params.set("per_page", String(opts.per_page));
+    if (opts?.q) params.set("q", opts.q);
     const query = params.toString() ? `?${params}` : "";
     const res = await this.request<JsonApiPaginatedResponse<Company>>(
       `/api/v1/companies${query}`
@@ -4198,6 +4204,13 @@ export class ApiClient {
     };
   }
 
+  async getSupportTicket(id: number): Promise<SupportTicket> {
+    const res = await this.request<JsonApiResponse<SupportTicket>>(
+      `/api/v1/support_tickets/${id}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async updateSupportTicket(id: number, data: { status: string }): Promise<SupportTicket> {
     const res = await this.request<JsonApiResponse<SupportTicket>>(
       `/api/v1/support_tickets/${id}`,
@@ -4207,6 +4220,13 @@ export class ApiClient {
       }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async replySupportTicket(id: number, body: string): Promise<void> {
+    await this.request(`/api/v1/support_tickets/${id}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    });
   }
 }
 

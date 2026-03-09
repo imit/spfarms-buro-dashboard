@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { apiClient, type SupportTicket } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,7 @@ const STATUS_LABELS: Record<SupportTicket["status"], string> = {
 const STATUSES: SupportTicket["status"][] = ["open", "in_progress", "resolved", "closed"];
 
 export default function SupportTicketsPage() {
+  const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,7 +129,7 @@ export default function SupportTicketsPage() {
             </thead>
             <tbody>
               {filtered.map((ticket) => (
-                <tr key={ticket.id} className="border-b last:border-0 hover:bg-muted/30">
+                <tr key={ticket.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => router.push(`/admin/support-tickets/${ticket.id}`)}>
                   <td className="px-4 py-3 max-w-sm">
                     {ticket.subject && (
                       <p className="font-medium text-xs text-muted-foreground mb-0.5">
@@ -150,7 +152,7 @@ export default function SupportTicketsPage() {
                   <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                     {new Date(ticket.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <select
                       value={ticket.status}
                       onChange={(e) => updateStatus(ticket.id, e.target.value)}
