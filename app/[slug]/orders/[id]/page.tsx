@@ -197,6 +197,18 @@ export default function OrderDetailPage({
                   <span>{formatPrice(order.tax_amount)}</span>
                 </div>
               )}
+              {order.delivery_fee && parseFloat(order.delivery_fee) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Delivery Fee</span>
+                  <span>{formatPrice(order.delivery_fee)}</span>
+                </div>
+              )}
+              {order.delivery_fee_waived && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Delivery Fee Waived</span>
+                  <span>$0.00</span>
+                </div>
+              )}
               <div className="flex justify-between font-semibold pt-1 border-t">
                 <span>Total</span>
                 <span>{formatPrice(order.total)}</span>

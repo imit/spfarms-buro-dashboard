@@ -102,6 +102,7 @@ export type Region =
   | "staten_island"
   | "long_island"
   | "upstate"
+  | "catskills"
   | "other";
 
 export const REGION_LABELS: Record<Region, string> = {
@@ -112,6 +113,7 @@ export const REGION_LABELS: Record<Region, string> = {
   staten_island: "Staten Island",
   long_island: "Long Island",
   upstate: "Upstate",
+  catskills: "Catskills",
   other: "Other",
 };
 
@@ -285,6 +287,7 @@ export interface Strain {
   total_thc: string | null;
   total_cannabinoids: string | null;
   smell_tags: string[];
+  effect_tags: string[];
   active: boolean;
   image_url: string | null;
   title_image_url: string | null;
@@ -340,6 +343,7 @@ export interface Product {
   bulk: boolean;
   coming_soon: boolean;
   price_tbd: boolean;
+  best_seller: boolean;
   product_type: ProductType;
   product_uid: string | null;
   strain_id: number | null;
@@ -369,6 +373,7 @@ export interface Product {
   active: boolean;
   thumbnail_url: string | null;
   image_urls: string[];
+  promotional_image_urls: string[];
   metrc_item_id: string | null;
   metrc_item_name: string | null;
   metrc_license_number: string | null;
@@ -713,6 +718,15 @@ export interface AppSettings {
   tax_rate: string;
   bank_info: string;
   bulk_sales_phone: string;
+  delivery_fee_waiver_minimum: string;
+}
+
+export interface DeliveryFeeRecord {
+  id: number;
+  region: Region;
+  fee: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PublicSettings {
@@ -757,6 +771,9 @@ export interface CheckoutPreview {
   discount_amount: string;
   tax_rate: string;
   tax_amount: string;
+  delivery_fee: string;
+  delivery_fee_waived: boolean;
+  delivery_fee_waiver_minimum: string;
   total: string;
 }
 
@@ -834,6 +851,17 @@ export interface OrderCompanyDetails {
   members: CompanyMember[];
 }
 
+export interface SupportTicket {
+  id: number;
+  subject: string | null;
+  message: string;
+  status: "open" | "in_progress" | "resolved" | "closed";
+  company_name: string | null;
+  user_email: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Order {
   id: number;
   order_number: string;
@@ -849,6 +877,8 @@ export interface Order {
   discount_details: CheckoutPreviewDiscount[] | null;
   tax_rate: string | null;
   tax_amount: string | null;
+  delivery_fee: string | null;
+  delivery_fee_waived: boolean;
   notes_to_vendor: string | null;
   internal_notes: string | null;
   desired_delivery_date: string | null;
@@ -2911,11 +2941,13 @@ export class ApiClient {
   async getCheckoutPreview(
     companyId: number,
     paymentTermId?: number,
-    orderType?: OrderType
+    orderType?: OrderType,
+    shippingLocationId?: number
   ): Promise<CheckoutPreview> {
     const body: Record<string, unknown> = { company_id: companyId };
     if (paymentTermId) body.payment_term_id = paymentTermId;
     if (orderType) body.order_type = orderType;
+    if (shippingLocationId) body.shipping_location_id = shippingLocationId;
 
     const res = await this.request<{ data: CheckoutPreview }>(
       "/api/v1/cart/checkout_preview",
@@ -2983,6 +3015,33 @@ export class ApiClient {
 
   async deleteDiscount(id: number): Promise<void> {
     await this.request(`/api/v1/discounts/${id}`, { method: "DELETE" });
+  }
+
+  // Delivery Fees
+
+  async getDeliveryFees(): Promise<DeliveryFeeRecord[]> {
+    const res = await this.request<{ data: DeliveryFeeRecord[] }>("/api/v1/delivery_fees");
+    return res.data;
+  }
+
+  async createDeliveryFee(data: { region: string; fee: number }): Promise<DeliveryFeeRecord> {
+    const res = await this.request<{ data: DeliveryFeeRecord }>("/api/v1/delivery_fees", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  }
+
+  async updateDeliveryFee(id: number, data: { region?: string; fee?: number }): Promise<DeliveryFeeRecord> {
+    const res = await this.request<{ data: DeliveryFeeRecord }>(`/api/v1/delivery_fees/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  }
+
+  async deleteDeliveryFee(id: number): Promise<void> {
+    await this.request(`/api/v1/delivery_fees/${id}`, { method: "DELETE" });
   }
 
   // Dashboard
@@ -4110,6 +4169,44 @@ export class ApiClient {
 
   async deleteGalleryFile(id: number): Promise<void> {
     await this.request(`/api/v1/gallery_files/${id}`, { method: "DELETE" });
+  }
+
+  // ── Support Tickets ──
+
+  async createSupportTicket(data: { subject?: string; message: string; company_id?: number }): Promise<SupportTicket> {
+    const res = await this.request<JsonApiResponse<SupportTicket>>(
+      "/api/v1/support_tickets",
+      {
+        method: "POST",
+        body: JSON.stringify({ support_ticket: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async getSupportTickets(opts?: { page?: number; per_page?: number }): Promise<PaginatedResult<SupportTicket>> {
+    const params = new URLSearchParams();
+    if (opts?.page) params.set("page", String(opts.page));
+    if (opts?.per_page) params.set("per_page", String(opts.per_page));
+    const qs = params.toString();
+    const res = await this.request<JsonApiCollectionResponse<SupportTicket> & { meta: PaginationMeta }>(
+      `/api/v1/support_tickets${qs ? `?${qs}` : ""}`
+    );
+    return {
+      data: res.data.map((d) => ({ ...d.attributes, id: Number(d.id) })),
+      meta: res.meta,
+    };
+  }
+
+  async updateSupportTicket(id: number, data: { status: string }): Promise<SupportTicket> {
+    const res = await this.request<JsonApiResponse<SupportTicket>>(
+      `/api/v1/support_tickets/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ support_ticket: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
   }
 }
 

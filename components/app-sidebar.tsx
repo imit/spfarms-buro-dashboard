@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, PackageCheckIcon, MessageSquareIcon, ImageIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, PackageCheckIcon, MessageSquareIcon, ImageIcon, TicketIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -108,6 +108,12 @@ const navSales: NavItem[] = [
     url: "/admin/notifications",
     icon: <BellIcon />,
     resource: "notifications",
+  },
+  {
+    title: "Support Tickets",
+    url: "/admin/support-tickets",
+    icon: <TicketIcon />,
+    resource: "support_tickets",
   },
 ]
 
