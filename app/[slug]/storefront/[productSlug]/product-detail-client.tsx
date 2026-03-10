@@ -213,9 +213,9 @@ export default function ProductDetailClient({
                 </div>
               </div>
             )}
-            {product.thumbnail_url ? (
+            {(product.full_image_url || product.thumbnail_url) ? (
               <img
-                src={product.thumbnail_url}
+                src={product.full_image_url || product.thumbnail_url}
                 alt={product.name}
                 className="size-full object-contain p-4"
               />

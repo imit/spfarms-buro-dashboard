@@ -375,6 +375,7 @@ export interface Product {
   position: number | null;
   active: boolean;
   thumbnail_url: string | null;
+  full_image_url: string | null;
   image_urls: { attachment_id: number; url: string }[];
   promotional_image_urls: { attachment_id: number; url: string }[];
   metrc_item_id: string | null;
