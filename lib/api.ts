@@ -2160,11 +2160,12 @@ export class ApiClient {
 
   // Users
 
-  async getUsers(opts?: { include_deleted?: boolean; page?: number; per_page?: number }): Promise<PaginatedResult<User>> {
+  async getUsers(opts?: { include_deleted?: boolean; page?: number; per_page?: number; search?: string }): Promise<PaginatedResult<User>> {
     const params = new URLSearchParams();
     if (opts?.include_deleted) params.set("include_deleted", "true");
     if (opts?.page) params.set("page", String(opts.page));
     if (opts?.per_page) params.set("per_page", String(opts.per_page));
+    if (opts?.search) params.set("search", opts.search);
     const query = params.toString() ? `?${params}` : "";
     const res = await this.request<JsonApiPaginatedResponse<User>>(
       `/api/v1/users${query}`

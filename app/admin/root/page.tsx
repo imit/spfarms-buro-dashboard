@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   apiClient,
   type RootDashboardStats,
   type LeadStatus,
+  type User,
+  type PaginationMeta,
   LEAD_STATUS_LABELS,
   ROLE_LABELS,
   type UserRole,
@@ -15,6 +17,8 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   DollarSignIcon,
   ShoppingCartIcon,
@@ -25,6 +29,9 @@ import {
   TicketIcon,
   TrendingUpIcon,
   ClipboardListIcon,
+  SearchIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "lucide-react";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
@@ -76,6 +83,46 @@ export default function RootDashboardPage() {
   const [stats, setStats] = useState<RootDashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // User search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [searchMeta, setSearchMeta] = useState<PaginationMeta | null>(null);
+  const [searchPage, setSearchPage] = useState(1);
+  const [isSearching, setIsSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const performSearch = useCallback(
+    (query: string, page: number) => {
+      if (!query.trim()) {
+        setSearchResults([]);
+        setSearchMeta(null);
+        return;
+      }
+      setIsSearching(true);
+      apiClient
+        .getUsers({ search: query.trim(), page, per_page: 10 })
+        .then((res) => {
+          setSearchResults(res.data);
+          setSearchMeta(res.meta);
+        })
+        .catch(() => {})
+        .finally(() => setIsSearching(false));
+    },
+    []
+  );
+
+  function handleSearchChange(value: string) {
+    setSearchQuery(value);
+    setSearchPage(1);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => performSearch(value, 1), 300);
+  }
+
+  function handleSearchPageChange(page: number) {
+    setSearchPage(page);
+    performSearch(searchQuery, page);
+  }
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/");
@@ -119,6 +166,98 @@ export default function RootDashboardPage() {
         <p className="text-sm text-muted-foreground">
           High-level overview for administrators
         </p>
+      </div>
+
+      {/* User search */}
+      <div className="rounded-xl border bg-card p-5 shadow-xs ring-1 ring-foreground/10">
+        <div className="mb-4 flex items-center gap-2">
+          <SearchIcon className="size-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium">User Search</h3>
+        </div>
+        <div className="relative">
+          <Input
+            placeholder="Search by name, email, or phone..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-9"
+          />
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        </div>
+        {isSearching && (
+          <p className="mt-3 text-sm text-muted-foreground">Searching...</p>
+        )}
+        {!isSearching && searchQuery.trim() && searchResults.length === 0 && (
+          <p className="mt-3 text-sm text-muted-foreground">No users found.</p>
+        )}
+        {searchResults.length > 0 && (
+          <div className="mt-3">
+            <div className="rounded-lg border bg-card">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-4 py-2.5 text-left font-medium">Name</th>
+                    <th className="px-4 py-2.5 text-left font-medium">Email</th>
+                    <th className="px-4 py-2.5 text-left font-medium">Role</th>
+                    <th className="px-4 py-2.5 text-left font-medium">Company</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {searchResults.map((u) => (
+                    <tr
+                      key={u.id}
+                      className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
+                      onClick={() => router.push(`/admin/users/${u.id}`)}
+                    >
+                      <td className="px-4 py-2.5 font-medium text-primary">
+                        {u.full_name || "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground">
+                        {u.email}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                          {ROLE_LABELS[u.role] || u.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground">
+                        {u.companies.length > 0
+                          ? u.companies.map((c) => c.name).join(", ")
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {searchMeta && searchMeta.total_pages > 1 && (
+              <div className="mt-3 flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {searchMeta.total} result{searchMeta.total !== 1 ? "s" : ""} — page {searchMeta.page} of {searchMeta.total_pages}
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    disabled={searchPage <= 1}
+                    onClick={() => handleSearchPageChange(searchPage - 1)}
+                  >
+                    <ChevronLeftIcon className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    disabled={searchPage >= searchMeta.total_pages}
+                    onClick={() => handleSearchPageChange(searchPage + 1)}
+                  >
+                    <ChevronRightIcon className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* KPI cards */}
