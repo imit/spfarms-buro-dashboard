@@ -4,6 +4,7 @@ export type AccessLevel = "full" | "full_no_delete" | "read" | "send_only" | "no
 
 export type Resource =
   | "dashboard"
+  | "root_dashboard"
   | "strains"
   | "grow"
   | "samples"
@@ -27,6 +28,7 @@ type RoleAccessMap = Record<Resource, Partial<Record<UserRole, AccessLevel>>>;
 
 export const ROLE_ACCESS: RoleAccessMap = {
   dashboard:     { admin: "full", observer_admin: "read", editor: "full", cultivator: "full", processing: "full", delivery: "full", sales: "full", default: "read" },
+  root_dashboard: { admin: "full", observer_admin: "read", editor: "read" },
   strains:       { admin: "full", observer_admin: "read", editor: "read", cultivator: "read", account: "read" },
   grow:          { admin: "full", observer_admin: "read", editor: "full", cultivator: "full", processing: "full" },
   samples:       { admin: "full", observer_admin: "read", editor: "full", cultivator: "full", processing: "full", account: "read" },

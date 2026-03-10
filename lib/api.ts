@@ -1152,6 +1152,53 @@ export interface DashboardStats {
   recent_registrations: DashboardRegistration[];
 }
 
+// ---- Root Dashboard ----
+
+export interface RootDashboardOrder {
+  id: number;
+  order_number: string;
+  total: string;
+  status: OrderStatus;
+  company_name: string | null;
+  company_slug: string | null;
+  created_at: string;
+}
+
+export interface RootDashboardPaymentDue {
+  id: number;
+  order_number: string;
+  total: number;
+  payment_status: PaymentStatus;
+  payment_due_date: string | null;
+  company_name: string | null;
+  company_slug: string | null;
+  days_until_due: number | null;
+}
+
+export interface RootDashboardTicket {
+  id: number;
+  subject: string | null;
+  status: "open" | "in_progress" | "resolved" | "closed";
+  company_name: string | null;
+  user_full_name: string | null;
+  user_email: string | null;
+  created_at: string;
+}
+
+export interface RootDashboardStats {
+  total_revenue: number;
+  total_orders: number;
+  orders_today: number;
+  revenue_today: number;
+  recent_registrations: DashboardRegistration[];
+  recent_users: DashboardRecentUser[];
+  recent_companies: DashboardRecentCompany[];
+  payments_due_this_week: RootDashboardPaymentDue[];
+  open_support_tickets: RootDashboardTicket[];
+  recent_orders_today: RootDashboardOrder[];
+  latest_orders: RootDashboardOrder[];
+}
+
 // ---- Notifications ----
 
 export type NotificationType =
@@ -3128,6 +3175,13 @@ export class ApiClient {
   async getDashboardStats(): Promise<DashboardStats> {
     const res = await this.request<{ data: DashboardStats }>(
       "/api/v1/dashboard"
+    );
+    return res.data;
+  }
+
+  async getRootDashboardStats(): Promise<RootDashboardStats> {
+    const res = await this.request<{ data: RootDashboardStats }>(
+      "/api/v1/root_dashboard"
     );
     return res.data;
   }

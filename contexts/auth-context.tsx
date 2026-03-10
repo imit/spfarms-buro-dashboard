@@ -91,6 +91,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     function handleSessionExpired() {
       posthog.capture("session_expired");
+
+      // If impersonating, restore the admin session instead of logging out
+      const originalToken = localStorage.getItem("impersonate_original_token");
+      const originalUser = localStorage.getItem("impersonate_original_user");
+      if (originalToken && originalUser) {
+        localStorage.setItem("auth_token", originalToken);
+        localStorage.setItem("auth_user", originalUser);
+        localStorage.removeItem("impersonate_original_token");
+        localStorage.removeItem("impersonate_original_user");
+        try {
+          const parsed = JSON.parse(originalUser);
+          setUser(parsed);
+        } catch {
+          // fall through to full logout
+        }
+        setIsImpersonating(false);
+        router.push("/admin");
+        return;
+      }
+
       setUser(null);
       setHasToken(false);
       localStorage.removeItem("auth_token");
@@ -127,8 +147,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   const updateUser = useCallback((updatedUser: User) => {
-    setUser(updatedUser);
-    localStorage.setItem("auth_user", JSON.stringify(updatedUser));
+    setUser((prev) => {
+      const merged = prev ? { ...prev, ...updatedUser } : updatedUser;
+      localStorage.setItem("auth_user", JSON.stringify(merged));
+      return merged;
+    });
   }, []);
 
   const impersonate = useCallback(async (userId: number) => {
