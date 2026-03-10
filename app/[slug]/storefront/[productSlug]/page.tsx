@@ -103,7 +103,7 @@ export default function ProductDetailPage({
         setStrainMap(sMap);
         setOtherFlowers(
           allProducts.filter(
-            (p) => p.product_type === "flower" && p.active && p.slug !== productSlug
+            (p) => p.product_type === "flower" && p.active && !p.bulk && p.status === "active" && p.slug !== productSlug
           )
         );
 
