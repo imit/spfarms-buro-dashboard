@@ -203,6 +203,7 @@ export interface Company {
   logo_url: string | null;
   locations: Location[];
   members: CompanyMember[];
+  members_count: number;
   referred_by: CompanyReferrer | null;
   comments_count: number;
   orders_count: number;
@@ -2925,6 +2926,14 @@ export class ApiClient {
     await this.request(`/api/v1/users/${userId}/snooze_invitation`, {
       method: "POST",
     });
+  }
+
+  async impersonateUser(userId: number): Promise<{ user: User; token: string }> {
+    const res = await this.request<{ data: User; token: string }>(
+      `/api/v1/users/${userId}/impersonate`,
+      { method: "POST" }
+    );
+    return { user: res.data, token: res.token };
   }
 
   // Cart

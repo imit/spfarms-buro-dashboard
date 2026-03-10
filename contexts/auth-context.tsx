@@ -30,6 +30,9 @@ interface AuthContextType {
   updateUser: (user: User) => void;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  isImpersonating: boolean;
+  impersonate: (userId: number) => Promise<void>;
+  stopImpersonating: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasToken, setHasToken] = useState(false);
+  const [isImpersonating, setIsImpersonating] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -68,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setHasToken(!!token);
+    setIsImpersonating(!!localStorage.getItem("impersonate_original_token"));
     setIsLoading(false);
   }, []);
 
@@ -126,6 +131,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("auth_user", JSON.stringify(updatedUser));
   }, []);
 
+  const impersonate = useCallback(async (userId: number) => {
+    // Save the admin's current token and user
+    const currentToken = localStorage.getItem("auth_token");
+    const currentUserData = localStorage.getItem("auth_user");
+    if (currentToken && currentUserData) {
+      localStorage.setItem("impersonate_original_token", currentToken);
+      localStorage.setItem("impersonate_original_user", currentUserData);
+    }
+
+    const result = await apiClient.impersonateUser(userId);
+
+    // Switch to the impersonated user
+    localStorage.setItem("auth_token", result.token);
+    localStorage.setItem("auth_user", JSON.stringify(result.user));
+    setUser(result.user);
+    setHasToken(true);
+    setIsImpersonating(true);
+    router.push(getRedirectPath(result.user));
+  }, [router]);
+
+  const stopImpersonating = useCallback(() => {
+    const originalToken = localStorage.getItem("impersonate_original_token");
+    const originalUser = localStorage.getItem("impersonate_original_user");
+
+    if (originalToken && originalUser) {
+      localStorage.setItem("auth_token", originalToken);
+      localStorage.setItem("auth_user", originalUser);
+      localStorage.removeItem("impersonate_original_token");
+      localStorage.removeItem("impersonate_original_user");
+
+      try {
+        const parsed = JSON.parse(originalUser);
+        setUser(parsed);
+      } catch {
+        // Fallback: force reload
+        window.location.href = "/admin";
+        return;
+      }
+    }
+
+    setIsImpersonating(false);
+    router.push("/admin");
+  }, [router]);
+
   const logout = async () => {
     try {
       await apiClient.logout();
@@ -137,7 +186,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       posthog.reset();
       setUser(null);
       setHasToken(false);
+      setIsImpersonating(false);
       localStorage.removeItem("auth_user");
+      localStorage.removeItem("impersonate_original_token");
+      localStorage.removeItem("impersonate_original_user");
       router.push("/login");
     }
   };
@@ -152,6 +204,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateUser,
         logout,
         isAuthenticated: !!user || hasToken,
+        isImpersonating,
+        impersonate,
+        stopImpersonating,
       }}
     >
       {children}

@@ -3,6 +3,7 @@ import { Work_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/auth-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { Toaster } from "sonner";
 const workSans = Work_Sans({
   variable: "--font-work-sans",
@@ -35,7 +36,10 @@ export default function RootLayout({
         className={`${workSans.className} ${ibmPlexMono.variable} antialiased`}
       >
         <TooltipProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <ImpersonationBanner />
+            {children}
+          </AuthProvider>
         </TooltipProvider>
         <Toaster
           position="top-center"

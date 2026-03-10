@@ -261,13 +261,27 @@ export default function UsersPage() {
                 <tr
                   key={u.id}
                   className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer ${u.deleted_at ? "opacity-50" : ""}`}
-                  onClick={() => router.push(`/admin/users/${u.id}`)}
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.button === 1) {
+                      window.open(`/admin/users/${u.id}`, "_blank");
+                    } else {
+                      router.push(`/admin/users/${u.id}`);
+                    }
+                  }}
+                  onAuxClick={(e) => {
+                    if (e.button === 1) {
+                      e.preventDefault();
+                      window.open(`/admin/users/${u.id}`, "_blank");
+                    }
+                  }}
                 >
                   <td className="px-4 py-3">
-                    <div className="font-medium">
-                      {u.full_name || <span className="text-muted-foreground italic">No name</span>}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{u.email}</div>
+                    <Link href={`/admin/users/${u.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+                      <div className="font-medium">
+                        {u.full_name || <span className="text-muted-foreground italic">No name</span>}
+                      </div>
+                      <div className="text-xs text-muted-foreground">{u.email}</div>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-sm">
                     {u.companies && u.companies.length > 0 ? (

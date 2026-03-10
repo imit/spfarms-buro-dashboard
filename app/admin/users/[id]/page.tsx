@@ -21,7 +21,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { ArrowLeftIcon, KeyIcon, Loader2Icon, PencilIcon, SendIcon, Trash2Icon, XCircleIcon } from "lucide-react";
+import { ArrowLeftIcon, EyeIcon, KeyIcon, Loader2Icon, PencilIcon, SendIcon, Trash2Icon, XCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
 
@@ -47,7 +47,7 @@ export default function UserDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { isAuthenticated, isLoading: authLoading, user: currentUser } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user: currentUser, impersonate } = useAuth();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,6 +57,7 @@ export default function UserDetailPage({
   const [tokens, setTokens] = useState<MagicLoginToken[]>([]);
   const [revokingTokenId, setRevokingTokenId] = useState<number | null>(null);
   const [isRevokingAll, setIsRevokingAll] = useState(false);
+  const [isImpersonating, setIsImpersonating] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -108,6 +109,17 @@ export default function UserDetailPage({
       showError("send the email", err);
     } finally {
       setSendingForCompany(null);
+    }
+  }
+
+  async function handleImpersonate() {
+    if (!user) return;
+    setIsImpersonating(true);
+    try {
+      await impersonate(user.id);
+    } catch (err) {
+      showError("impersonate user", err);
+      setIsImpersonating(false);
     }
   }
 
@@ -185,6 +197,12 @@ export default function UserDetailPage({
             >
               <SendIcon className="mr-2 size-4" />
               {sendingForCompany ? "Sending..." : user.invitation_sent_at ? "Resend Invitation" : "Send Invitation"}
+            </Button>
+          )}
+          {currentUser?.role === "admin" && user.id !== currentUser.id && (
+            <Button variant="outline" size="sm" onClick={handleImpersonate} disabled={isImpersonating}>
+              <EyeIcon className="mr-2 size-4" />
+              {isImpersonating ? "Switching..." : "Impersonate"}
             </Button>
           )}
           {currentUser?.role === "admin" && (

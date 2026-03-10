@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   apiClient,
@@ -92,22 +93,36 @@ export default function AdminOrdersPage() {
                 <tr
                   key={order.id}
                   className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
-                  onClick={() => router.push(`/admin/orders/${order.id}`)}
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.button === 1) {
+                      window.open(`/admin/orders/${order.id}`, "_blank");
+                    } else {
+                      router.push(`/admin/orders/${order.id}`);
+                    }
+                  }}
+                  onAuxClick={(e) => {
+                    if (e.button === 1) {
+                      e.preventDefault();
+                      window.open(`/admin/orders/${order.id}`, "_blank");
+                    }
+                  }}
                 >
                   <td className="px-4 py-3 font-medium">
+                    <Link href={`/admin/orders/${order.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
                     {order.order_number}
                     {order.order_type === "preorder" && (
                       <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                         {ORDER_TYPE_LABELS.preorder}
                       </span>
                     )}
+                    </Link>
                   </td>
                   <td className="px-4 py-3">{order.company?.name ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(order.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {order.items.length}
+                    {order.items.length} / {order.items.reduce((sum, i) => sum + i.quantity, 0)} units
                   </td>
                   <td className="px-4 py-3">{formatPrice(order.total)}</td>
                   <td className="px-4 py-3 text-muted-foreground">

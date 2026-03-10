@@ -265,10 +265,22 @@ export default function CompaniesPage() {
                   <tr
                     key={c.id}
                     className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer ${c.deleted_at ? "opacity-50" : ""}`}
-                    onClick={() => router.push(`/admin/companies/${c.slug}`)}
+                    onClick={(e) => {
+                      if (e.metaKey || e.ctrlKey || e.button === 1) {
+                        window.open(`/admin/companies/${c.slug}`, "_blank");
+                      } else {
+                        router.push(`/admin/companies/${c.slug}`);
+                      }
+                    }}
+                    onAuxClick={(e) => {
+                      if (e.button === 1) {
+                        e.preventDefault();
+                        window.open(`/admin/companies/${c.slug}`, "_blank");
+                      }
+                    }}
                   >
                     <td className="px-4 py-3 font-medium">
-                      <span className="flex items-center gap-2.5">
+                      <Link href={`/admin/companies/${c.slug}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-2.5 hover:underline">
                         {c.logo_url ? (
                           <img src={c.logo_url} alt="" className="size-7 shrink-0 rounded object-contain bg-white border" />
                         ) : (
@@ -288,7 +300,7 @@ export default function CompaniesPage() {
                             Bulk
                           </span>
                         )}
-                      </span>
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {COMPANY_TYPE_LABELS[c.company_type]}
@@ -314,9 +326,9 @@ export default function CompaniesPage() {
                     <td className="px-4 py-3">
                       {c.deleted_at ? (
                         <span className="text-muted-foreground">-</span>
-                      ) : c.members?.length > 0 ? (
+                      ) : (c.members_count ?? c.members?.length ?? 0) > 0 ? (
                         <span className="text-muted-foreground">
-                          {c.members.length} {c.members.length === 1 ? "member" : "members"}
+                          {c.members_count ?? c.members?.length ?? 0} {(c.members_count ?? c.members?.length ?? 0) === 1 ? "member" : "members"}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-amber-600 text-xs font-medium">
