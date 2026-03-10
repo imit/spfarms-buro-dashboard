@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { PlusIcon, SendIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { PlusIcon, SendIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon } from "lucide-react";
 import { type PaginationMeta } from "@/lib/api";
 
 type RoleFilter = "all" | UserRole;
@@ -45,6 +45,18 @@ export default function UsersPage() {
   const [error, setError] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [showDeleted, setShowDeleted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setActiveSearch(value.trim());
+      setPage(1);
+    }, 300);
+  }, []);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -64,7 +76,7 @@ export default function UsersPage() {
 
     setIsLoading(true);
     apiClient
-      .getUsers({ include_deleted: showDeleted || undefined, page, per_page: 25 })
+      .getUsers({ include_deleted: showDeleted || undefined, page, per_page: 25, search: activeSearch || undefined })
       .then((res) => {
         setUsers(res.data);
         setPagination(res.meta);
@@ -73,7 +85,7 @@ export default function UsersPage() {
         setError(err instanceof Error ? err.message : "We couldn't load users")
       )
       .finally(() => setIsLoading(false));
-  }, [isAuthenticated, showDeleted, page]);
+  }, [isAuthenticated, showDeleted, page, activeSearch]);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -201,6 +213,16 @@ export default function UsersPage() {
       </div>
 
       {error && <ErrorAlert message={error} />}
+
+      <div className="relative">
+        <Input
+          placeholder="Search by name, email, or phone..."
+          value={searchQuery}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="pl-9"
+        />
+        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+      </div>
 
       {!isLoading && users.length > 0 && (
         <div className="flex flex-wrap items-center gap-4">
