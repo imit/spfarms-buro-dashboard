@@ -316,8 +316,8 @@ export default function AdminOrderDetailPage({
     finally { setSavingPrices(false); }
   };
 
-  if (isLoading) return <p className="px-10 text-muted-foreground">Loading order...</p>;
-  if (!order) return <p className="px-10 text-muted-foreground">Order not found.</p>;
+  if (isLoading) return <p className="px-4 sm:px-10 text-muted-foreground">Loading order...</p>;
+  if (!order) return <p className="px-4 sm:px-10 text-muted-foreground">Order not found.</p>;
 
   const companyDetails = order.company_details;
   const currentStep = getStepIndex(order.status);
@@ -325,7 +325,7 @@ export default function AdminOrderDetailPage({
   const isPaidStatus = order.status === "payment_received";
 
   return (
-    <div className="space-y-6 px-10 pb-10">
+    <div className="space-y-6 px-4 pb-6 sm:px-10 sm:pb-10">
       {/* Top bar */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => router.push("/admin/orders")}>
@@ -380,11 +380,11 @@ export default function AdminOrderDetailPage({
       </div>
 
       {/* Hero header */}
-      <div className="rounded-2xl border bg-card p-6 shadow-xs">
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold tracking-tight">{order.order_number}</h2>
+      <div className="rounded-2xl border bg-card p-4 sm:p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{order.order_number}</h2>
               {order.order_type === "preorder" && (
                 <Badge variant="secondary">Pre-order</Badge>
               )}
@@ -411,8 +411,8 @@ export default function AdminOrderDetailPage({
               {new Date(order.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-3xl font-bold tracking-tight">{formatPrice(order.total)}</p>
+          <div className="text-left sm:text-right shrink-0">
+            <p className="text-2xl sm:text-3xl font-bold tracking-tight">{formatPrice(order.total)}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {order.items.length} item{order.items.length !== 1 ? "s" : ""}
             </p>
@@ -478,7 +478,7 @@ export default function AdminOrderDetailPage({
                         isActive ? "border-primary bg-primary" :
                         "border-muted-foreground/30 bg-transparent"
                       }`} />
-                      <span className={`text-[10px] mt-1.5 whitespace-nowrap ${
+                      <span className={`text-[10px] mt-1.5 whitespace-nowrap hidden sm:block ${
                         isCurrent ? "font-semibold text-foreground" :
                         isActive ? "text-muted-foreground" :
                         "text-muted-foreground/50"
@@ -495,7 +495,7 @@ export default function AdminOrderDetailPage({
         )}
 
         {/* Status actions */}
-        <div className="flex items-center gap-2 pt-4 mt-4 border-t">
+        <div className="flex flex-wrap items-center gap-2 pt-4 mt-4 border-t">
           <span className="text-xs text-muted-foreground mr-1">Change status:</span>
           <select
             value={order.status}
@@ -520,7 +520,7 @@ export default function AdminOrderDetailPage({
         <div className="lg:col-span-2 space-y-6">
           {/* Line items */}
           <div className="rounded-xl border bg-card shadow-xs">
-            <div className="px-5 py-3.5 border-b flex items-center justify-between">
+            <div className="px-3 sm:px-5 py-3.5 border-b flex items-center justify-between">
               <h3 className="font-semibold text-sm">Order Items</h3>
               {!editingPrices && (
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditingPrices}>
@@ -531,8 +531,8 @@ export default function AdminOrderDetailPage({
             </div>
             <div className="divide-y">
               {order.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 px-5 py-3.5">
-                  <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-muted">
+                <div key={item.id} className="flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-3">
+                  <div className="size-10 sm:size-12 shrink-0 overflow-hidden rounded-lg bg-muted">
                     {item.thumbnail_url ? (
                       <img src={item.thumbnail_url} alt={item.product_name} className="size-full object-cover" />
                     ) : (
@@ -567,7 +567,7 @@ export default function AdminOrderDetailPage({
               ))}
             </div>
             {editingPrices && (
-              <div className="border-t px-5 py-3.5 space-y-3">
+              <div className="border-t px-3 sm:px-5 py-3.5 space-y-3">
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={sendPriceNotification} onChange={(e) => setSendPriceNotification(e.target.checked)} className="rounded border-gray-300" />
                   Send price update email to company
@@ -582,7 +582,7 @@ export default function AdminOrderDetailPage({
               </div>
             )}
             {/* Totals */}
-            <div className="border-t px-5 py-3.5 space-y-1 bg-muted/30">
+            <div className="border-t px-3 sm:px-5 py-3.5 space-y-1 bg-muted/30">
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span>{formatPrice(order.subtotal)}</span></div>
               {order.payment_term_discount_amount && parseFloat(order.payment_term_discount_amount) > 0 && (
                 <div className="flex justify-between text-sm text-green-600"><span>Discount ({order.payment_term_name})</span><span>-{formatPrice(order.payment_term_discount_amount)}</span></div>
@@ -604,7 +604,7 @@ export default function AdminOrderDetailPage({
           </div>
 
           {/* Locations */}
-          <div className="rounded-xl border bg-card p-5 shadow-xs">
+          <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-sm">Locations</h3>
               {!editingLocations && (
@@ -642,7 +642,7 @@ export default function AdminOrderDetailPage({
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-xs text-muted-foreground mb-0.5">Shipping</p>
                   <p className="font-medium">{formatLocation(order.shipping_location)}</p>
@@ -659,12 +659,12 @@ export default function AdminOrderDetailPage({
 
           {/* Notes */}
           {order.notes_to_vendor && (
-            <div className="rounded-xl border bg-card p-5 shadow-xs">
+            <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-xs">
               <h3 className="font-semibold text-sm mb-1">Notes from Customer</h3>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">{order.notes_to_vendor}</p>
             </div>
           )}
-          <div className="rounded-xl border bg-card p-5 shadow-xs space-y-3">
+          <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-xs space-y-3">
             <Label htmlFor="internalNotes" className="font-semibold text-sm">Internal Notes</Label>
             <Textarea id="internalNotes" placeholder="Add internal notes..." value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} rows={3} className="text-sm" />
             <Button size="sm" onClick={saveInternalNotes} disabled={saving}>{saving ? "Saving..." : "Save Notes"}</Button>
@@ -677,7 +677,7 @@ export default function AdminOrderDetailPage({
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  className={`flex-1 px-2 sm:px-4 py-3 text-xs sm:text-sm font-medium transition-colors ${
                     activeTab === tab
                       ? "border-b-2 border-primary text-foreground bg-muted/30"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
@@ -693,7 +693,7 @@ export default function AdminOrderDetailPage({
                 </button>
               ))}
             </div>
-            <div className="p-5">
+            <div className="p-3 sm:p-5">
               {activeTab === "activity" && (
                 <div className="space-y-4">
                   <div className="flex gap-2">
@@ -736,7 +736,7 @@ export default function AdminOrderDetailPage({
         {/* Sidebar */}
         <div className="space-y-4">
           {/* People on order */}
-          <div className="rounded-xl border bg-card p-5 shadow-xs">
+          <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-sm">Order People</h3>
               {!editingContacts && (
@@ -798,7 +798,7 @@ export default function AdminOrderDetailPage({
 
           {/* Company */}
           {companyDetails && (
-            <div className="rounded-xl border bg-card p-5 shadow-xs">
+            <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-xs">
               <h3 className="font-semibold text-sm mb-3">Company</h3>
               <div className="space-y-2 text-sm">
                 <p className="font-medium">{companyDetails.name}</p>
@@ -835,7 +835,7 @@ export default function AdminOrderDetailPage({
           )}
 
           {/* Payment Terms */}
-          <div className="rounded-xl border bg-card p-5 shadow-xs">
+          <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-xs">
             <h3 className="font-semibold text-sm mb-2">Payment Terms</h3>
             <p className="text-sm text-muted-foreground">{order.payment_term_name || "ACH / Bank Transfer"}</p>
             {order.payment_terms_accepted_at && (
@@ -848,7 +848,7 @@ export default function AdminOrderDetailPage({
 
           {/* Terms Agreement */}
           {order.payment_term_agreement && (
-            <div className="rounded-xl border bg-card p-5 shadow-xs space-y-3">
+            <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-xs space-y-3">
               <h3 className="font-semibold text-sm">Terms Agreement</h3>
               {order.payment_term_agreement.signed ? (
                 <>
