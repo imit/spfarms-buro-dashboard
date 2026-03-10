@@ -122,7 +122,7 @@ export default function AdminOrdersPage() {
                     {new Date(order.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {order.items.length}
+                    {order.items.length} / {order.items.reduce((sum, i) => sum + i.quantity, 0)} units
                   </td>
                   <td className="px-4 py-3">{formatPrice(order.total)}</td>
                   <td className="px-4 py-3 text-muted-foreground">
