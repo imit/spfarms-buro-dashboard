@@ -2927,6 +2927,14 @@ export class ApiClient {
     });
   }
 
+  async impersonateUser(userId: number): Promise<{ user: User; token: string }> {
+    const res = await this.request<{ data: User; token: string }>(
+      `/api/v1/users/${userId}/impersonate`,
+      { method: "POST" }
+    );
+    return { user: res.data, token: res.token };
+  }
+
   // Cart
 
   async getCarts(): Promise<Cart[]> {
