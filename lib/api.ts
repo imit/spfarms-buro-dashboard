@@ -203,6 +203,7 @@ export interface Company {
   logo_url: string | null;
   locations: Location[];
   members: CompanyMember[];
+  members_count: number;
   referred_by: CompanyReferrer | null;
   comments_count: number;
   orders_count: number;
