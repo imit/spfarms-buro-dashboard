@@ -121,7 +121,7 @@ export default function CheckoutPage({
     load();
   }, [isAuthenticated, slug, router]);
 
-  // Fetch checkout preview when payment term changes
+  // Fetch checkout preview when payment term or shipping location changes
   useEffect(() => {
     if (!company || !cart || cart.items.length === 0) return;
 
@@ -131,7 +131,8 @@ export default function CheckoutPage({
         const data = await apiClient.getCheckoutPreview(
           company!.id,
           skipPaymentTerms ? undefined : (selectedPaymentTermId || undefined),
-          orderType
+          orderType,
+          shippingLocationId ? Number(shippingLocationId) : undefined
         );
         setPreview(data);
       } catch (err) {
@@ -142,7 +143,7 @@ export default function CheckoutPage({
     }
 
     fetchPreview();
-  }, [company, cart, selectedPaymentTermId]);
+  }, [company, cart, selectedPaymentTermId, shippingLocationId]);
 
   const addContactUser = () => {
     setContactUsers([...contactUsers, { full_name: "", email: "", phone_number: "" }]);
@@ -244,18 +245,18 @@ export default function CheckoutPage({
   const locations = company?.locations || [];
 
   return (
-    <div>
+    <div className="rounded-2xl bg-white border shadow-sm p-8 md:p-10 max-w-5xl mx-auto">
       <Button
         variant="ghost"
         size="sm"
-        className="mb-4"
+        className="mb-6"
         onClick={() => router.push(`/${slug}/cart`)}
       >
         <ArrowLeftIcon className="mr-1.5 size-4" />
         Back to Cart
       </Button>
 
-      <h1 className="text-2xl font-bold mb-6">
+      <h1 className="text-3xl font-bold mb-6">
         {isPreorder ? "Pre-order Checkout" : "Checkout"}
       </h1>
 
@@ -264,16 +265,16 @@ export default function CheckoutPage({
           <div className="flex gap-3">
             <AlertTriangleIcon className="size-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              <p className="text-base font-medium text-amber-800 dark:text-amber-200">
                 Required information missing
               </p>
-              <p className="text-sm text-amber-700 dark:text-amber-300">
+              <p className="text-base text-amber-700 dark:text-amber-300">
                 Before placing an order, please complete the following in your{" "}
                 <a href={`/${slug}/settings`} className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100">
                   settings
                 </a>:
               </p>
-              <ul className="text-sm text-amber-700 dark:text-amber-300 list-disc list-inside">
+              <ul className="text-base text-amber-700 dark:text-amber-300 list-disc list-inside">
                 {missingLicense && <li>OCM license number (company or location)</li>}
                 {missingName && <li>Your full name</li>}
               </ul>
@@ -288,12 +289,12 @@ export default function CheckoutPage({
           {/* Order Summary */}
           <div className="rounded-lg border">
             <div className="px-4 py-3 border-b bg-muted/50">
-              <h2 className="font-semibold text-sm">Order Summary</h2>
+              <h2 className="font-semibold text-lg">Order Summary</h2>
             </div>
             <div className="divide-y">
               {preview ? preview.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-4 px-4 py-3">
-                  <div className="size-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                  <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted">
                     {item.thumbnail_url ? (
                       <img src={item.thumbnail_url} alt={item.product_name} className="size-full object-cover" />
                     ) : (
@@ -301,18 +302,18 @@ export default function CheckoutPage({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{item.product_name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="font-medium text-base">{item.product_name}</p>
+                    <p className="text-sm text-muted-foreground">
                       {formatPrice(item.unit_price)} x {item.quantity}
                     </p>
                   </div>
-                  <div className="font-medium text-sm">
+                  <div className="font-medium text-base">
                     {formatPrice(item.line_total)}
                   </div>
                 </div>
               )) : cart.items.filter((i) => isPreorder ? i.coming_soon : !i.coming_soon).map((item) => (
                 <div key={item.id} className="flex items-center gap-4 px-4 py-3">
-                  <div className="size-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                  <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted">
                     {item.thumbnail_url ? (
                       <img src={item.thumbnail_url} alt={item.product_name} className="size-full object-cover" />
                     ) : (
@@ -320,12 +321,12 @@ export default function CheckoutPage({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{item.product_name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="font-medium text-base">{item.product_name}</p>
+                    <p className="text-sm text-muted-foreground">
                       {formatPrice(item.unit_price)} x {item.quantity}
                     </p>
                   </div>
-                  <div className="font-medium text-sm">
+                  <div className="font-medium text-base">
                     {formatPrice(parseFloat(item.unit_price || "0") * item.quantity)}
                   </div>
                 </div>
@@ -341,7 +342,7 @@ export default function CheckoutPage({
 
           {/* Checkout Form */}
           <div className="rounded-lg border p-4 space-y-4">
-            <h2 className="font-semibold">Shipping & Details</h2>
+            <h2 className="font-semibold text-lg">Shipping & Details</h2>
 
             {/* Shipping Location */}
             <div className="space-y-1.5">
@@ -350,7 +351,7 @@ export default function CheckoutPage({
                 id="shipping"
                 value={shippingLocationId}
                 onChange={(e) => setShippingLocationId(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <option value="">Select a location</option>
                 {locations.map((loc: Location) => (
@@ -379,7 +380,7 @@ export default function CheckoutPage({
                 <select
                   value={billingLocationId}
                   onChange={(e) => setBillingLocationId(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <option value="">Select a location</option>
                   {locations.map((loc: Location) => (
@@ -428,12 +429,12 @@ export default function CheckoutPage({
               {user && (
                 <div className="rounded-md border bg-muted/30 p-3 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium">Orderer (You)</span>
+                    <span className="text-sm font-medium">Orderer (You)</span>
                   </div>
-                  <p className="text-sm font-medium">{user.full_name || "—"}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                  <p className="text-base font-medium">{user.full_name || "—"}</p>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
                   {user.phone_number && (
-                    <p className="text-xs text-muted-foreground">{user.phone_number}</p>
+                    <p className="text-sm text-muted-foreground">{user.phone_number}</p>
                   )}
                 </div>
               )}
@@ -473,7 +474,7 @@ export default function CheckoutPage({
           {/* Payment Terms (hidden for pre-orders and bulk orders) */}
           {!skipPaymentTerms && (
             <div className="rounded-lg border p-4 space-y-3">
-              <h3 className="font-semibold text-sm">Payment Terms</h3>
+              <h3 className="font-semibold text-lg">Payment Terms</h3>
               {paymentTerms.map((term) => (
                 <label
                   key={term.id}
@@ -492,9 +493,9 @@ export default function CheckoutPage({
                     className="size-4 accent-primary"
                   />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{term.name}</p>
+                    <p className="text-base font-medium">{term.name}</p>
                     {parseFloat(term.discount_percentage) > 0 && (
-                      <p className="text-xs text-green-600">
+                      <p className="text-sm text-green-600">
                         {parseFloat(term.discount_percentage)}% discount
                       </p>
                     )}
@@ -506,7 +507,7 @@ export default function CheckoutPage({
 
           {/* Price Breakdown */}
           <div className="rounded-lg border p-4 space-y-2">
-            <h3 className="font-semibold text-sm mb-3">Order Total</h3>
+            <h3 className="font-semibold text-lg mb-3">Order Total</h3>
 
             {previewLoading ? (
               <div className="flex items-center justify-center py-4">
@@ -514,13 +515,13 @@ export default function CheckoutPage({
               </div>
             ) : preview ? (
               <>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-base">
                   <span className="text-muted-foreground">Subtotal</span>
                   <span>{formatPrice(preview.subtotal)}</span>
                 </div>
 
                 {parseFloat(preview.payment_term_discount_amount) > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
+                  <div className="flex justify-between text-base text-green-600">
                     <span>
                       Payment Discount
                       {preview.payment_term && ` (${parseFloat(preview.payment_term.discount_percentage)}%)`}
@@ -530,14 +531,14 @@ export default function CheckoutPage({
                 )}
 
                 {preview.discounts.map((d, i) => (
-                  <div key={i} className="flex justify-between text-sm text-green-600">
+                  <div key={i} className="flex justify-between text-base text-green-600">
                     <span>{d.name}</span>
                     <span>-{formatPrice(d.amount)}</span>
                   </div>
                 ))}
 
                 {parseFloat(preview.tax_amount) > 0 && (
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-base">
                     <span className="text-muted-foreground">
                       Tax ({parseFloat(preview.tax_rate)}%)
                     </span>
@@ -545,15 +546,35 @@ export default function CheckoutPage({
                   </div>
                 )}
 
+                {parseFloat(preview.delivery_fee) > 0 && (
+                  <div className="flex justify-between text-base">
+                    <span className="text-muted-foreground">Delivery Fee</span>
+                    <span>{formatPrice(preview.delivery_fee)}</span>
+                  </div>
+                )}
+
+                {preview.delivery_fee_waived && (
+                  <div className="flex justify-between text-base text-green-600">
+                    <span>Delivery Fee Waived</span>
+                    <span>$0.00</span>
+                  </div>
+                )}
+
+                {!preview.delivery_fee_waived && parseFloat(preview.delivery_fee) > 0 && preview.delivery_fee_waiver_minimum && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Free delivery on orders over {formatPrice(preview.delivery_fee_waiver_minimum)}
+                  </p>
+                )}
+
                 <div className="border-t pt-2 mt-2">
-                  <div className="flex justify-between font-semibold text-base">
+                  <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
                     <span>{formatPrice(preview.total)}</span>
                   </div>
                 </div>
               </>
             ) : (
-              <div className="flex justify-between font-semibold">
+              <div className="flex justify-between font-semibold text-lg">
                 <span>Subtotal</span>
                 <span>{formatPrice(cart.subtotal)}</span>
               </div>
@@ -579,7 +600,7 @@ export default function CheckoutPage({
                   onChange={(e) => setTermsAccepted(e.target.checked)}
                   className="size-5 rounded border-input accent-primary shrink-0"
                 />
-                <span className="text-sm leading-snug">
+                <span className="text-base leading-snug">
                   I agree to the selected{" "}
                   <button
                     type="button"

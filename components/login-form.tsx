@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, FormEvent } from "react"
+import { useState, useEffect, useRef, type FormEvent } from "react"
 import posthog from "posthog-js"
+import { EyeIcon, EyeOffIcon, MailIcon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
@@ -17,13 +18,33 @@ function getSavedEmail(): string {
 }
 
 export function LoginForm() {
-  const [email, setEmail] = useState(getSavedEmail)
+  const savedEmail = getSavedEmail()
+  const [email, setEmail] = useState(savedEmail)
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [mode, setMode] = useState<LoginMode>("password")
+  const [mounted, setMounted] = useState(false)
   const { login } = useAuth()
+
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Auto-focus: password if email is remembered, email otherwise
+  useEffect(() => {
+    if (!mounted) return
+    if (savedEmail && mode === "password") {
+      passwordRef.current?.focus()
+    } else {
+      emailRef.current?.focus()
+    }
+  }, [mounted, mode, savedEmail])
 
   const handlePasswordSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -67,12 +88,14 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex flex-col items-center w-full max-w-sm">
+    <div
+      className={`flex flex-col items-center w-full max-w-sm transition-opacity duration-500 ${mounted ? "opacity-100" : "opacity-0"}`}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/panda-symbol.svg" alt="SPFarms" className="w-20 h-auto mb-6" />
 
       <h1 className="text-4xl font-light tracking-tight text-[#050403] mb-10">
-        Welcome friend
+        {savedEmail ? "Welcome back" : "Welcome friend"}
       </h1>
 
       <form
@@ -80,63 +103,103 @@ export function LoginForm() {
         className="w-full flex flex-col gap-4"
       >
         {error && (
-          <div className="bg-red-100 text-red-800 rounded-xl p-3 text-sm text-center">
-            <p>{error}</p>
-            <p className="mt-1 text-xs opacity-70">Need help? Contact {SUPPORT_EMAIL}</p>
-          </div>
-        )}
-        {success && (
-          <div className="bg-green-100 text-green-800 rounded-xl p-3 text-sm text-center">
-            {success}
-          </div>
-        )}
-
-        <Input
-          id="email"
-          type="email"
-          placeholder="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          disabled={isLoading}
-          className="h-14 rounded-xl border-0 bg-white text-base px-5 shadow-none"
-        />
-
-        {mode === "password" && (
-          <Input
-            id="password"
-            type="password"
-            placeholder="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={isLoading}
-            className="h-14 rounded-xl border-0 bg-white text-base px-5 shadow-none"
-          />
-        )}
-
-        <Button
-          type="submit"
-          disabled={isLoading}
-          className="w-full h-14 rounded-xl text-lg font-medium mt-2"
-          style={{ backgroundColor: "#48A848" }}
-        >
-          {isLoading
-            ? (mode === "password" ? "Logging in..." : "Sending link...")
-            : (mode === "password" ? "Login" : "Send login link")}
-        </Button>
-
-        <div className="text-center mt-2">
           <button
             type="button"
-            onClick={toggleMode}
-            className="text-sm text-[#050403]/60 underline hover:text-[#050403]"
+            onClick={() => setError("")}
+            className="bg-red-100 text-red-800 rounded-xl p-3 text-sm text-center relative group cursor-pointer"
           >
-            {mode === "password"
-              ? "Login with a magic link instead"
-              : "Login with password instead"}
+            <XIcon className="absolute top-2.5 right-2.5 size-3.5 opacity-0 group-hover:opacity-60 transition-opacity" />
+            <p>{error}</p>
+            <p className="mt-1 text-xs opacity-70">Need help? Contact {SUPPORT_EMAIL}</p>
           </button>
-        </div>
+        )}
+
+        {success ? (
+          <div className="bg-green-50 text-green-800 rounded-xl p-6 text-center space-y-3">
+            <MailIcon className="size-10 mx-auto text-green-600" />
+            <p className="text-lg font-medium">Check your inbox</p>
+            <p className="text-sm text-green-700">
+              We sent a login link to <span className="font-medium">{email}</span>. Click the link in the email to sign in.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setSuccess(""); toggleMode(); }}
+              className="text-sm text-green-600 underline hover:text-green-800 mt-2"
+            >
+              Back to password login
+            </button>
+          </div>
+        ) : (
+          <>
+            <Input
+              ref={emailRef}
+              id="email"
+              type="email"
+              placeholder="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={isLoading}
+              className="h-14 rounded-xl border-0 bg-white text-base px-5 shadow-none"
+            />
+
+            {mode === "password" && (
+              <>
+                <div className="relative">
+                  <Input
+                    ref={passwordRef}
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="h-14 rounded-xl border-0 bg-white text-base px-5 pr-12 shadow-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#050403]/30 hover:text-[#050403]/60 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOffIcon className="size-5" /> : <EyeIcon className="size-5" />}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className="text-sm text-[#050403]/50 hover:text-[#050403] transition-colors text-left -mt-1"
+                >
+                  Forgot password or don&apos;t have one? <span className="underline font-medium">Use a magic link</span>
+                </button>
+              </>
+            )}
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-14 rounded-xl text-lg font-medium mt-2"
+              style={{ backgroundColor: "#48A848" }}
+            >
+              {isLoading
+                ? (mode === "password" ? "Logging in..." : "Sending link...")
+                : (mode === "password" ? "Login" : "Send login link")}
+            </Button>
+
+            {mode === "magic_link" && (
+              <div className="text-center mt-2">
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className="text-sm text-[#050403]/50 hover:text-[#050403] transition-colors"
+                >
+                  Back to <span className="underline font-medium">password login</span>
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </form>
     </div>
   )

@@ -17,7 +17,8 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { PlusIcon, AlertTriangleIcon, MessageSquareIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { PlusIcon, AlertTriangleIcon, MessageSquareIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon, ClipboardListIcon } from "lucide-react";
 import { type PaginationMeta } from "@/lib/api";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
@@ -46,6 +47,20 @@ const COMPANY_TYPE_COLORS: Record<CompanyType, string> = {
 const COMPANY_TYPES = Object.entries(COMPANY_TYPE_LABELS) as [CompanyType, string][];
 const LEAD_STATUSES = Object.entries(LEAD_STATUS_LABELS) as [LeadStatus, string][];
 
+function timeAgo(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+  return `${Math.floor(diffDays / 365)}y ago`;
+}
+
 export default function CompaniesPage() {
   const { isAuthenticated, isLoading: authLoading, user: currentUser } = useAuth();
   const router = useRouter();
@@ -57,6 +72,16 @@ export default function CompaniesPage() {
   const [typeFilter, setTypeFilter] = useState<CompanyType | "all">("all");
   const [leadFilter, setLeadFilter] = useState<LeadStatus | "all">("all");
   const [showDeleted, setShowDeleted] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -69,7 +94,7 @@ export default function CompaniesPage() {
 
     setIsLoading(true);
     apiClient
-      .getCompanies({ include_deleted: showDeleted || undefined, page, per_page: 25 })
+      .getCompanies({ include_deleted: showDeleted || undefined, page, per_page: 25, q: debouncedSearch || undefined })
       .then((res) => {
         setCompanies(res.data);
         setPagination(res.meta);
@@ -78,7 +103,7 @@ export default function CompaniesPage() {
         setError(err instanceof Error ? err.message : "We couldn't load companies")
       )
       .finally(() => setIsLoading(false));
-  }, [isAuthenticated, showDeleted, page]);
+  }, [isAuthenticated, showDeleted, page, debouncedSearch]);
 
   const filtered = companies.filter((c) => {
     if (typeFilter !== "all" && c.company_type !== typeFilter) return false;
@@ -97,12 +122,23 @@ export default function CompaniesPage() {
             Manage dispensaries, distributors, and partners
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/companies/new">
-            <PlusIcon className="mr-2 size-4" />
-            Add Company
-          </Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search companies..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-64 pl-9"
+            />
+          </div>
+          <Button asChild>
+            <Link href="/admin/companies/new">
+              <PlusIcon className="mr-2 size-4" />
+              Add Company
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -211,8 +247,9 @@ export default function CompaniesPage() {
                 <th className="px-4 py-3 text-left font-medium">Type</th>
                 <th className="px-4 py-3 text-left font-medium">Lead Status</th>
                 <th className="px-4 py-3 text-left font-medium">Account</th>
+                <th className="px-4 py-3 text-left font-medium">Orders</th>
+                <th className="px-4 py-3 text-left font-medium">Last Activity</th>
                 <th className="px-4 py-3 text-left font-medium">Location</th>
-                <th className="px-4 py-3 text-left font-medium">License #</th>
               </tr>
             </thead>
             <tbody>
@@ -289,15 +326,23 @@ export default function CompaniesPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
+                      {c.orders_count > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <ClipboardListIcon className="size-3.5" />
+                          {c.orders_count}
+                        </span>
+                      ) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground" title={c.last_activity_at ? new Date(c.last_activity_at).toLocaleString() : undefined}>
+                      {timeAgo(c.last_activity_at)}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
                       {locationLabel}
                       {c.locations?.length > 1 && (
                         <span className="ml-1 text-xs text-muted-foreground">
                           +{c.locations.length - 1}
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {c.license_number || "-"}
                     </td>
                   </tr>
                 );

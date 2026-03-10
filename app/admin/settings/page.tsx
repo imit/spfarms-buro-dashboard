@@ -15,6 +15,9 @@ import {
   type DiscountRecord,
   type DiscountType,
   type AppSettings,
+  type DeliveryFeeRecord,
+  type Region,
+  REGION_LABELS,
 } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -98,6 +101,19 @@ export default function SettingsPage() {
   const [discSaving, setDiscSaving] = useState(false);
   const [discDeleting, setDiscDeleting] = useState<DiscountRecord | null>(null);
 
+  // Delivery fees
+  const [deliveryFees, setDeliveryFees] = useState<DeliveryFeeRecord[]>([]);
+  const [dfDialogOpen, setDfDialogOpen] = useState(false);
+  const [dfEditing, setDfEditing] = useState<DeliveryFeeRecord | null>(null);
+  const [dfForm, setDfForm] = useState({ region: "" as string, fee: 0 });
+  const [dfSaving, setDfSaving] = useState(false);
+  const [dfDeleting, setDfDeleting] = useState<DeliveryFeeRecord | null>(null);
+
+  // Delivery fee waiver minimum
+  const [editingWaiver, setEditingWaiver] = useState(false);
+  const [waiverValue, setWaiverValue] = useState("");
+  const [savingWaiver, setSavingWaiver] = useState(false);
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/");
@@ -109,14 +125,16 @@ export default function SettingsPage() {
 
     async function load() {
       try {
-        const [s, pt, d] = await Promise.all([
+        const [s, pt, d, df] = await Promise.all([
           apiClient.getSettings(),
           apiClient.getPaymentTerms(),
           apiClient.getDiscounts(),
+          apiClient.getDeliveryFees(),
         ]);
         setSettings(s);
         setPaymentTerms(pt);
         setDiscounts(d);
+        setDeliveryFees(df);
       } catch (err) {
         console.error("Failed to load settings:", err);
       } finally {
@@ -310,6 +328,85 @@ export default function SettingsPage() {
     }
   };
 
+  // --- Delivery Fee Waiver Minimum ---
+
+  const startEditWaiver = () => {
+    setWaiverValue(settings?.delivery_fee_waiver_minimum || "");
+    setEditingWaiver(true);
+  };
+
+  const saveWaiver = async () => {
+    setSavingWaiver(true);
+    try {
+      const updated = await apiClient.updateSettings({
+        delivery_fee_waiver_minimum: waiverValue,
+      });
+      setSettings(updated);
+      setEditingWaiver(false);
+      toast.success("Delivery fee waiver minimum updated");
+    } catch {
+      showError("update the waiver minimum");
+    } finally {
+      setSavingWaiver(false);
+    }
+  };
+
+  // --- Delivery Fees ---
+
+  const openDfDialog = (df?: DeliveryFeeRecord) => {
+    if (df) {
+      setDfEditing(df);
+      setDfForm({ region: df.region, fee: parseFloat(df.fee) });
+    } else {
+      setDfEditing(null);
+      setDfForm({ region: "", fee: 0 });
+    }
+    setDfDialogOpen(true);
+  };
+
+  const saveDf = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDfSaving(true);
+    try {
+      if (dfEditing) {
+        const updated = await apiClient.updateDeliveryFee(dfEditing.id, {
+          fee: dfForm.fee,
+        });
+        setDeliveryFees((prev) =>
+          prev.map((d) => (d.id === updated.id ? updated : d))
+        );
+        toast.success("Delivery fee updated");
+      } else {
+        const created = await apiClient.createDeliveryFee(dfForm);
+        setDeliveryFees((prev) => [...prev, created]);
+        toast.success("Delivery fee created");
+      }
+      setDfDialogOpen(false);
+    } catch {
+      showError("save the delivery fee");
+    } finally {
+      setDfSaving(false);
+    }
+  };
+
+  const deleteDf = async () => {
+    if (!dfDeleting) return;
+    try {
+      await apiClient.deleteDeliveryFee(dfDeleting.id);
+      setDeliveryFees((prev) => prev.filter((d) => d.id !== dfDeleting.id));
+      toast.success("Delivery fee deleted");
+    } catch {
+      showError("delete the delivery fee");
+    } finally {
+      setDfDeleting(null);
+    }
+  };
+
+  const usedRegions = new Set(deliveryFees.map((df) => df.region));
+  const availableRegions = (Object.keys(REGION_LABELS) as Region[]).filter(
+    (r) => !usedRegions.has(r) || r === dfEditing?.region
+  );
+
   if (authLoading || !isAuthenticated) return null;
 
   if (isLoading) {
@@ -325,7 +422,7 @@ export default function SettingsPage() {
       <div>
         <h2 className="text-2xl font-semibold">Settings</h2>
         <p className="text-sm text-muted-foreground">
-          Manage tax rate, payment terms, and discounts
+          Manage tax rate, delivery fees, payment terms, and discounts
         </p>
       </div>
 
@@ -466,6 +563,128 @@ export default function SettingsPage() {
           <p className="text-2xl font-bold">{settings.bulk_sales_phone}</p>
         ) : (
           <p className="text-sm text-muted-foreground">No bulk sales phone set</p>
+        )}
+      </div>
+
+      {/* Delivery Fees */}
+      <div className="rounded-lg border">
+        <div className="flex items-center justify-between p-5 pb-3">
+          <div>
+            <h3 className="font-semibold">Delivery Fees</h3>
+            <p className="text-sm text-muted-foreground">
+              Set delivery fees per region. Fees are added to the order total at checkout.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => openDfDialog()}>
+            <PlusIcon className="mr-1.5 size-3.5" />
+            Add Fee
+          </Button>
+        </div>
+
+        {deliveryFees.length === 0 ? (
+          <div className="p-5 pt-2 text-sm text-muted-foreground">
+            No delivery fees set. All deliveries are free.
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-t border-b bg-muted/50">
+                <th className="px-5 py-2.5 text-left font-medium">Region</th>
+                <th className="px-5 py-2.5 text-left font-medium">Fee</th>
+                <th className="px-5 py-2.5 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deliveryFees.map((df) => (
+                <tr
+                  key={df.id}
+                  className="border-b last:border-0 hover:bg-muted/30"
+                >
+                  <td className="px-5 py-2.5 font-medium">
+                    {REGION_LABELS[df.region] || df.region}
+                  </td>
+                  <td className="px-5 py-2.5">
+                    {parseFloat(df.fee) === 0 ? (
+                      <span className="text-green-600">Free</span>
+                    ) : (
+                      `$${parseFloat(df.fee).toFixed(2)}`
+                    )}
+                  </td>
+                  <td className="px-5 py-2.5 text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      onClick={() => openDfDialog(df)}
+                    >
+                      <PencilIcon className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDfDeleting(df)}
+                    >
+                      <TrashIcon className="size-3.5" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Delivery Fee Waiver */}
+      <div className="rounded-lg border p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="font-semibold">Delivery Fee Waiver</h3>
+            <p className="text-sm text-muted-foreground">
+              Minimum order amount to waive the delivery fee. Leave empty to disable.
+            </p>
+          </div>
+          {!editingWaiver && (
+            <Button variant="outline" size="sm" onClick={startEditWaiver}>
+              <PencilIcon className="mr-1.5 size-3.5" />
+              Edit
+            </Button>
+          )}
+        </div>
+
+        {editingWaiver ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">$</span>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={waiverValue}
+              onChange={(e) => setWaiverValue(e.target.value)}
+              placeholder="e.g. 500"
+              className="w-40"
+            />
+            <Button size="sm" onClick={saveWaiver} disabled={savingWaiver}>
+              <CheckIcon className="mr-1 size-3.5" />
+              {savingWaiver ? "Saving..." : "Save"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditingWaiver(false)}
+            >
+              <XIcon className="mr-1 size-3.5" />
+              Cancel
+            </Button>
+          </div>
+        ) : settings?.delivery_fee_waiver_minimum ? (
+          <p className="text-2xl font-bold">
+            ${parseFloat(settings.delivery_fee_waiver_minimum).toFixed(2)}
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No waiver minimum set — delivery fees always apply
+          </p>
         )}
       </div>
 
@@ -873,6 +1092,93 @@ export default function SettingsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={deleteDisc}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delivery Fee Dialog */}
+      <Dialog
+        open={dfDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) setDfDialogOpen(false);
+        }}
+      >
+        <DialogContent>
+          <form onSubmit={saveDf}>
+            <DialogHeader>
+              <DialogTitle>
+                {dfEditing ? "Edit Delivery Fee" : "New Delivery Fee"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <Field>
+                <FieldLabel htmlFor="df-region">Region</FieldLabel>
+                <Select
+                  value={dfForm.region}
+                  onValueChange={(v) => setDfForm({ ...dfForm, region: v })}
+                  disabled={!!dfEditing}
+                >
+                  <SelectTrigger id="df-region">
+                    <SelectValue placeholder="Select a region" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableRegions.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {REGION_LABELS[r]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="df-fee">Fee ($)</FieldLabel>
+                <Input
+                  id="df-fee"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={dfForm.fee}
+                  onChange={(e) =>
+                    setDfForm({ ...dfForm, fee: Number(e.target.value) })
+                  }
+                  required
+                />
+              </Field>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDfDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={dfSaving || (!dfEditing && !dfForm.region)}>
+                {dfSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delivery Fee Delete Confirmation */}
+      <AlertDialog
+        open={!!dfDeleting}
+        onOpenChange={(open) => {
+          if (!open) setDfDeleting(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Delivery Fee</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove the delivery fee for{" "}
+              {dfDeleting ? REGION_LABELS[dfDeleting.region] || dfDeleting.region : ""}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteDf}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

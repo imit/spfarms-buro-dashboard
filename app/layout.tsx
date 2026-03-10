@@ -37,7 +37,24 @@ export default function RootLayout({
         <TooltipProvider>
           <AuthProvider>{children}</AuthProvider>
         </TooltipProvider>
-        <Toaster />
+        <Toaster
+          position="top-center"
+          expand
+          style={{ width: "100%", left: 0, right: 0, transform: "none", padding: "0 1rem" }}
+          toastOptions={{
+            style: {
+              background: "#F5D922",
+              color: "#1a1a1a",
+              border: "none",
+              borderRadius: "0.75rem",
+              fontSize: "1rem",
+              fontWeight: 500,
+              padding: "0.875rem 1.25rem",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+              width: "100%",
+            },
+          }}
+        />
       </body>
     </html>
   );

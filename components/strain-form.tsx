@@ -50,6 +50,7 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
   const [titleImageGalleryFileId, setTitleImageGalleryFileId] = useState<number | null>(null);
   const [galleryPickerOpen, setGalleryPickerOpen] = useState<"image" | "title_image" | null>(null);
   const [smellTagInput, setSmellTagInput] = useState("");
+  const [effectTagInput, setEffectTagInput] = useState("");
 
   const [form, setForm] = useState({
     name: strain?.name || "",
@@ -65,6 +66,7 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
     total_thc: strain?.total_thc || "",
     total_cannabinoids: strain?.total_cannabinoids || "",
     smell_tags: strain?.smell_tags || [] as string[],
+    effect_tags: strain?.effect_tags || [] as string[],
   });
 
   const isEdit = mode === "edit";
@@ -139,6 +141,28 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
     }
   }
 
+  function addEffectTag(tag: string) {
+    const trimmed = tag.trim().toLowerCase();
+    if (!trimmed) return;
+    if (form.effect_tags.includes(trimmed)) return;
+    setForm((prev) => ({ ...prev, effect_tags: [...prev.effect_tags, trimmed] }));
+    setEffectTagInput("");
+  }
+
+  function removeEffectTag(tag: string) {
+    setForm((prev) => ({
+      ...prev,
+      effect_tags: prev.effect_tags.filter((t) => t !== tag),
+    }));
+  }
+
+  function handleEffectTagKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addEffectTag(effectTagInput);
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -166,6 +190,11 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
       // Append smell_tags as array
       form.smell_tags.forEach((tag) => {
         formData.append("strain[smell_tags][]", tag);
+      });
+
+      // Append effect_tags as array
+      form.effect_tags.forEach((tag) => {
+        formData.append("strain[effect_tags][]", tag);
       });
 
       if (isEdit && strain) {
@@ -383,6 +412,47 @@ export function StrainForm({ strain, mode = "create" }: StrainFormProps) {
                       <button
                         type="button"
                         onClick={() => removeSmellTag(tag)}
+                        className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                      >
+                        <XIcon className="size-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Field>
+        </FieldGroup>
+      </section>
+
+      {/* Effect Tags */}
+      <section className="space-y-4">
+        <h3 className="text-lg font-medium">Effect Profile</h3>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="effect_tags">Effect Tags</FieldLabel>
+            <div className="space-y-2">
+              <Input
+                id="effect_tags"
+                value={effectTagInput}
+                onChange={(e) => setEffectTagInput(e.target.value)}
+                onKeyDown={handleEffectTagKeyDown}
+                onBlur={() => addEffectTag(effectTagInput)}
+                placeholder="Type a tag and press Enter (e.g. relaxing, uplifting, euphoric)"
+                disabled={isSubmitting}
+              />
+              {form.effect_tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {form.effect_tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="gap-1 pr-1"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeEffectTag(tag)}
                         className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
                       >
                         <XIcon className="size-3" />

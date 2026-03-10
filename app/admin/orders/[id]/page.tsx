@@ -1,11 +1,21 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon, FileSignatureIcon, ExternalLinkIcon, ShieldAlertIcon, PencilIcon, PlusIcon, Trash2Icon, MailIcon, ChevronDownIcon, EllipsisIcon, MessageSquareIcon, SendIcon } from "lucide-react";
-import { apiClient, type Order, type OrderStatus, type Comment, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
-import { statusBadgeClasses } from "@/lib/order-utils";
+import {
+  ArrowLeftIcon, DownloadIcon, CheckCircleIcon, BanknoteIcon,
+  FileSignatureIcon, ExternalLinkIcon, ShieldAlertIcon, PencilIcon,
+  PlusIcon, Trash2Icon, MailIcon, ChevronDownIcon, MessageSquareIcon,
+  SendIcon, UploadIcon, ImageIcon, XIcon, FileTextIcon,
+  TruckIcon, CalendarIcon, ClockIcon, PackageIcon,
+} from "lucide-react";
+import {
+  apiClient, type Order, type OrderStatus, type Comment,
+  type PaymentStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
+  PAYMENT_STATUS_LABELS,
+} from "@/lib/api";
+import { statusBadgeClasses, STATUS_COLORS, TIMELINE_STEPS, getStepIndex } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,21 +23,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
@@ -43,6 +44,11 @@ function formatLocation(loc: { name?: string | null; address?: string | null; ci
   if (!loc) return "Not specified";
   const parts = [loc.name, loc.address, [loc.city, loc.state, loc.zip_code].filter(Boolean).join(", ")].filter(Boolean);
   return parts.join(" — ") || "Not specified";
+}
+
+function formatDate(d: string | null) {
+  if (!d) return null;
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 const STATUSES = Object.entries(ORDER_STATUS_LABELS) as [OrderStatus, string][];
@@ -82,10 +88,10 @@ export default function AdminOrderDetailPage({
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [postingComment, setPostingComment] = useState(false);
+  const [activeTab, setActiveTab] = useState<"activity" | "delivery" | "payment">("activity");
 
   useEffect(() => {
     if (!isAuthenticated) return;
-
     async function load() {
       try {
         const [data, commentsData] = await Promise.all([
@@ -101,7 +107,6 @@ export default function AdminOrderDetailPage({
         setIsLoading(false);
       }
     }
-
     load();
   }, [isAuthenticated, id]);
 
@@ -184,11 +189,8 @@ export default function AdminOrderDetailPage({
       await apiClient.sendBankInfo(Number(id));
       toast.success("Bank info email sent");
       setTimelineKey((k) => k + 1);
-    } catch {
-      showError("send bank info");
-    } finally {
-      setSendingBankInfo(false);
-    }
+    } catch { showError("send bank info"); }
+    finally { setSendingBankInfo(false); }
   };
 
   const handleSendAgreement = async () => {
@@ -198,11 +200,8 @@ export default function AdminOrderDetailPage({
       setOrder(updated);
       toast.success("Payment terms agreement sent");
       setTimelineKey((k) => k + 1);
-    } catch {
-      showError("send payment terms agreement");
-    } finally {
-      setSendingAgreement(false);
-    }
+    } catch { showError("send payment terms agreement"); }
+    finally { setSendingAgreement(false); }
   };
 
   const handleSendLicenseReminder = async () => {
@@ -211,11 +210,8 @@ export default function AdminOrderDetailPage({
       await apiClient.sendLicenseReminder(Number(id));
       toast.success("License reminder sent");
       setTimelineKey((k) => k + 1);
-    } catch {
-      showError("send license reminder");
-    } finally {
-      setSendingLicenseReminder(false);
-    }
+    } catch { showError("send license reminder"); }
+    finally { setSendingLicenseReminder(false); }
   };
 
   const startEditingContacts = () => {
@@ -243,11 +239,8 @@ export default function AdminOrderDetailPage({
       setOrder(updated);
       setEditingContacts(false);
       toast.success("Order people updated");
-    } catch {
-      showError("update the order people");
-    } finally {
-      setSavingContacts(false);
-    }
+    } catch { showError("update the order people"); }
+    finally { setSavingContacts(false); }
   };
 
   const markProcessingDone = async () => {
@@ -256,9 +249,7 @@ export default function AdminOrderDetailPage({
       setOrder(updated);
       setShowDoneConfirm(false);
       toast.success("Order marked as fulfilled");
-    } catch {
-      showError("mark the order as fulfilled");
-    }
+    } catch { showError("mark the order as fulfilled"); }
   };
 
   const startEditingLocations = () => {
@@ -279,11 +270,8 @@ export default function AdminOrderDetailPage({
       setOrder(updated);
       setEditingLocations(false);
       toast.success("Locations updated");
-    } catch {
-      showError("update the locations");
-    } finally {
-      setSavingLocations(false);
-    }
+    } catch { showError("update the locations"); }
+    finally { setSavingLocations(false); }
   };
 
   const postComment = async () => {
@@ -293,18 +281,12 @@ export default function AdminOrderDetailPage({
       const comment = await apiClient.createOrderComment(Number(id), newComment.trim());
       setComments((prev) => [comment, ...prev]);
       setNewComment("");
-    } catch {
-      showError("add the comment");
-    } finally {
-      setPostingComment(false);
-    }
+    } catch { showError("add the comment"); }
+    finally { setPostingComment(false); }
   };
 
   const refreshComments = async () => {
-    try {
-      const data = await apiClient.getOrderComments(Number(id));
-      setComments(data);
-    } catch { /* ignore */ }
+    try { const data = await apiClient.getOrderComments(Number(id)); setComments(data); } catch {}
   };
 
   const startEditingPrices = () => {
@@ -330,80 +312,32 @@ export default function AdminOrderDetailPage({
       setEditingPrices(false);
       refreshComments();
       toast.success("Prices updated");
-    } catch {
-      showError("update the prices");
-    } finally {
-      setSavingPrices(false);
-    }
+    } catch { showError("update the prices"); }
+    finally { setSavingPrices(false); }
   };
 
-  if (isLoading) {
-    return <p className="px-10 text-muted-foreground">Loading order...</p>;
-  }
-
-  if (!order) {
-    return <p className="px-10 text-muted-foreground">Order not found.</p>;
-  }
+  if (isLoading) return <p className="px-10 text-muted-foreground">Loading order...</p>;
+  if (!order) return <p className="px-10 text-muted-foreground">Order not found.</p>;
 
   const companyDetails = order.company_details;
+  const currentStep = getStepIndex(order.status);
+  const isCancelled = order.status === "cancelled";
+  const isPaidStatus = order.status === "payment_received";
 
   return (
-    <div className="space-y-6 px-10">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => router.push("/admin/orders")}
-      >
-        <ArrowLeftIcon className="mr-1.5 size-4" />
-        Back to Orders
-      </Button>
-
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">
-            {order.order_number}
-            {order.order_type === "preorder" && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                {ORDER_TYPE_LABELS.preorder}
-              </span>
-            )}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {order.company?.slug ? (
-              <Link href={`/admin/companies/${order.company.slug}`} className="hover:underline">{order.company.name}</Link>
-            ) : (
-              order.company?.name ?? "Unknown company"
-            )} — {new Date(order.created_at).toLocaleDateString()}
-          </p>
-        </div>
+    <div className="space-y-6 px-10 pb-10">
+      {/* Top bar */}
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => router.push("/admin/orders")}>
+          <ArrowLeftIcon className="mr-1.5 size-4" />
+          Orders
+        </Button>
         <div className="flex items-center gap-2">
-          <select
-            value={order.status}
-            onChange={(e) => {
-              if (e.target.value !== order.status) {
-                setPendingStatus(e.target.value);
-              }
-            }}
-            className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            {STATUSES.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-          {order.status === "processing" && (
-            <Button size="sm" onClick={() => setShowDoneConfirm(true)}>
-              <CheckCircleIcon className="mr-1.5 size-4" />
-              Mark Done
-            </Button>
-          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <MailIcon className="mr-1.5 size-4" />
-                Send Email
+                Email
                 <ChevronDownIcon className="ml-1.5 size-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -430,126 +364,163 @@ export default function AdminOrderDetailPage({
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <DownloadIcon className="mr-1.5 size-4" />
-                Download
+                PDF
                 <ChevronDownIcon className="ml-1.5 size-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={downloadInvoice}>
-                <DownloadIcon className="mr-2 size-4" />
-                Invoice
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={downloadDeliveryAgreement}>
-                <FileSignatureIcon className="mr-2 size-4" />
-                Delivery Agreement
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={downloadInvoice}>Invoice</DropdownMenuItem>
+              <DropdownMenuItem onClick={downloadDeliveryAgreement}>Delivery Agreement</DropdownMenuItem>
               {order.payment_term_days != null && order.payment_term_days > 0 && (
-                <DropdownMenuItem onClick={downloadPaymentTerms}>
-                  <DownloadIcon className="mr-2 size-4" />
-                  Payment Terms
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={downloadPaymentTerms}>Payment Terms</DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Order info */}
-          <div className="rounded-lg border p-4 text-sm space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-muted-foreground">Status</p>
-                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
-                  {ORDER_STATUS_LABELS[order.status]}
+      {/* Hero header */}
+      <div className="rounded-2xl border bg-card p-6 shadow-xs">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold tracking-tight">{order.order_number}</h2>
+              {order.order_type === "preorder" && (
+                <Badge variant="secondary">Pre-order</Badge>
+              )}
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
+                {ORDER_STATUS_LABELS[order.status]}
+              </span>
+              {order.payment_status && order.payment_status !== "unpaid" && (
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  order.payment_status === "paid" ? "bg-green-100 text-green-700" :
+                  order.payment_status === "overdue" ? "bg-red-100 text-red-700" :
+                  "bg-amber-100 text-amber-700"
+                }`}>
+                  {PAYMENT_STATUS_LABELS[order.payment_status]}
                 </span>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Desired Delivery</p>
-                <p className="font-medium">
-                  {order.desired_delivery_date
-                    ? new Date(order.desired_delivery_date).toLocaleDateString()
-                    : "Not specified"}
-                </p>
-              </div>
-            </div>
-            <div className="border-t pt-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-muted-foreground font-medium">Locations</p>
-                {!editingLocations && (
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditingLocations}>
-                    <PencilIcon className="mr-1 size-3" />
-                    Edit
-                  </Button>
-                )}
-              </div>
-              {editingLocations ? (
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Shipping Location</Label>
-                    <select
-                      value={shippingLocationId}
-                      onChange={(e) => setShippingLocationId(e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    >
-                      <option value="">Select a location</option>
-                      {companyDetails?.locations.map((loc) => (
-                        <option key={loc.id} value={loc.id}>
-                          {loc.name || loc.address} — {loc.city}, {loc.state} {loc.zip_code}{loc.license_number ? ` (OCM: ${loc.license_number})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Billing Location</Label>
-                    <select
-                      value={billingLocationId}
-                      onChange={(e) => setBillingLocationId(e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    >
-                      <option value="">Select a location</option>
-                      {companyDetails?.locations.map((loc) => (
-                        <option key={loc.id} value={loc.id}>
-                          {loc.name || loc.address} — {loc.city}, {loc.state} {loc.zip_code}{loc.license_number ? ` (OCM: ${loc.license_number})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" className="text-xs h-7" onClick={saveLocations} disabled={savingLocations}>
-                      {savingLocations ? "Saving..." : "Save"}
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setEditingLocations(false)}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Shipping</p>
-                    <p className="font-medium">{formatLocation(order.shipping_location)}</p>
-                    {order.shipping_location?.license_number && (
-                      <p className="text-xs text-muted-foreground">OCM: {order.shipping_location.license_number}</p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Billing</p>
-                    <p className="font-medium">{formatLocation(order.billing_location)}</p>
-                    {order.billing_location?.license_number && (
-                      <p className="text-xs text-muted-foreground">OCM: {order.billing_location.license_number}</p>
-                    )}
-                  </div>
-                </div>
               )}
             </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {order.company?.slug ? (
+                <Link href={`/admin/companies/${order.company.slug}`} className="hover:underline font-medium">{order.company.name}</Link>
+              ) : (
+                order.company?.name ?? "Unknown company"
+              )}
+              {" · "}
+              {new Date(order.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            </p>
           </div>
+          <div className="text-right">
+            <p className="text-3xl font-bold tracking-tight">{formatPrice(order.total)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
 
+        {/* Key info strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center size-8 rounded-lg bg-muted">
+              <CalendarIcon className="size-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Desired Delivery</p>
+              <p className="text-sm font-medium">{formatDate(order.desired_delivery_date) || "Not set"}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center size-8 rounded-lg bg-muted">
+              <TruckIcon className="size-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Delivered</p>
+              <p className="text-sm font-medium">{formatDate(order.delivered_at) || "Pending"}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center size-8 rounded-lg bg-muted">
+              <BanknoteIcon className="size-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Terms</p>
+              <p className="text-sm font-medium">
+                {order.payment_term_name
+                  ? `${order.payment_term_name}${order.payment_term_days ? ` · Net ${order.payment_term_days}` : ""}`
+                  : "COD"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center size-8 rounded-lg bg-muted">
+              <ClockIcon className="size-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Payment Due</p>
+              <p className="text-sm font-medium">{formatDate(order.payment_due_date) || "—"}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress timeline */}
+        {!isCancelled && !isPaidStatus && (
+          <div className="pt-5 mt-5 border-t">
+            <div className="flex items-center gap-0">
+              {TIMELINE_STEPS.map((step, i) => {
+                const isActive = i <= currentStep;
+                const isCurrent = i === currentStep;
+                return (
+                  <div key={step.key} className="flex items-center flex-1 last:flex-none">
+                    <div className="flex flex-col items-center">
+                      <div className={`size-3 rounded-full border-2 transition-colors ${
+                        isCurrent ? "border-primary bg-primary scale-125" :
+                        isActive ? "border-primary bg-primary" :
+                        "border-muted-foreground/30 bg-transparent"
+                      }`} />
+                      <span className={`text-[10px] mt-1.5 whitespace-nowrap ${
+                        isCurrent ? "font-semibold text-foreground" :
+                        isActive ? "text-muted-foreground" :
+                        "text-muted-foreground/50"
+                      }`}>{step.label}</span>
+                    </div>
+                    {i < TIMELINE_STEPS.length - 1 && (
+                      <div className={`h-0.5 flex-1 mx-1 mt-[-16px] ${isActive && i < currentStep ? "bg-primary" : "bg-muted-foreground/15"}`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Status actions */}
+        <div className="flex items-center gap-2 pt-4 mt-4 border-t">
+          <span className="text-xs text-muted-foreground mr-1">Change status:</span>
+          <select
+            value={order.status}
+            onChange={(e) => { if (e.target.value !== order.status) setPendingStatus(e.target.value); }}
+            className="flex h-8 rounded-md border border-input bg-transparent px-2.5 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {STATUSES.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          {order.status === "processing" && (
+            <Button size="sm" className="h-8" onClick={() => setShowDoneConfirm(true)}>
+              <CheckCircleIcon className="mr-1.5 size-3.5" />
+              Mark Fulfilled
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Main grid */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
           {/* Line items */}
-          <div className="rounded-lg border">
-            <div className="px-4 py-3 border-b bg-muted/50 flex items-center justify-between">
+          <div className="rounded-xl border bg-card shadow-xs">
+            <div className="px-5 py-3.5 border-b flex items-center justify-between">
               <h3 className="font-semibold text-sm">Order Items</h3>
               {!editingPrices && (
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditingPrices}>
@@ -560,43 +531,34 @@ export default function AdminOrderDetailPage({
             </div>
             <div className="divide-y">
               {order.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 px-4 py-3">
-                  <div className="size-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                <div key={item.id} className="flex items-center gap-4 px-5 py-3.5">
+                  <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-muted">
                     {item.thumbnail_url ? (
                       <img src={item.thumbnail_url} alt={item.product_name} className="size-full object-cover" />
                     ) : (
-                      <div className="size-full" />
+                      <div className="size-full flex items-center justify-center">
+                        <PackageIcon className="size-5 text-muted-foreground/40" />
+                      </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">
-                      {item.product_name}
-                      {order.order_type === "preorder" && (
-                        <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                          Pre-order
-                        </span>
-                      )}
-                    </p>
+                    <p className="font-medium text-sm">{item.product_name}</p>
                     {editingPrices ? (
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className="text-xs text-muted-foreground">$</span>
                         <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
+                          type="number" step="0.01" min="0"
                           className="h-7 w-24 text-sm"
                           value={priceDrafts[item.id] ?? ""}
                           onChange={(e) => setPriceDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
                         />
-                        <span className="text-xs text-muted-foreground">x {item.quantity}</span>
+                        <span className="text-xs text-muted-foreground">× {item.quantity}</span>
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground">
-                        {formatPrice(item.unit_price)} x {item.quantity}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{formatPrice(item.unit_price)} × {item.quantity}</p>
                     )}
                   </div>
-                  <div className="font-medium text-sm">
+                  <div className="font-medium text-sm tabular-nums">
                     {editingPrices
                       ? formatPrice((parseFloat(priceDrafts[item.id] || "0") * item.quantity).toFixed(2))
                       : formatPrice(item.line_total)}
@@ -605,130 +567,176 @@ export default function AdminOrderDetailPage({
               ))}
             </div>
             {editingPrices && (
-              <div className="border-t px-4 py-3 space-y-3">
+              <div className="border-t px-5 py-3.5 space-y-3">
                 <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={sendPriceNotification}
-                    onChange={(e) => setSendPriceNotification(e.target.checked)}
-                    className="rounded border-gray-300"
-                  />
+                  <input type="checkbox" checked={sendPriceNotification} onChange={(e) => setSendPriceNotification(e.target.checked)} className="rounded border-gray-300" />
                   Send price update email to company
                 </label>
                 {sendPriceNotification && (
-                  <Textarea
-                    placeholder="Add a custom message to include in the email (optional)"
-                    value={priceCustomMessage}
-                    onChange={(e) => setPriceCustomMessage(e.target.value)}
-                    rows={3}
-                    className="text-sm"
-                  />
+                  <Textarea placeholder="Custom message (optional)" value={priceCustomMessage} onChange={(e) => setPriceCustomMessage(e.target.value)} rows={2} className="text-sm" />
                 )}
                 <div className="flex gap-2">
-                  <Button size="sm" className="text-xs h-7" onClick={savePrices} disabled={savingPrices}>
-                    {savingPrices ? "Saving..." : "Save Prices"}
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setEditingPrices(false)}>
-                    Cancel
-                  </Button>
+                  <Button size="sm" className="text-xs h-7" onClick={savePrices} disabled={savingPrices}>{savingPrices ? "Saving..." : "Save Prices"}</Button>
+                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setEditingPrices(false)}>Cancel</Button>
                 </div>
               </div>
             )}
-            <div className="border-t px-4 py-3 space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>{formatPrice(order.subtotal)}</span>
-              </div>
+            {/* Totals */}
+            <div className="border-t px-5 py-3.5 space-y-1 bg-muted/30">
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span>{formatPrice(order.subtotal)}</span></div>
               {order.payment_term_discount_amount && parseFloat(order.payment_term_discount_amount) > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>Payment Discount ({order.payment_term_name})</span>
-                  <span>-{formatPrice(order.payment_term_discount_amount)}</span>
-                </div>
+                <div className="flex justify-between text-sm text-green-600"><span>Discount ({order.payment_term_name})</span><span>-{formatPrice(order.payment_term_discount_amount)}</span></div>
               )}
               {order.discount_details?.map((d, i) => (
-                <div key={i} className="flex justify-between text-sm text-green-600">
-                  <span>{d.name}</span>
-                  <span>-{formatPrice(d.amount)}</span>
-                </div>
+                <div key={i} className="flex justify-between text-sm text-green-600"><span>{d.name}</span><span>-{formatPrice(d.amount)}</span></div>
               ))}
               {order.tax_amount && parseFloat(order.tax_amount) > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tax ({parseFloat(order.tax_rate || "0")}%)</span>
-                  <span>{formatPrice(order.tax_amount)}</span>
-                </div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tax ({parseFloat(order.tax_rate || "0")}%)</span><span>{formatPrice(order.tax_amount)}</span></div>
               )}
-              <div className="flex justify-between font-semibold pt-1 border-t">
-                <span>Total</span>
-                <span>{formatPrice(order.total)}</span>
-              </div>
+              {order.delivery_fee && parseFloat(order.delivery_fee) > 0 && (
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Delivery</span><span>{formatPrice(order.delivery_fee)}</span></div>
+              )}
+              {order.delivery_fee_waived && (
+                <div className="flex justify-between text-sm text-green-600"><span>Delivery Waived</span><span>$0.00</span></div>
+              )}
+              <div className="flex justify-between font-semibold text-base pt-1.5 border-t"><span>Total</span><span>{formatPrice(order.total)}</span></div>
             </div>
           </div>
 
-          {/* Vendor notes */}
+          {/* Locations */}
+          <div className="rounded-xl border bg-card p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-sm">Locations</h3>
+              {!editingLocations && (
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditingLocations}>
+                  <PencilIcon className="mr-1 size-3" />
+                  Edit
+                </Button>
+              )}
+            </div>
+            {editingLocations ? (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Shipping</Label>
+                  <select value={shippingLocationId} onChange={(e) => setShippingLocationId(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs">
+                    <option value="">Select a location</option>
+                    {companyDetails?.locations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>{loc.name || loc.address} — {loc.city}, {loc.state} {loc.zip_code}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Billing</Label>
+                  <select value={billingLocationId} onChange={(e) => setBillingLocationId(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs">
+                    <option value="">Select a location</option>
+                    {companyDetails?.locations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>{loc.name || loc.address} — {loc.city}, {loc.state} {loc.zip_code}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" className="text-xs h-7" onClick={saveLocations} disabled={savingLocations}>{savingLocations ? "Saving..." : "Save"}</Button>
+                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setEditingLocations(false)}>Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Shipping</p>
+                  <p className="font-medium">{formatLocation(order.shipping_location)}</p>
+                  {order.shipping_location?.license_number && <p className="text-xs text-muted-foreground">OCM: {order.shipping_location.license_number}</p>}
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Billing</p>
+                  <p className="font-medium">{formatLocation(order.billing_location)}</p>
+                  {order.billing_location?.license_number && <p className="text-xs text-muted-foreground">OCM: {order.billing_location.license_number}</p>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Notes */}
           {order.notes_to_vendor && (
-            <div className="rounded-lg border p-4">
+            <div className="rounded-xl border bg-card p-5 shadow-xs">
               <h3 className="font-semibold text-sm mb-1">Notes from Customer</h3>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">{order.notes_to_vendor}</p>
             </div>
           )}
-
-          {/* Internal notes */}
-          <div className="rounded-lg border p-4 space-y-3">
-            <Label htmlFor="internalNotes" className="font-semibold">Internal Notes</Label>
-            <Textarea
-              id="internalNotes"
-              placeholder="Add internal notes about this order..."
-              value={internalNotes}
-              onChange={(e) => setInternalNotes(e.target.value)}
-              rows={4}
-            />
-            <Button size="sm" onClick={saveInternalNotes} disabled={saving}>
-              {saving ? "Saving..." : "Save Notes"}
-            </Button>
+          <div className="rounded-xl border bg-card p-5 shadow-xs space-y-3">
+            <Label htmlFor="internalNotes" className="font-semibold text-sm">Internal Notes</Label>
+            <Textarea id="internalNotes" placeholder="Add internal notes..." value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} rows={3} className="text-sm" />
+            <Button size="sm" onClick={saveInternalNotes} disabled={saving}>{saving ? "Saving..." : "Save Notes"}</Button>
           </div>
 
-          {/* Activity Log */}
-          <div className="rounded-lg border p-4">
-            <h3 className="font-semibold text-sm mb-3">Activity Log</h3>
-            <div className="flex gap-2 mb-4">
-              <Input
-                placeholder="Add a note..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); postComment(); } }}
-                className="text-sm"
-              />
-              <Button size="sm" onClick={postComment} disabled={postingComment || !newComment.trim()}>
-                <SendIcon className="size-4" />
-              </Button>
+          {/* Tabbed section: Activity / Delivery / Payment */}
+          <div className="rounded-xl border bg-card shadow-xs overflow-hidden">
+            <div className="flex border-b">
+              {(["activity", "delivery", "payment"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                    activeTab === tab
+                      ? "border-b-2 border-primary text-foreground bg-muted/30"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
+                  }`}
+                >
+                  {tab === "activity" ? "Activity" : tab === "delivery" ? "Delivery" : "Payment"}
+                  {tab === "delivery" && order.delivery_proofs && order.delivery_proofs.length > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 text-[10px] h-4 px-1">{order.delivery_proofs.length}</Badge>
+                  )}
+                  {tab === "payment" && order.payment_status === "paid" && (
+                    <CheckCircleIcon className="inline ml-1.5 size-3.5 text-green-600" />
+                  )}
+                </button>
+              ))}
             </div>
-            {comments.length > 0 ? (
-              <div className="space-y-3">
-                {comments.map((comment) => (
-                  <div key={comment.id} className="flex gap-3 text-sm">
-                    <MessageSquareIcon className="size-4 text-muted-foreground mt-0.5 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="whitespace-pre-wrap">{comment.body}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {comment.author.full_name || comment.author.email} — {new Date(comment.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                      </p>
-                    </div>
+            <div className="p-5">
+              {activeTab === "activity" && (
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input placeholder="Add a note..." value={newComment} onChange={(e) => setNewComment(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); postComment(); } }} className="text-sm" />
+                    <Button size="sm" onClick={postComment} disabled={postingComment || !newComment.trim()}><SendIcon className="size-4" /></Button>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">No activity yet.</p>
-            )}
+                  {comments.length > 0 ? (
+                    <div className="space-y-3">
+                      {comments.map((comment) => (
+                        <div key={comment.id} className="flex gap-3 text-sm">
+                          <MessageSquareIcon className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="whitespace-pre-wrap">{comment.body}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {comment.author.full_name || comment.author.email} — {new Date(comment.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No activity yet.</p>
+                  )}
+                  <div className="pt-3 border-t">
+                    <EmailTimeline key={timelineKey} orderId={Number(id)} />
+                  </div>
+                </div>
+              )}
+              {activeTab === "delivery" && (
+                <DeliveryProofsSection order={order} onUpdate={setOrder} />
+              )}
+              {activeTab === "payment" && (
+                <PaymentSection order={order} onUpdate={setOrder} />
+              )}
+            </div>
           </div>
-
-          {/* Email History */}
-          <EmailTimeline key={timelineKey} orderId={Number(id)} />
         </div>
 
         {/* Sidebar */}
         <div className="space-y-4">
           {/* People on order */}
-          <div className="rounded-lg border p-4">
+          <div className="rounded-xl border bg-card p-5 shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-sm">Order People</h3>
               {!editingContacts && (
@@ -738,26 +746,16 @@ export default function AdminOrderDetailPage({
                 </Button>
               )}
             </div>
-
             {editingContacts ? (
               <div className="space-y-4">
-                {/* Orderer selector */}
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Ordered by</Label>
-                  <select
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                    value={selectedOrdererId ?? ""}
-                    onChange={(e) => setSelectedOrdererId(Number(e.target.value))}
-                  >
+                  <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={selectedOrdererId ?? ""} onChange={(e) => setSelectedOrdererId(Number(e.target.value))}>
                     {order.company_details?.members.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.full_name || member.email}{member.company_title ? ` — ${member.company_title}` : ""}
-                      </option>
+                      <option key={member.id} value={member.id}>{member.full_name || member.email}{member.company_title ? ` — ${member.company_title}` : ""}</option>
                     ))}
                   </select>
                 </div>
-
-                {/* Editable contacts */}
                 <div className="border-t pt-3 space-y-3">
                   <p className="text-xs font-medium text-muted-foreground">Contacts</p>
                   {contactDrafts.map((draft, i) => (
@@ -765,55 +763,23 @@ export default function AdminOrderDetailPage({
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Contact {i + 1}</span>
                         {contactDrafts.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                            onClick={() => setContactDrafts((d) => d.filter((_, j) => j !== i))}
-                          >
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => setContactDrafts((d) => d.filter((_, j) => j !== i))}>
                             <Trash2Icon className="size-3" />
                           </Button>
                         )}
                       </div>
-                      <Input
-                        placeholder="Full name"
-                        value={draft.full_name}
-                        onChange={(e) => setContactDrafts((d) => d.map((c, j) => j === i ? { ...c, full_name: e.target.value } : c))}
-                        className="h-8 text-sm"
-                      />
-                      <Input
-                        placeholder="Email"
-                        type="email"
-                        value={draft.email}
-                        onChange={(e) => setContactDrafts((d) => d.map((c, j) => j === i ? { ...c, email: e.target.value } : c))}
-                        className="h-8 text-sm"
-                      />
-                      <Input
-                        placeholder="Phone"
-                        value={draft.phone_number}
-                        onChange={(e) => setContactDrafts((d) => d.map((c, j) => j === i ? { ...c, phone_number: e.target.value } : c))}
-                        className="h-8 text-sm"
-                      />
+                      <Input placeholder="Full name" value={draft.full_name} onChange={(e) => setContactDrafts((d) => d.map((c, j) => j === i ? { ...c, full_name: e.target.value } : c))} className="h-8 text-sm" />
+                      <Input placeholder="Email" type="email" value={draft.email} onChange={(e) => setContactDrafts((d) => d.map((c, j) => j === i ? { ...c, email: e.target.value } : c))} className="h-8 text-sm" />
+                      <Input placeholder="Phone" value={draft.phone_number} onChange={(e) => setContactDrafts((d) => d.map((c, j) => j === i ? { ...c, phone_number: e.target.value } : c))} className="h-8 text-sm" />
                     </div>
                   ))}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs h-7"
-                    onClick={() => setContactDrafts((d) => [...d, { full_name: "", email: "", phone_number: "" }])}
-                  >
-                    <PlusIcon className="mr-1 size-3" />
-                    Add Contact
+                  <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => setContactDrafts((d) => [...d, { full_name: "", email: "", phone_number: "" }])}>
+                    <PlusIcon className="mr-1 size-3" />Add Contact
                   </Button>
                 </div>
-
                 <div className="flex gap-2 pt-1">
-                  <Button size="sm" className="text-xs h-7" onClick={saveContacts} disabled={savingContacts}>
-                    {savingContacts ? "Saving..." : "Save"}
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setEditingContacts(false)}>
-                    Cancel
-                  </Button>
+                  <Button size="sm" className="text-xs h-7" onClick={saveContacts} disabled={savingContacts}>{savingContacts ? "Saving..." : "Save"}</Button>
+                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setEditingContacts(false)}>Cancel</Button>
                 </div>
               </div>
             ) : (
@@ -822,21 +788,17 @@ export default function AdminOrderDetailPage({
                   <div key={ou.id} className="text-sm">
                     <p className="font-medium">{ou.full_name || ou.email}</p>
                     <p className="text-xs text-muted-foreground">{ou.email}</p>
-                    {ou.phone_number && (
-                      <p className="text-xs text-muted-foreground">{ou.phone_number}</p>
-                    )}
-                    <Badge variant="outline" className="mt-1 text-xs">
-                      {ou.role === "orderer" ? "Ordered by" : "Contact"}
-                    </Badge>
+                    {ou.phone_number && <p className="text-xs text-muted-foreground">{ou.phone_number}</p>}
+                    <Badge variant="outline" className="mt-1 text-xs">{ou.role === "orderer" ? "Ordered by" : "Contact"}</Badge>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Company details */}
+          {/* Company */}
           {companyDetails && (
-            <div className="rounded-lg border p-4">
+            <div className="rounded-xl border bg-card p-5 shadow-xs">
               <h3 className="font-semibold text-sm mb-3">Company</h3>
               <div className="space-y-2 text-sm">
                 <p className="font-medium">{companyDetails.name}</p>
@@ -845,13 +807,8 @@ export default function AdminOrderDetailPage({
                 ) : (
                   <p className="text-xs font-medium text-amber-600">Missing OCM license</p>
                 )}
-                {companyDetails.email && (
-                  <p className="text-muted-foreground">{companyDetails.email}</p>
-                )}
-                {companyDetails.phone_number && (
-                  <p className="text-muted-foreground">{companyDetails.phone_number}</p>
-                )}
-
+                {companyDetails.email && <p className="text-muted-foreground">{companyDetails.email}</p>}
+                {companyDetails.phone_number && <p className="text-muted-foreground">{companyDetails.phone_number}</p>}
                 {companyDetails.locations.length > 0 && (
                   <div className="pt-2">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Locations</p>
@@ -863,14 +820,12 @@ export default function AdminOrderDetailPage({
                     ))}
                   </div>
                 )}
-
                 {companyDetails.members.length > 0 && (
                   <div className="pt-2">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Members</p>
                     {companyDetails.members.map((member) => (
                       <div key={member.id} className="text-xs text-muted-foreground">
-                        {member.full_name || member.email}
-                        {member.company_title && ` — ${member.company_title}`}
+                        {member.full_name || member.email}{member.company_title && ` — ${member.company_title}`}
                       </div>
                     ))}
                   </div>
@@ -879,27 +834,22 @@ export default function AdminOrderDetailPage({
             </div>
           )}
 
-          <div className="rounded-lg border p-4">
-            <h3 className="font-semibold text-sm mb-1">Payment Terms</h3>
-            <p className="text-sm text-muted-foreground">
-              {order.payment_term_name || "ACH / Bank Transfer"}
-            </p>
+          {/* Payment Terms */}
+          <div className="rounded-xl border bg-card p-5 shadow-xs">
+            <h3 className="font-semibold text-sm mb-2">Payment Terms</h3>
+            <p className="text-sm text-muted-foreground">{order.payment_term_name || "ACH / Bank Transfer"}</p>
             {order.payment_terms_accepted_at && (
-              <p className="text-xs text-green-600 mt-1">
-                Accepted {new Date(order.payment_terms_accepted_at).toLocaleDateString()}
-              </p>
+              <p className="text-xs text-green-600 mt-1">Accepted {formatDate(order.payment_terms_accepted_at)}</p>
             )}
             {order.payment_due_date && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Due {new Date(order.payment_due_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Due {formatDate(order.payment_due_date)}</p>
             )}
           </div>
 
+          {/* Terms Agreement */}
           {order.payment_term_agreement && (
-            <div className="rounded-lg border p-4 space-y-3">
+            <div className="rounded-xl border bg-card p-5 shadow-xs space-y-3">
               <h3 className="font-semibold text-sm">Terms Agreement</h3>
-
               {order.payment_term_agreement.signed ? (
                 <>
                   <div className="flex items-center gap-1.5 text-sm text-green-600">
@@ -914,39 +864,24 @@ export default function AdminOrderDetailPage({
                   </div>
                   {order.payment_term_agreement.signature_data && (
                     <div className="rounded-md border bg-white p-2">
-                      <img
-                        src={order.payment_term_agreement.signature_data}
-                        alt="Signature"
-                        className="h-16 w-full object-contain"
-                      />
+                      <img src={order.payment_term_agreement.signature_data} alt="Signature" className="h-16 w-full object-contain" />
                     </div>
                   )}
                 </>
               ) : (
                 <div className="space-y-1">
                   <p className="text-sm text-amber-600">Awaiting signature</p>
-                  <p className="text-xs text-muted-foreground">
-                    Sent {new Date(order.payment_term_agreement.sent_at!).toLocaleString()}
-                  </p>
+                  <p className="text-xs text-muted-foreground">Sent {new Date(order.payment_term_agreement.sent_at!).toLocaleString()}</p>
                   {order.payment_term_agreement.expired ? (
                     <p className="text-xs text-red-500">Link expired</p>
                   ) : order.payment_term_agreement.expires_at && (
-                    <p className="text-xs text-muted-foreground">
-                      Expires {new Date(order.payment_term_agreement.expires_at).toLocaleDateString()}
-                    </p>
+                    <p className="text-xs text-muted-foreground">Expires {formatDate(order.payment_term_agreement.expires_at)}</p>
                   )}
                 </div>
               )}
-
               {order.payment_term_agreement.agreement_url && (
-                <a
-                  href={order.payment_term_agreement.agreement_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-                >
-                  <ExternalLinkIcon className="size-3.5" />
-                  View Agreement
+                <a href={order.payment_term_agreement.agreement_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+                  <ExternalLinkIcon className="size-3.5" />View Agreement
                 </a>
               )}
             </div>
@@ -954,35 +889,23 @@ export default function AdminOrderDetailPage({
         </div>
       </div>
 
+      {/* Dialogs */}
       <AlertDialog open={!!pendingStatus} onOpenChange={(open) => { if (!open) setPendingStatus(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Change order status?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will change the status from{" "}
-              <strong>{ORDER_STATUS_LABELS[order.status]}</strong> to{" "}
-              <strong>{ORDER_STATUS_LABELS[pendingStatus as OrderStatus]}</strong>.
-              {pendingStatus === "fulfilled" || pendingStatus === "delivered" ? (
-                <> This is an internal status — no email will be sent to the customer.</>
-              ) : pendingStatus === "payment_received" ? (
-                <> A payment received thank you email will be sent to all members of{" "}
-                <strong>{order.company?.name ?? "the company"}</strong>.</>
-              ) : (
-                <> An email notification will be sent to all members of{" "}
-                <strong>{order.company?.name ?? "the company"}</strong>.</>
-              )}
+              This will change the status from <strong>{ORDER_STATUS_LABELS[order.status]}</strong> to <strong>{ORDER_STATUS_LABELS[pendingStatus as OrderStatus]}</strong>.
+              {pendingStatus === "fulfilled" || pendingStatus === "delivered"
+                ? <> This is an internal status — no email will be sent.</>
+                : pendingStatus === "payment_received"
+                ? <> A payment received email will be sent to <strong>{order.company?.name ?? "the company"}</strong>.</>
+                : <> An email will be sent to <strong>{order.company?.name ?? "the company"}</strong>.</>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPendingStatus(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => {
-              if (pendingStatus) {
-                await updateStatus(pendingStatus);
-                setPendingStatus(null);
-              }
-            }}>
-              Confirm &amp; Notify
-            </AlertDialogAction>
+            <AlertDialogAction onClick={async () => { if (pendingStatus) { await updateStatus(pendingStatus); setPendingStatus(null); } }}>Confirm</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -992,16 +915,12 @@ export default function AdminOrderDetailPage({
           <AlertDialogHeader>
             <AlertDialogTitle>Mark as fulfilled?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will mark order <strong>{order.order_number}</strong> as
-              fulfilled and ready for delivery. No email will be sent to the
-              customer.
+              This will mark <strong>{order.order_number}</strong> as fulfilled and ready for delivery. No email will be sent.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={markProcessingDone}>
-              Mark Fulfilled
-            </AlertDialogAction>
+            <AlertDialogAction onClick={markProcessingDone}>Mark Fulfilled</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1015,25 +934,222 @@ export default function AdminOrderDetailPage({
               {confirmAction === "license_reminder" && "Send license reminder?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmAction === "bank_info" && (
-                <>This will send a bank info email to all members of <strong>{order.company?.name ?? "the company"}</strong>.</>
-              )}
-              {confirmAction === "agreement" && (
-                <>This will send a payment terms agreement for signing to all members of <strong>{order.company?.name ?? "the company"}</strong>. Any existing unsigned agreement will be replaced.</>
-              )}
-              {confirmAction === "license_reminder" && (
-                <>This will send a license reminder email to all members of <strong>{order.company?.name ?? "the company"}</strong> asking them to add their license number.</>
-              )}
+              {confirmAction === "bank_info" && <>This will send bank info to all members of <strong>{order.company?.name}</strong>.</>}
+              {confirmAction === "agreement" && <>This will send a payment terms agreement to <strong>{order.company?.name}</strong>. Any existing unsigned agreement will be replaced.</>}
+              {confirmAction === "license_reminder" && <>This will send a license reminder to <strong>{order.company?.name}</strong>.</>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setConfirmAction(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmAndSend}>
-              Send Email
-            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmAndSend}>Send Email</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/* ── Drag-and-drop file upload zone ── */
+function FileDropZone({ onFiles, uploading, label }: { onFiles: (files: File[]) => void; uploading: boolean; label: string }) {
+  const [dragOver, setDragOver] = useState(false);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) onFiles(files);
+  }, [onFiles]);
+
+  return (
+    <div
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+      className={`relative rounded-lg border-2 border-dashed p-4 text-center transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/20"}`}
+    >
+      <input type="file" multiple accept="image/*,.pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        onChange={(e) => { const files = Array.from(e.target.files || []); if (files.length > 0) onFiles(files); e.target.value = ""; }} disabled={uploading} />
+      <UploadIcon className="size-5 mx-auto text-muted-foreground mb-1" />
+      <p className="text-xs text-muted-foreground">{uploading ? "Uploading..." : label}</p>
+    </div>
+  );
+}
+
+/* ── Attachment thumbnail ── */
+function AttachmentThumb({ file, onDelete, deleting }: { file: { id: number; filename: string; content_type: string; url: string }; onDelete: () => void; deleting: boolean }) {
+  const isImage = file.content_type.startsWith("image/");
+  return (
+    <div className="group relative rounded-lg border overflow-hidden bg-muted">
+      {isImage ? (
+        <a href={file.url} target="_blank" rel="noopener noreferrer"><img src={file.url} alt={file.filename} className="h-24 w-full object-cover" /></a>
+      ) : (
+        <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center h-24 px-2">
+          <FileTextIcon className="size-6 text-muted-foreground" />
+          <p className="text-[10px] text-muted-foreground mt-1 truncate max-w-full">{file.filename}</p>
+        </a>
+      )}
+      <button type="button" onClick={onDelete} disabled={deleting}
+        className="absolute top-1 right-1 size-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80">
+        <XIcon className="size-3" />
+      </button>
+    </div>
+  );
+}
+
+/* ── Delivery Proofs Section ── */
+function DeliveryProofsSection({ order, onUpdate }: { order: Order; onUpdate: (o: Order) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const handleUpload = useCallback(async (files: File[]) => {
+    setUploading(true);
+    try { const updated = await apiClient.uploadDeliveryProofs(order.id, files); onUpdate(updated); toast.success("Delivery proof uploaded"); }
+    catch { showError("upload delivery proof"); }
+    finally { setUploading(false); }
+  }, [order.id, onUpdate]);
+
+  const handleDelete = async (proofId: number) => {
+    setDeletingId(proofId);
+    try { const updated = await apiClient.deleteDeliveryProof(order.id, proofId); onUpdate(updated); }
+    catch { showError("delete delivery proof"); }
+    finally { setDeletingId(null); }
+  };
+
+  return (
+    <div className="space-y-3">
+      <h3 className="font-semibold text-sm">Delivery Confirmation</h3>
+      {order.delivery_proofs && order.delivery_proofs.length > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {order.delivery_proofs.map((proof) => (
+            <AttachmentThumb key={proof.id} file={proof} onDelete={() => handleDelete(proof.id)} deleting={deletingId === proof.id} />
+          ))}
+        </div>
+      )}
+      <FileDropZone onFiles={handleUpload} uploading={uploading} label="Drop delivery photos here or click to upload" />
+    </div>
+  );
+}
+
+/* ── Payment Section ── */
+const PAYMENT_METHODS = ["ACH", "Wire", "Check", "Zelle", "Cash", "Other"] as const;
+
+function PaymentSection({ order, onUpdate }: { order: Order; onUpdate: (o: Order) => void }) {
+  const [showForm, setShowForm] = useState(false);
+  const [method, setMethod] = useState("");
+  const [reference, setReference] = useState("");
+  const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
+  const [paymentFiles, setPaymentFiles] = useState<File[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const isPaid = order.payment_status === "paid";
+
+  const handleRecordPayment = async () => {
+    setSaving(true);
+    try {
+      const updated = await apiClient.recordPayment(order.id,
+        { payment_status: "paid", paid_at: paidAt, payment_method: method || undefined, payment_reference: reference || undefined },
+        paymentFiles.length > 0 ? paymentFiles : undefined
+      );
+      onUpdate(updated); setShowForm(false); setPaymentFiles([]);
+      toast.success("Payment recorded");
+    } catch { showError("record payment"); }
+    finally { setSaving(false); }
+  };
+
+  const handleUploadProof = useCallback(async (files: File[]) => {
+    setUploading(true);
+    try { const updated = await apiClient.uploadPaymentProofs(order.id, files); onUpdate(updated); toast.success("Payment proof uploaded"); }
+    catch { showError("upload payment proof"); }
+    finally { setUploading(false); }
+  }, [order.id, onUpdate]);
+
+  const handleDeleteProof = async (proofId: number) => {
+    setDeletingId(proofId);
+    try { const updated = await apiClient.deletePaymentProof(order.id, proofId); onUpdate(updated); }
+    catch { showError("delete payment proof"); }
+    finally { setDeletingId(null); }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-sm">Payment</h3>
+        {isPaid ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 text-green-700 px-2.5 py-0.5 text-xs font-medium">
+            <CheckCircleIcon className="size-3" />Paid
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2.5 py-0.5 text-xs font-medium">
+            {PAYMENT_STATUS_LABELS[order.payment_status] || "Unpaid"}
+          </span>
+        )}
+      </div>
+
+      {isPaid && (
+        <div className="text-sm space-y-1 rounded-lg bg-green-50 p-3">
+          {order.paid_at && <p className="text-green-800">Paid on {formatDate(order.paid_at)}</p>}
+          {order.payment_method && <p className="text-green-700">Method: {order.payment_method}</p>}
+          {order.payment_reference && <p className="text-green-700">Ref: {order.payment_reference}</p>}
+        </div>
+      )}
+
+      {order.payment_proofs && order.payment_proofs.length > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {order.payment_proofs.map((proof) => (
+            <AttachmentThumb key={proof.id} file={proof} onDelete={() => handleDeleteProof(proof.id)} deleting={deletingId === proof.id} />
+          ))}
+        </div>
+      )}
+
+      {isPaid && <FileDropZone onFiles={handleUploadProof} uploading={uploading} label="Add more payment screenshots" />}
+
+      {!isPaid && !showForm && (
+        <Button size="sm" variant="outline" onClick={() => setShowForm(true)}>
+          <BanknoteIcon className="mr-1.5 size-4" />Record Payment
+        </Button>
+      )}
+
+      {!isPaid && showForm && (
+        <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Payment Date</Label>
+              <Input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Method</Label>
+              <select value={method} onChange={(e) => setMethod(e.target.value)}
+                className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs">
+                <option value="">Select...</option>
+                {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Reference / Transaction ID</Label>
+            <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. ACH ref, check number..." className="h-8 text-sm" />
+          </div>
+          <div>
+            <Label className="text-xs mb-1.5 block">Screenshot (optional)</Label>
+            {paymentFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {paymentFiles.map((f, i) => (
+                  <div key={i} className="flex items-center gap-1.5 rounded border px-2 py-1 text-xs bg-card">
+                    <ImageIcon className="size-3 text-muted-foreground" />
+                    <span className="max-w-[120px] truncate">{f.name}</span>
+                    <button type="button" onClick={() => setPaymentFiles((prev) => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-foreground"><XIcon className="size-3" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <FileDropZone onFiles={(files) => setPaymentFiles((prev) => [...prev, ...files])} uploading={false} label="Drop payment screenshots here" />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button size="sm" className="text-xs h-7" onClick={handleRecordPayment} disabled={saving}>{saving ? "Saving..." : "Record Payment"}</Button>
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setShowForm(false); setPaymentFiles([]); }}>Cancel</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

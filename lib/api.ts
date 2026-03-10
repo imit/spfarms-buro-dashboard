@@ -102,6 +102,7 @@ export type Region =
   | "staten_island"
   | "long_island"
   | "upstate"
+  | "catskills"
   | "other";
 
 export const REGION_LABELS: Record<Region, string> = {
@@ -112,6 +113,7 @@ export const REGION_LABELS: Record<Region, string> = {
   staten_island: "Staten Island",
   long_island: "Long Island",
   upstate: "Upstate",
+  catskills: "Catskills",
   other: "Other",
 };
 
@@ -203,6 +205,8 @@ export interface Company {
   members: CompanyMember[];
   referred_by: CompanyReferrer | null;
   comments_count: number;
+  orders_count: number;
+  last_activity_at: string | null;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -273,6 +277,7 @@ export interface Coa {
 export interface Strain {
   id: number;
   name: string;
+  slug: string | null;
   code: string | null;
   category: StrainCategory | null;
   description: string | null;
@@ -285,6 +290,7 @@ export interface Strain {
   total_thc: string | null;
   total_cannabinoids: string | null;
   smell_tags: string[];
+  effect_tags: string[];
   active: boolean;
   image_url: string | null;
   title_image_url: string | null;
@@ -340,6 +346,7 @@ export interface Product {
   bulk: boolean;
   coming_soon: boolean;
   price_tbd: boolean;
+  best_seller: boolean;
   product_type: ProductType;
   product_uid: string | null;
   strain_id: number | null;
@@ -368,7 +375,8 @@ export interface Product {
   position: number | null;
   active: boolean;
   thumbnail_url: string | null;
-  image_urls: string[];
+  image_urls: { attachment_id: number; url: string }[];
+  promotional_image_urls: { attachment_id: number; url: string }[];
   metrc_item_id: string | null;
   metrc_item_name: string | null;
   metrc_license_number: string | null;
@@ -713,6 +721,15 @@ export interface AppSettings {
   tax_rate: string;
   bank_info: string;
   bulk_sales_phone: string;
+  delivery_fee_waiver_minimum: string;
+}
+
+export interface DeliveryFeeRecord {
+  id: number;
+  region: Region;
+  fee: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PublicSettings {
@@ -757,6 +774,9 @@ export interface CheckoutPreview {
   discount_amount: string;
   tax_rate: string;
   tax_amount: string;
+  delivery_fee: string;
+  delivery_fee_waived: boolean;
+  delivery_fee_waiver_minimum: string;
   total: string;
 }
 
@@ -781,6 +801,15 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   delivered: "Delivered",
   cancelled: "Cancelled",
   payment_received: "Payment Received",
+};
+
+export type PaymentStatus = "unpaid" | "partial" | "paid" | "overdue";
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  unpaid: "Unpaid",
+  partial: "Partial",
+  paid: "Paid",
+  overdue: "Overdue",
 };
 
 export type OrderType = "standard" | "preorder";
@@ -834,6 +863,22 @@ export interface OrderCompanyDetails {
   members: CompanyMember[];
 }
 
+export interface SupportTicket {
+  id: number;
+  subject: string | null;
+  message: string;
+  status: "open" | "in_progress" | "resolved" | "closed";
+  company_id: number | null;
+  company_name: string | null;
+  company_slug: string | null;
+  user_id: number | null;
+  user_email: string | null;
+  user_full_name: string | null;
+  user_phone_number: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Order {
   id: number;
   order_number: string;
@@ -849,11 +894,17 @@ export interface Order {
   discount_details: CheckoutPreviewDiscount[] | null;
   tax_rate: string | null;
   tax_amount: string | null;
+  delivery_fee: string | null;
+  delivery_fee_waived: boolean;
   notes_to_vendor: string | null;
   internal_notes: string | null;
   desired_delivery_date: string | null;
   payment_terms_accepted_at: string | null;
   payment_due_date: string | null;
+  payment_status: PaymentStatus;
+  paid_at: string | null;
+  payment_method: string | null;
+  payment_reference: string | null;
   delivered_at: string | null;
   payment_term_agreement: {
     signed: boolean;
@@ -883,8 +934,19 @@ export interface Order {
   shipping_location: OrderLocation | null;
   billing_location: OrderLocation | null;
   company_details: OrderCompanyDetails | null;
+  delivery_proofs: OrderAttachment[];
+  payment_proofs: OrderAttachment[];
   created_at: string;
   updated_at: string;
+}
+
+export interface OrderAttachment {
+  id: number;
+  filename: string;
+  content_type: string;
+  byte_size: number;
+  url: string;
+  created_at: string;
 }
 
 // ---- Sample Batches ----
@@ -1039,6 +1101,41 @@ export interface DashboardUnsentInvite {
   created_at: string;
 }
 
+export interface AccountsReceivableOrder {
+  id: number;
+  order_number: string;
+  total: number;
+  payment_status: PaymentStatus;
+  payment_term_name: string | null;
+  payment_term_days: number | null;
+  payment_due_date: string | null;
+  delivered_at: string | null;
+  paid_at: string | null;
+  payment_method: string | null;
+  company_name: string | null;
+  company_slug: string | null;
+  days_since_delivery: number | null;
+  days_until_due: number | null;
+}
+
+export interface AccountsReceivable {
+  outstanding: AccountsReceivableOrder[];
+  recently_paid: AccountsReceivableOrder[];
+}
+
+export interface DashboardRegistration {
+  id: number;
+  name: string;
+  slug: string;
+  email: string | null;
+  phone_number: string | null;
+  license_number: string | null;
+  active: boolean;
+  contact_name: string | null;
+  contact_email: string | null;
+  created_at: string;
+}
+
 export interface DashboardStats {
   total_orders: number;
   total_revenue: number;
@@ -1050,6 +1147,7 @@ export interface DashboardStats {
   recent_companies: DashboardRecentCompany[];
   recent_users: DashboardRecentUser[];
   unsent_invitations: DashboardUnsentInvite[];
+  recent_registrations: DashboardRegistration[];
 }
 
 // ---- Notifications ----
@@ -2094,11 +2192,12 @@ export class ApiClient {
 
   // Companies
 
-  async getCompanies(opts?: { include_deleted?: boolean; page?: number; per_page?: number }): Promise<PaginatedResult<Company>> {
+  async getCompanies(opts?: { include_deleted?: boolean; page?: number; per_page?: number; q?: string }): Promise<PaginatedResult<Company>> {
     const params = new URLSearchParams();
     if (opts?.include_deleted) params.set("include_deleted", "true");
     if (opts?.page) params.set("page", String(opts.page));
     if (opts?.per_page) params.set("per_page", String(opts.per_page));
+    if (opts?.q) params.set("q", opts.q);
     const query = params.toString() ? `?${params}` : "";
     const res = await this.request<JsonApiPaginatedResponse<Company>>(
       `/api/v1/companies${query}`
@@ -2911,11 +3010,13 @@ export class ApiClient {
   async getCheckoutPreview(
     companyId: number,
     paymentTermId?: number,
-    orderType?: OrderType
+    orderType?: OrderType,
+    shippingLocationId?: number
   ): Promise<CheckoutPreview> {
     const body: Record<string, unknown> = { company_id: companyId };
     if (paymentTermId) body.payment_term_id = paymentTermId;
     if (orderType) body.order_type = orderType;
+    if (shippingLocationId) body.shipping_location_id = shippingLocationId;
 
     const res = await this.request<{ data: CheckoutPreview }>(
       "/api/v1/cart/checkout_preview",
@@ -2985,6 +3086,33 @@ export class ApiClient {
     await this.request(`/api/v1/discounts/${id}`, { method: "DELETE" });
   }
 
+  // Delivery Fees
+
+  async getDeliveryFees(): Promise<DeliveryFeeRecord[]> {
+    const res = await this.request<{ data: DeliveryFeeRecord[] }>("/api/v1/delivery_fees");
+    return res.data;
+  }
+
+  async createDeliveryFee(data: { region: string; fee: number }): Promise<DeliveryFeeRecord> {
+    const res = await this.request<{ data: DeliveryFeeRecord }>("/api/v1/delivery_fees", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  }
+
+  async updateDeliveryFee(id: number, data: { region?: string; fee?: number }): Promise<DeliveryFeeRecord> {
+    const res = await this.request<{ data: DeliveryFeeRecord }>(`/api/v1/delivery_fees/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  }
+
+  async deleteDeliveryFee(id: number): Promise<void> {
+    await this.request(`/api/v1/delivery_fees/${id}`, { method: "DELETE" });
+  }
+
   // Dashboard
 
   async getDashboardStats(): Promise<DashboardStats> {
@@ -3028,6 +3156,13 @@ export class ApiClient {
       `/api/v1/orders${query}`
     );
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getAccountsReceivable(): Promise<AccountsReceivable> {
+    const res = await this.request<{ data: AccountsReceivable }>(
+      "/api/v1/orders/accounts_receivable"
+    );
+    return res.data;
   }
 
   async getOrder(id: number): Promise<Order> {
@@ -3152,6 +3287,65 @@ export class ApiClient {
     await this.request(`/api/v1/orders/${id}/send_license_reminder`, {
       method: "POST",
     });
+  }
+
+  async uploadDeliveryProofs(id: number, files: File[]): Promise<Order> {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files[]", f));
+    const res = await fetch(`${this.baseUrl}/api/v1/orders/${id}/upload_delivery_proofs`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("auth_token") : ""}` },
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Upload failed");
+    const json = await res.json();
+    return { ...json.data.attributes, id: Number(json.data.id) };
+  }
+
+  async deleteDeliveryProof(orderId: number, proofId: number): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${orderId}/delete_delivery_proof`,
+      { method: "DELETE", body: JSON.stringify({ proof_id: proofId }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async uploadPaymentProofs(id: number, files: File[]): Promise<Order> {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files[]", f));
+    const res = await fetch(`${this.baseUrl}/api/v1/orders/${id}/upload_payment_proofs`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("auth_token") : ""}` },
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Upload failed");
+    const json = await res.json();
+    return { ...json.data.attributes, id: Number(json.data.id) };
+  }
+
+  async deletePaymentProof(orderId: number, proofId: number): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${orderId}/delete_payment_proof`,
+      { method: "DELETE", body: JSON.stringify({ proof_id: proofId }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async recordPayment(id: number, data: { payment_status?: string; paid_at?: string; payment_method?: string; payment_reference?: string }, files?: File[]): Promise<Order> {
+    const formData = new FormData();
+    if (data.payment_status) formData.append("payment_status", data.payment_status);
+    if (data.paid_at) formData.append("paid_at", data.paid_at);
+    if (data.payment_method) formData.append("payment_method", data.payment_method);
+    if (data.payment_reference) formData.append("payment_reference", data.payment_reference);
+    if (files) files.forEach((f) => formData.append("files[]", f));
+    const res = await fetch(`${this.baseUrl}/api/v1/orders/${id}/record_payment`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("auth_token") : ""}` },
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Record payment failed");
+    const json = await res.json();
+    return { ...json.data.attributes, id: Number(json.data.id) };
   }
 
   // Sample Batches
@@ -3865,6 +4059,11 @@ export class ApiClient {
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
 
+  async getPublicStrain(slug: string): Promise<Strain> {
+    const res = await this.request<JsonApiResponse<Strain>>(`/api/v1/public/strains/${slug}`);
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async getPublicSettings(): Promise<PublicSettings> {
     const res = await this.request<{ data: PublicSettings }>("/api/v1/public/settings");
     return res.data;
@@ -4110,6 +4309,58 @@ export class ApiClient {
 
   async deleteGalleryFile(id: number): Promise<void> {
     await this.request(`/api/v1/gallery_files/${id}`, { method: "DELETE" });
+  }
+
+  // ── Support Tickets ──
+
+  async createSupportTicket(data: { subject?: string; message: string; company_id?: number }): Promise<SupportTicket> {
+    const res = await this.request<JsonApiResponse<SupportTicket>>(
+      "/api/v1/support_tickets",
+      {
+        method: "POST",
+        body: JSON.stringify({ support_ticket: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async getSupportTickets(opts?: { page?: number; per_page?: number }): Promise<PaginatedResult<SupportTicket>> {
+    const params = new URLSearchParams();
+    if (opts?.page) params.set("page", String(opts.page));
+    if (opts?.per_page) params.set("per_page", String(opts.per_page));
+    const qs = params.toString();
+    const res = await this.request<JsonApiCollectionResponse<SupportTicket> & { meta: PaginationMeta }>(
+      `/api/v1/support_tickets${qs ? `?${qs}` : ""}`
+    );
+    return {
+      data: res.data.map((d) => ({ ...d.attributes, id: Number(d.id) })),
+      meta: res.meta,
+    };
+  }
+
+  async getSupportTicket(id: number): Promise<SupportTicket> {
+    const res = await this.request<JsonApiResponse<SupportTicket>>(
+      `/api/v1/support_tickets/${id}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateSupportTicket(id: number, data: { status: string }): Promise<SupportTicket> {
+    const res = await this.request<JsonApiResponse<SupportTicket>>(
+      `/api/v1/support_tickets/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ support_ticket: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async replySupportTicket(id: number, body: string): Promise<void> {
+    await this.request(`/api/v1/support_tickets/${id}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    });
   }
 }
 

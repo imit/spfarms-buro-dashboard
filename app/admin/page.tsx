@@ -37,6 +37,7 @@ import {
   SendIcon,
   MailWarningIcon,
   XIcon,
+  HandshakeIcon,
 } from "lucide-react";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
@@ -404,6 +405,73 @@ export default function DashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Recent wholesale registrations */}
+      {stats.recent_registrations && stats.recent_registrations.length > 0 && (
+        <div className="rounded-xl border bg-card p-5 shadow-xs ring-1 ring-foreground/10">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <HandshakeIcon className="size-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium">Recent Wholesale Registrations</h3>
+              <Badge variant="secondary" className="text-xs">
+                {stats.recent_registrations.length}
+              </Badge>
+            </div>
+          </div>
+          <div className="rounded-lg border bg-card">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-2.5 text-left font-medium">Company</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Contact</th>
+                  <th className="px-4 py-2.5 text-left font-medium">License</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Status</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Registered</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.recent_registrations.map((r) => (
+                  <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => router.push(`/admin/companies/${r.slug}`)}>
+                    <td className="px-4 py-2.5">
+                      <div>
+                        <p className="font-medium text-primary hover:underline">{r.name}</p>
+                        {r.email && (
+                          <p className="text-xs text-muted-foreground">{r.email}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">
+                      {r.contact_name ? (
+                        <div>
+                          <p className="text-sm">{r.contact_name}</p>
+                          {r.contact_email && (
+                            <p className="text-xs text-muted-foreground">{r.contact_email}</p>
+                          )}
+                        </div>
+                      ) : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">
+                      {r.license_number || "—"}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        r.active
+                          ? "bg-green-100 text-green-700"
+                          : "bg-amber-100 text-amber-700"
+                      }`}>
+                        {r.active ? "Active" : "Pending Review"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">
+                      {timeAgo(r.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Recent lists */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

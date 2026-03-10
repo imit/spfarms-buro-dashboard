@@ -27,7 +27,8 @@ export default function OrdersPage({
 
     async function load() {
       try {
-        const data = await apiClient.getOrders();
+        const company = await apiClient.getCompany(slug);
+        const data = await apiClient.getOrders({ company_id: company.id });
         setOrders(data);
       } catch (err) {
         console.error("Failed to load orders:", err);
@@ -37,28 +38,28 @@ export default function OrdersPage({
     }
 
     load();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, slug]);
 
   if (isLoading) {
     return <p className="text-muted-foreground">Loading orders...</p>;
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">My Orders</h1>
+    <div className="rounded-2xl bg-white border shadow-sm p-8 md:p-10 max-w-3xl mx-auto">
+      <h1 className="text-3xl font-bold mb-8">My Orders</h1>
 
       {orders.length === 0 ? (
-        <p className="text-muted-foreground">No orders yet.</p>
+        <p className="text-lg text-muted-foreground">No orders yet.</p>
       ) : (
-        <div className="rounded-lg border">
-          <table className="w-full text-sm">
+        <div className="rounded-xl border">
+          <table className="w-full text-base">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium">Order</th>
-                <th className="px-4 py-3 text-left font-medium">Date</th>
-                <th className="px-4 py-3 text-left font-medium">Items</th>
-                <th className="px-4 py-3 text-left font-medium">Total</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
+                <th className="px-5 py-4 text-left font-medium">Order</th>
+                <th className="px-5 py-4 text-left font-medium">Date</th>
+                <th className="px-5 py-4 text-left font-medium">Items</th>
+                <th className="px-5 py-4 text-left font-medium">Total</th>
+                <th className="px-5 py-4 text-left font-medium">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -68,23 +69,23 @@ export default function OrdersPage({
                   className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
                   onClick={() => router.push(`/${slug}/orders/${order.id}`)}
                 >
-                  <td className="px-4 py-3 font-medium">
+                  <td className="px-5 py-4 font-medium">
                     {order.order_number}
                     {order.order_type === "preorder" && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                         {ORDER_TYPE_LABELS.preorder}
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className="px-5 py-4 text-muted-foreground">
                     {new Date(order.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className="px-5 py-4 text-muted-foreground">
                     {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                   </td>
-                  <td className="px-4 py-3">{formatPrice(order.total)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
+                  <td className="px-5 py-4">{formatPrice(order.total)}</td>
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${statusBadgeClasses(order.status)}`}>
                       {ORDER_STATUS_LABELS[order.status]}
                     </span>
                   </td>

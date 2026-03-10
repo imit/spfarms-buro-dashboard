@@ -7,7 +7,19 @@ import { apiClient, type User } from "@/lib/api";
 import { ADMIN_LAYOUT_ROLES } from "@/lib/roles";
 import type { UserRole } from "@/lib/api";
 
-const PUBLIC_ROUTES = ["/", "/auth/invitation", "/auth/verify", "/wholesale", "/bulk"];
+const PUBLIC_ROUTES = [
+  "/",
+  "/about",
+  "/products",
+  "/contact",
+  "/find-us",
+  "/blog",
+  "/login",
+  "/auth/invitation",
+  "/auth/verify",
+  "/wholesale",
+  "/bulk",
+];
 const POSTHOG_EXCLUDED_EMAILS = ["imitkit@gmail.com"];
 
 interface AuthContextType {
@@ -64,8 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isLoading) return;
     const isPublic = PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"));
     if (!isPublic && !hasToken) {
-      router.push("/");
-    } else if (pathname === "/" && hasToken && user) {
+      router.push("/login");
+    } else if (pathname === "/login" && hasToken && user) {
       router.push(getRedirectPath(user));
     }
   }, [isLoading, hasToken, user, pathname, router]);
@@ -78,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setHasToken(false);
       localStorage.removeItem("auth_token");
       localStorage.removeItem("auth_user");
-      router.push("/");
+      router.push("/login");
     }
     window.addEventListener("auth:session-expired", handleSessionExpired);
     return () => window.removeEventListener("auth:session-expired", handleSessionExpired);
@@ -126,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setHasToken(false);
       localStorage.removeItem("auth_user");
-      router.push("/");
+      router.push("/login");
     }
   };
 

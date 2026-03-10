@@ -56,6 +56,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
     cannabis: product?.cannabis ?? true,
     bulk: product?.bulk ?? false,
     coming_soon: product?.coming_soon ?? false,
+    best_seller: product?.best_seller ?? false,
     product_type: (product?.product_type ?? "flower") as ProductType,
     status: (product?.status ?? "draft") as ProductStatus,
     strain_id: product?.strain_id?.toString() ?? "",
@@ -79,7 +80,10 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
   const [thumbnailGalleryFileId, setThumbnailGalleryFileId] = useState<number | null>(null);
   const [imageFiles, setImageFiles] = useState<FileList | null>(null);
   const [imageGalleryFileIds, setImageGalleryFileIds] = useState<{ id: number; url: string; filename: string }[]>([]);
-  const [galleryPickerOpen, setGalleryPickerOpen] = useState<"thumbnail" | "images" | null>(null);
+  const [promoGalleryFileIds, setPromoGalleryFileIds] = useState<{ id: number; url: string; filename: string }[]>([]);
+  const [removeImageIds, setRemoveImageIds] = useState<number[]>([]);
+  const [removePromoImageIds, setRemovePromoImageIds] = useState<number[]>([]);
+  const [galleryPickerOpen, setGalleryPickerOpen] = useState<"thumbnail" | "images" | "promo" | null>(null);
 
   useEffect(() => {
     apiClient.getStrains().then(setStrains).catch(() => {});
@@ -152,6 +156,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       formData.append("product[cannabis]", String(form.cannabis));
       formData.append("product[bulk]", String(form.bulk));
       formData.append("product[coming_soon]", String(form.coming_soon));
+      formData.append("product[best_seller]", String(form.best_seller));
       formData.append("product[price_tbd]", String(form.price_tbd));
       formData.append("product[product_type]", form.product_type);
       formData.append("product[status]", form.status);
@@ -191,6 +196,15 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       }
       imageGalleryFileIds.forEach((g) => {
         formData.append("image_gallery_file_ids[]", String(g.id));
+      });
+      promoGalleryFileIds.forEach((g) => {
+        formData.append("promotional_image_gallery_file_ids[]", String(g.id));
+      });
+      removeImageIds.forEach((id) => {
+        formData.append("remove_image_ids[]", String(id));
+      });
+      removePromoImageIds.forEach((id) => {
+        formData.append("remove_promotional_image_ids[]", String(id));
       });
 
       if (isEdit && product) {
@@ -258,6 +272,20 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
             />
             <label htmlFor="coming_soon" className="text-sm font-medium">
               Coming soon
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 mb-2">
+            <Checkbox
+              id="best_seller"
+              checked={form.best_seller}
+              onCheckedChange={(checked) =>
+                updateField("best_seller", checked === true)
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor="best_seller" className="text-sm font-medium">
+              Best seller
             </label>
           </div>
 
@@ -636,9 +664,16 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
             <FieldLabel>Gallery Images</FieldLabel>
             <div className="flex gap-2 flex-wrap">
               {/* Existing images */}
-              {isEdit && product?.image_urls?.map((url, i) => (
-                <div key={`existing-${i}`} className="relative">
-                  <img src={url} alt="" className="h-20 w-20 rounded-md object-cover border" />
+              {isEdit && product?.image_urls?.filter((img) => !removeImageIds.includes(img.attachment_id)).map((img) => (
+                <div key={`existing-${img.attachment_id}`} className="relative">
+                  <img src={img.url} alt="" className="h-20 w-20 rounded-md object-cover border" />
+                  <button
+                    type="button"
+                    onClick={() => setRemoveImageIds((prev) => [...prev, img.attachment_id])}
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-white shadow-sm hover:bg-destructive/90"
+                  >
+                    <XIcon className="size-2.5" />
+                  </button>
                 </div>
               ))}
               {/* Gallery-picked images */}
@@ -648,7 +683,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
                   <button
                     type="button"
                     onClick={() => setImageGalleryFileIds((prev) => prev.filter((x) => x.id !== g.id))}
-                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground shadow-sm hover:bg-destructive/90"
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-white shadow-sm hover:bg-destructive/90"
                   >
                     <XIcon className="size-2.5" />
                   </button>
@@ -685,6 +720,55 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
                 {imageFiles.length} file{imageFiles.length > 1 ? "s" : ""} selected for upload
               </p>
             )}
+          </Field>
+        </FieldGroup>
+      </section>
+
+      {/* Promotional Images */}
+      <section className="space-y-4">
+        <h3 className="text-lg font-medium">Promotional Images</h3>
+        <p className="text-sm text-muted-foreground">
+          Images displayed in the promotional gallery section on the product page.
+        </p>
+        <FieldGroup>
+          <Field>
+            <div className="flex gap-2 flex-wrap">
+              {/* Existing promo images */}
+              {isEdit && product?.promotional_image_urls?.filter((img) => !removePromoImageIds.includes(img.attachment_id)).map((img) => (
+                <div key={`existing-promo-${img.attachment_id}`} className="relative">
+                  <img src={img.url} alt="" className="h-20 w-20 rounded-md object-cover border" />
+                  <button
+                    type="button"
+                    onClick={() => setRemovePromoImageIds((prev) => [...prev, img.attachment_id])}
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-white shadow-sm hover:bg-destructive/90"
+                  >
+                    <XIcon className="size-2.5" />
+                  </button>
+                </div>
+              ))}
+              {/* Gallery-picked promo images */}
+              {promoGalleryFileIds.map((g) => (
+                <div key={`promo-${g.id}`} className="relative">
+                  <img src={g.url} alt="" className="h-20 w-20 rounded-md object-cover border" />
+                  <button
+                    type="button"
+                    onClick={() => setPromoGalleryFileIds((prev) => prev.filter((x) => x.id !== g.id))}
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-white shadow-sm hover:bg-destructive/90"
+                  >
+                    <XIcon className="size-2.5" />
+                  </button>
+                </div>
+              ))}
+              {/* Gallery pick button */}
+              <button
+                type="button"
+                onClick={() => setGalleryPickerOpen("promo")}
+                className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border-2 border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors flex-col gap-0.5"
+              >
+                <FolderOpenIcon className="size-4 text-muted-foreground" />
+                <span className="text-[10px] text-muted-foreground">Gallery</span>
+              </button>
+            </div>
           </Field>
         </FieldGroup>
       </section>
@@ -757,6 +841,10 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
           } else if (galleryPickerOpen === "images") {
             if (!imageGalleryFileIds.some((g) => g.id === file.id)) {
               setImageGalleryFileIds((prev) => [...prev, { id: file.id, url: file.url, filename: file.filename }]);
+            }
+          } else if (galleryPickerOpen === "promo") {
+            if (!promoGalleryFileIds.some((g) => g.id === file.id)) {
+              setPromoGalleryFileIds((prev) => [...prev, { id: file.id, url: file.url, filename: file.filename }]);
             }
           }
         }}
