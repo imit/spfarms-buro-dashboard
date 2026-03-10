@@ -27,7 +27,8 @@ export default function OrdersPage({
 
     async function load() {
       try {
-        const data = await apiClient.getOrders();
+        const company = await apiClient.getCompany(slug);
+        const data = await apiClient.getOrders({ company_id: company.id });
         setOrders(data);
       } catch (err) {
         console.error("Failed to load orders:", err);
@@ -37,7 +38,7 @@ export default function OrdersPage({
     }
 
     load();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, slug]);
 
   if (isLoading) {
     return <p className="text-muted-foreground">Loading orders...</p>;
