@@ -36,6 +36,7 @@ const SKU_PREFIXES: Record<string, string> = {
   edible: "ED", vape: "VP", tincture: "TN",
   topical: "TP", capsule: "CP", seed: "SD",
   merchandise: "MR", gear: "GR", apparel: "AP",
+  bulk_flower: "BF",
 };
 
 interface ProductFormProps {
@@ -54,7 +55,6 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
     name: product?.name ?? "",
     description: product?.description ?? "",
     cannabis: product?.cannabis ?? true,
-    bulk: product?.bulk ?? false,
     coming_soon: product?.coming_soon ?? false,
     best_seller: product?.best_seller ?? false,
     product_type: (product?.product_type ?? "flower") as ProductType,
@@ -154,7 +154,6 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       formData.append("product[name]", name);
       formData.append("product[description]", form.description);
       formData.append("product[cannabis]", String(form.cannabis));
-      formData.append("product[bulk]", String(form.bulk));
       formData.append("product[coming_soon]", String(form.coming_soon));
       formData.append("product[best_seller]", String(form.best_seller));
       formData.append("product[price_tbd]", String(form.price_tbd));
@@ -244,20 +243,6 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
             />
             <label htmlFor="cannabis" className="text-sm font-medium">
               Cannabis product
-            </label>
-          </div>
-
-          <div className="flex items-center gap-2 mb-2">
-            <Checkbox
-              id="bulk"
-              checked={form.bulk}
-              onCheckedChange={(checked) =>
-                updateField("bulk", checked === true)
-              }
-              disabled={isSubmitting}
-            />
-            <label htmlFor="bulk" className="text-sm font-medium">
-              Bulk product
             </label>
           </div>
 
@@ -445,7 +430,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       <section className="space-y-4">
         <h3 className="text-lg font-medium">Pricing</h3>
         <FieldGroup>
-          {form.bulk && (
+          {form.product_type === "bulk_flower" && (
             <div className="flex items-center gap-2 mb-2">
               <Checkbox
                 id="price_tbd"
@@ -533,7 +518,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       </section>
 
       {/* Weight & Order Configuration (non-bulk only) */}
-      {!form.bulk && (
+      {form.product_type !== "bulk_flower" && (
         <section className="space-y-4">
           <h3 className="text-lg font-medium">Weight & Order Configuration</h3>
           <FieldGroup>
@@ -579,7 +564,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       )}
 
       {/* Bulk Weight */}
-      {form.bulk && (
+      {form.product_type === "bulk_flower" && (
         <section className="space-y-4">
           <h3 className="text-lg font-medium">Bulk Configuration</h3>
           <FieldGroup>

@@ -313,7 +313,8 @@ export type ProductType =
   | "seed"
   | "merchandise"
   | "gear"
-  | "apparel";
+  | "apparel"
+  | "bulk_flower";
 
 export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
   flower: "Flower",
@@ -328,6 +329,7 @@ export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
   merchandise: "Merchandise",
   gear: "Gear",
   apparel: "Apparel",
+  bulk_flower: "Bulk Flower",
 };
 
 export type ProductStatus = "draft" | "active" | "archived";
