@@ -4054,8 +4054,18 @@ export class ApiClient {
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
 
+  async getPublicProduct(slug: string): Promise<Product> {
+    const res = await this.request<JsonApiResponse<Product>>(`/api/v1/public/products/${slug}`);
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async getPublicStrains(): Promise<Strain[]> {
     const res = await this.request<JsonApiCollectionResponse<Strain>>("/api/v1/public/strains");
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getPublicStrainCoas(strainId: number): Promise<Coa[]> {
+    const res = await this.request<JsonApiCollectionResponse<Coa>>(`/api/v1/public/strains/${strainId}/coas`);
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
 
