@@ -205,6 +205,8 @@ export interface Company {
   members: CompanyMember[];
   referred_by: CompanyReferrer | null;
   comments_count: number;
+  orders_count: number;
+  last_activity_at: string | null;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -275,6 +277,7 @@ export interface Coa {
 export interface Strain {
   id: number;
   name: string;
+  slug: string | null;
   code: string | null;
   category: StrainCategory | null;
   description: string | null;
@@ -800,6 +803,15 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   payment_received: "Payment Received",
 };
 
+export type PaymentStatus = "unpaid" | "partial" | "paid" | "overdue";
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  unpaid: "Unpaid",
+  partial: "Partial",
+  paid: "Paid",
+  overdue: "Overdue",
+};
+
 export type OrderType = "standard" | "preorder";
 
 export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
@@ -889,6 +901,10 @@ export interface Order {
   desired_delivery_date: string | null;
   payment_terms_accepted_at: string | null;
   payment_due_date: string | null;
+  payment_status: PaymentStatus;
+  paid_at: string | null;
+  payment_method: string | null;
+  payment_reference: string | null;
   delivered_at: string | null;
   payment_term_agreement: {
     signed: boolean;
@@ -918,8 +934,19 @@ export interface Order {
   shipping_location: OrderLocation | null;
   billing_location: OrderLocation | null;
   company_details: OrderCompanyDetails | null;
+  delivery_proofs: OrderAttachment[];
+  payment_proofs: OrderAttachment[];
   created_at: string;
   updated_at: string;
+}
+
+export interface OrderAttachment {
+  id: number;
+  filename: string;
+  content_type: string;
+  byte_size: number;
+  url: string;
+  created_at: string;
 }
 
 // ---- Sample Batches ----
@@ -1074,6 +1101,41 @@ export interface DashboardUnsentInvite {
   created_at: string;
 }
 
+export interface AccountsReceivableOrder {
+  id: number;
+  order_number: string;
+  total: number;
+  payment_status: PaymentStatus;
+  payment_term_name: string | null;
+  payment_term_days: number | null;
+  payment_due_date: string | null;
+  delivered_at: string | null;
+  paid_at: string | null;
+  payment_method: string | null;
+  company_name: string | null;
+  company_slug: string | null;
+  days_since_delivery: number | null;
+  days_until_due: number | null;
+}
+
+export interface AccountsReceivable {
+  outstanding: AccountsReceivableOrder[];
+  recently_paid: AccountsReceivableOrder[];
+}
+
+export interface DashboardRegistration {
+  id: number;
+  name: string;
+  slug: string;
+  email: string | null;
+  phone_number: string | null;
+  license_number: string | null;
+  active: boolean;
+  contact_name: string | null;
+  contact_email: string | null;
+  created_at: string;
+}
+
 export interface DashboardStats {
   total_orders: number;
   total_revenue: number;
@@ -1085,6 +1147,7 @@ export interface DashboardStats {
   recent_companies: DashboardRecentCompany[];
   recent_users: DashboardRecentUser[];
   unsent_invitations: DashboardUnsentInvite[];
+  recent_registrations: DashboardRegistration[];
 }
 
 // ---- Notifications ----
@@ -3095,6 +3158,13 @@ export class ApiClient {
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
 
+  async getAccountsReceivable(): Promise<AccountsReceivable> {
+    const res = await this.request<{ data: AccountsReceivable }>(
+      "/api/v1/orders/accounts_receivable"
+    );
+    return res.data;
+  }
+
   async getOrder(id: number): Promise<Order> {
     const res = await this.request<JsonApiResponse<Order>>(
       `/api/v1/orders/${id}`
@@ -3217,6 +3287,65 @@ export class ApiClient {
     await this.request(`/api/v1/orders/${id}/send_license_reminder`, {
       method: "POST",
     });
+  }
+
+  async uploadDeliveryProofs(id: number, files: File[]): Promise<Order> {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files[]", f));
+    const res = await fetch(`${this.baseUrl}/api/v1/orders/${id}/upload_delivery_proofs`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("auth_token") : ""}` },
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Upload failed");
+    const json = await res.json();
+    return { ...json.data.attributes, id: Number(json.data.id) };
+  }
+
+  async deleteDeliveryProof(orderId: number, proofId: number): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${orderId}/delete_delivery_proof`,
+      { method: "DELETE", body: JSON.stringify({ proof_id: proofId }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async uploadPaymentProofs(id: number, files: File[]): Promise<Order> {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files[]", f));
+    const res = await fetch(`${this.baseUrl}/api/v1/orders/${id}/upload_payment_proofs`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("auth_token") : ""}` },
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Upload failed");
+    const json = await res.json();
+    return { ...json.data.attributes, id: Number(json.data.id) };
+  }
+
+  async deletePaymentProof(orderId: number, proofId: number): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${orderId}/delete_payment_proof`,
+      { method: "DELETE", body: JSON.stringify({ proof_id: proofId }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async recordPayment(id: number, data: { payment_status?: string; paid_at?: string; payment_method?: string; payment_reference?: string }, files?: File[]): Promise<Order> {
+    const formData = new FormData();
+    if (data.payment_status) formData.append("payment_status", data.payment_status);
+    if (data.paid_at) formData.append("paid_at", data.paid_at);
+    if (data.payment_method) formData.append("payment_method", data.payment_method);
+    if (data.payment_reference) formData.append("payment_reference", data.payment_reference);
+    if (files) files.forEach((f) => formData.append("files[]", f));
+    const res = await fetch(`${this.baseUrl}/api/v1/orders/${id}/record_payment`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("auth_token") : ""}` },
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Record payment failed");
+    const json = await res.json();
+    return { ...json.data.attributes, id: Number(json.data.id) };
   }
 
   // Sample Batches
@@ -3928,6 +4057,11 @@ export class ApiClient {
   async getPublicStrains(): Promise<Strain[]> {
     const res = await this.request<JsonApiCollectionResponse<Strain>>("/api/v1/public/strains");
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getPublicStrain(slug: string): Promise<Strain> {
+    const res = await this.request<JsonApiResponse<Strain>>(`/api/v1/public/strains/${slug}`);
+    return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
   async getPublicSettings(): Promise<PublicSettings> {

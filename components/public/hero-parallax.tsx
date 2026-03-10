@@ -1,13 +1,76 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+
+// Roxbury, NY coordinates
+const LAT = 42.2962;
+const LON = -74.5593;
+
+// WMO weather codes to human-readable keywords
+function weatherKeyword(code: number): string {
+  if (code === 0) return "Clear";
+  if (code <= 3) return "Cloudy";
+  if (code <= 48) return "Foggy";
+  if (code <= 57) return "Drizzle";
+  if (code <= 67) return "Rainy";
+  if (code <= 77) return "Snowy";
+  if (code <= 82) return "Showers";
+  if (code <= 86) return "Snow showers";
+  if (code <= 99) return "Stormy";
+  return "Clear";
+}
+
+interface WeatherData {
+  temperature: number;
+  weatherCode: number;
+}
 
 export function HeroParallax() {
   const sectionRef = useRef<HTMLElement>(null);
   const bgRef = useRef<HTMLDivElement>(null);
   const budRef = useRef<HTMLDivElement>(null);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [time, setTime] = useState("");
 
+  // Update local time for Roxbury, NY (America/New_York)
+  useEffect(() => {
+    function updateTime() {
+      const now = new Date();
+      setTime(
+        now.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+          timeZone: "America/New_York",
+        })
+      );
+    }
+    updateTime();
+    const interval = setInterval(updateTime, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch weather from Open-Meteo
+  useEffect(() => {
+    async function fetchWeather() {
+      try {
+        const res = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`
+        );
+        const data = await res.json();
+        setWeather({
+          temperature: Math.round(data.current.temperature_2m),
+          weatherCode: data.current.weather_code,
+        });
+      } catch {
+        // Silently fail — hero still renders without weather
+      }
+    }
+    fetchWeather();
+  }, []);
+
+  // Parallax scroll
   useEffect(() => {
     let ticking = false;
 
@@ -75,12 +138,16 @@ export function HeroParallax() {
           We grow epic flower
         </h1>
         <div className="mt-4 flex items-center gap-4 text-sm md:text-base font-medium tracking-wide uppercase drop-shadow">
-          <span>07:30</span>
-          <span>Windy</span>
-          <span>30C</span>
+          {time && <span>{time}</span>}
+          {weather && (
+            <>
+              <span>{weatherKeyword(weather.weatherCode)}</span>
+              <span>{weather.temperature}°F</span>
+            </>
+          )}
         </div>
         <p className="text-sm md:text-base font-medium tracking-wide uppercase drop-shadow">
-          Catskills, New York
+          Roxbury, New York
         </p>
       </div>
     </section>

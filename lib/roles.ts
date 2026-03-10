@@ -20,7 +20,8 @@ export type Resource =
   | "quick_onboard"
   | "settings"
   | "gallery"
-  | "support_tickets";
+  | "support_tickets"
+  | "payments";
 
 type RoleAccessMap = Record<Resource, Partial<Record<UserRole, AccessLevel>>>;
 
@@ -36,13 +37,14 @@ export const ROLE_ACCESS: RoleAccessMap = {
   orders_list:   { admin: "full", observer_admin: "read", editor: "full", sales: "full", account: "read" },
   orders_show:   { admin: "full", observer_admin: "read", editor: "full", cultivator: "read", processing: "read", sales: "full", account: "read" },
   fulfilment:    { admin: "full", observer_admin: "read", editor: "full", cultivator: "full", processing: "full", delivery: "full" },
+  payments:      { admin: "full", editor: "full" },
   carts:         { admin: "full", observer_admin: "read", editor: "full", sales: "full", account: "send_only" },
   products:      { admin: "full", observer_admin: "read", editor: "full_no_delete", sales: "read", account: "read" },
   notifications: { admin: "full", observer_admin: "read", editor: "full", sales: "send_only", account: "read" },
   quick_onboard: { admin: "full", editor: "full", sales: "full" },
   settings:      { admin: "full", observer_admin: "read", account: "read" },
   gallery:       { admin: "full", observer_admin: "read", editor: "full", cultivator: "read", processing: "read", sales: "read" },
-  support_tickets: { admin: "full", observer_admin: "read", editor: "full", sales: "read", account: "send_only" },
+  support_tickets: { admin: "full", observer_admin: "read", editor: "full", account: "send_only" },
 };
 
 export const ADMIN_LAYOUT_ROLES: UserRole[] = [

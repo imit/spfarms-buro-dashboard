@@ -2,13 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiClient, type Order, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS } from "@/lib/api";
+import {
+  apiClient,
+  type Order,
+  type PaymentStatus,
+  ORDER_STATUS_LABELS,
+  ORDER_TYPE_LABELS,
+  PAYMENT_STATUS_LABELS,
+} from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
 
-function formatPrice(amount: string | null) {
+const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
+  unpaid: "bg-slate-100 text-slate-700",
+  partial: "bg-amber-100 text-amber-700",
+  paid: "bg-green-100 text-green-700",
+  overdue: "bg-red-100 text-red-700",
+};
+
+function formatPrice(amount: string | number | null) {
   if (!amount) return "$0.00";
-  return `$${parseFloat(amount).toFixed(2)}`;
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  return `$${num.toFixed(2)}`;
 }
 
 export default function AdminOrdersPage() {
@@ -68,7 +83,7 @@ export default function AdminOrdersPage() {
                 <th className="px-4 py-3 text-left font-medium">Items</th>
                 <th className="px-4 py-3 text-left font-medium">Total</th>
                 <th className="px-4 py-3 text-left font-medium">Terms</th>
-                <th className="px-4 py-3 text-left font-medium">Placed By</th>
+                <th className="px-4 py-3 text-left font-medium">Payment</th>
                 <th className="px-4 py-3 text-left font-medium">Status</th>
               </tr>
             </thead>
@@ -100,8 +115,10 @@ export default function AdminOrdersPage() {
                       ? `${order.payment_term_name}${order.payment_term_days ? ` (Net ${order.payment_term_days})` : ""}`
                       : "COD"}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {order.user?.full_name || order.user?.email || "—"}
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${PAYMENT_STATUS_COLORS[order.payment_status] || PAYMENT_STATUS_COLORS.unpaid}`}>
+                      {PAYMENT_STATUS_LABELS[order.payment_status] || "Unpaid"}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>

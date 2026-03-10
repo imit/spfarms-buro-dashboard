@@ -62,11 +62,14 @@ import { ErrorAlert } from "@/components/ui/error-alert";
 import { showError } from "@/lib/errors";
 import {
   ArrowLeftIcon,
+  BuildingIcon,
+  CalendarIcon,
   CheckCircle2Icon,
   ClipboardListIcon,
+  ClockIcon,
   DollarSignIcon,
+  GlobeIcon,
   ImageIcon,
-  RefreshCwIcon,
   MailIcon,
   MapPinIcon,
   MessageSquareIcon,
@@ -74,11 +77,13 @@ import {
   PencilIcon,
   PhoneIcon,
   PlusIcon,
+  RefreshCwIcon,
   SendIcon,
   ShoppingCartIcon,
   TagIcon,
   Trash2Icon,
   UserIcon,
+  UsersIcon,
   XIcon,
 } from "lucide-react";
 
@@ -102,20 +107,20 @@ const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
 
 const LEAD_STATUSES = Object.entries(LEAD_STATUS_LABELS) as [LeadStatus, string][];
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
-  if (!value) return null;
-  return (
-    <div className="grid grid-cols-3 gap-4 py-2.5">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="col-span-2 text-sm">{value}</dd>
-    </div>
-  );
+type Tab = "overview" | "members" | "orders" | "emails";
+
+function timeAgo(dateStr: string | null | undefined): string {
+  if (!dateStr) return "Never";
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+  return `${Math.floor(diffDays / 365)}y ago`;
 }
 
 export default function CompanyDetailPage({
@@ -130,6 +135,7 @@ export default function CompanyDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [memberForm, setMemberForm] = useState({ email: "", full_name: "", phone_number: "", company_title: "" });
   const [memberSubmitting, setMemberSubmitting] = useState(false);
@@ -185,7 +191,7 @@ export default function CompanyDetailPage({
           setAllDiscounts(discountsData);
           setOrders(ordersData);
         } catch {
-          // Cart may not exist yet — that's fine
+          // Cart may not exist yet
         }
       } catch (err) {
         setError(
@@ -206,9 +212,7 @@ export default function CompanyDetailPage({
       await apiClient.deleteCompany(company.slug);
       router.push("/admin/companies");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "We couldn't delete this company"
-      );
+      setError(err instanceof Error ? err.message : "We couldn't delete this company");
       setIsDeleting(false);
     }
   }
@@ -219,9 +223,7 @@ export default function CompanyDetailPage({
       const updated = await apiClient.updateCompany(company.slug, { lead_status: status });
       setCompany(updated);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "We couldn't update status"
-      );
+      setError(err instanceof Error ? err.message : "We couldn't update status");
     }
   }
 
@@ -463,12 +465,12 @@ export default function CompanyDetailPage({
   if (authLoading || !isAuthenticated) return null;
 
   if (isLoading) {
-    return <p className="text-muted-foreground">Loading...</p>;
+    return <p className="text-muted-foreground p-10">Loading...</p>;
   }
 
-  if (error) {
+  if (error && !company) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 p-10">
         <ErrorAlert message={error} />
         <Button variant="outline" asChild>
           <Link href="/admin/companies">
@@ -486,974 +488,902 @@ export default function CompanyDetailPage({
     ([, v]) => v
   );
 
+  const totalRevenue = orders
+    .filter((o) => o.status !== "cancelled")
+    .reduce((sum, o) => sum + parseFloat(o.total || "0"), 0);
+  const confirmedOrders = orders.filter((o) => o.status !== "pending" && o.status !== "cancelled").length;
+  const pendingOrders = orders.filter((o) => o.status === "pending").length;
+
+  const tabs: { key: Tab; label: string; count?: number }[] = [
+    { key: "overview", label: "Overview" },
+    { key: "members", label: "Members", count: company.members?.length || 0 },
+    { key: "orders", label: "Orders", count: orders.length },
+    { key: "emails", label: "Emails & Cart" },
+  ];
+
   return (
     <div className="space-y-6 px-10">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon-sm" asChild>
-              <Link href="/admin/companies">
-                <ArrowLeftIcon className="size-4" />
-              </Link>
-            </Button>
-            {company.website ? (
-              <button
-                type="button"
-                onClick={handleFetchLogo}
-                disabled={fetchingLogo}
-                title={company.logo_url ? "Re-fetch logo from website" : "Fetch logo from website"}
-                className="relative size-10 shrink-0 rounded-lg border overflow-hidden group cursor-pointer disabled:cursor-wait"
-              >
-                {company.logo_url ? (
-                  <>
-                    <img src={company.logo_url} alt="" className="size-full object-cover" />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <RefreshCwIcon className={`size-4 text-white ${fetchingLogo ? "animate-spin" : ""}`} />
-                    </div>
-                  </>
-                ) : (
-                  <div className="size-full flex items-center justify-center bg-muted">
-                    <ImageIcon className={`size-4 text-muted-foreground ${fetchingLogo ? "animate-pulse" : ""}`} />
-                  </div>
-                )}
-              </button>
-            ) : company.logo_url ? (
-              <img src={company.logo_url} alt="" className="size-10 rounded-lg object-cover border" />
-            ) : null}
-            <h2 className="text-2xl font-semibold">{company.name}</h2>
-            <Badge variant="outline">
-              {COMPANY_TYPE_LABELS[company.company_type]}
-            </Badge>
-            {company.active ? (
-              <Badge variant="default">Active</Badge>
-            ) : (
-              <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                Pending Approval
-              </Badge>
-            )}
-          </div>
-          <div className="ml-11 mt-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+      {error && <ErrorAlert message={error} />}
+
+      {/* Top bar */}
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon-sm" asChild>
+          <Link href="/admin/companies">
+            <ArrowLeftIcon className="size-4" />
+          </Link>
+        </Button>
+        <span className="text-sm text-muted-foreground">Companies</span>
+        <span className="text-sm text-muted-foreground">/</span>
+        <span className="text-sm font-medium">{company.name}</span>
+      </div>
+
+      {/* Hero card */}
+      <div className="rounded-xl border bg-card shadow-xs overflow-hidden">
+        <div className="p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-4">
+              {/* Logo */}
+              {company.website ? (
                 <button
                   type="button"
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-opacity hover:opacity-80 ${LEAD_STATUS_COLORS[company.lead_status] || ""}`}
+                  onClick={handleFetchLogo}
+                  disabled={fetchingLogo}
+                  title={company.logo_url ? "Re-fetch logo" : "Fetch logo from website"}
+                  className="relative size-14 shrink-0 rounded-xl border overflow-hidden group cursor-pointer disabled:cursor-wait"
                 >
-                  {LEAD_STATUS_LABELS[company.lead_status] || company.lead_status}
-                  <svg width="10" height="10" viewBox="0 0 10 10" className="opacity-50">
-                    <path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  {company.logo_url ? (
+                    <>
+                      <img src={company.logo_url} alt="" className="size-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <RefreshCwIcon className={`size-4 text-white ${fetchingLogo ? "animate-spin" : ""}`} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="size-full flex items-center justify-center bg-muted">
+                      <ImageIcon className={`size-5 text-muted-foreground ${fetchingLogo ? "animate-pulse" : ""}`} />
+                    </div>
+                  )}
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {LEAD_STATUSES.map(([value, label]) => (
-                  <DropdownMenuItem
-                    key={value}
-                    onClick={() => handleLeadStatusChange(value)}
-                  >
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_STATUS_COLORS[value]}`}
-                    >
-                      {label}
-                    </span>
-                    {value === company.lead_status && (
-                      <span className="ml-auto text-xs text-muted-foreground">current</span>
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          {company.description && (
-            <p className="text-sm text-muted-foreground ml-11">
-              {company.description}
-            </p>
-          )}
-        </div>
-        <div className="flex gap-2">
-          {!company.active && (
-            <Button size="sm" onClick={handleApprove}>
-              <CheckCircle2Icon className="mr-2 size-4" />
-              Approve
-            </Button>
-          )}
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/admin/companies/${company.slug}/edit`}>
-              <PencilIcon className="mr-2 size-4" />
-              Edit
-            </Link>
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" disabled={isDeleting}>
-                <Trash2Icon className="mr-2 size-4" />
-                Delete
+              ) : company.logo_url ? (
+                <img src={company.logo_url} alt="" className="size-14 rounded-xl object-cover border" />
+              ) : (
+                <div className="size-14 rounded-xl border bg-muted flex items-center justify-center">
+                  <BuildingIcon className="size-6 text-muted-foreground" />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-semibold">{company.name}</h1>
+                  <Badge variant="outline">
+                    {COMPANY_TYPE_LABELS[company.company_type]}
+                  </Badge>
+                  {company.bulk_buyer && (
+                    <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">Bulk</Badge>
+                  )}
+                  {company.active ? (
+                    <Badge variant="default">Active</Badge>
+                  ) : (
+                    <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+                      Pending Approval
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Lead status dropdown */}
+                <div className="flex items-center gap-3">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-opacity hover:opacity-80 ${LEAD_STATUS_COLORS[company.lead_status] || ""}`}
+                      >
+                        {LEAD_STATUS_LABELS[company.lead_status] || company.lead_status}
+                        <svg width="10" height="10" viewBox="0 0 10 10" className="opacity-50">
+                          <path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {LEAD_STATUSES.map(([value, label]) => (
+                        <DropdownMenuItem
+                          key={value}
+                          onClick={() => handleLeadStatusChange(value)}
+                        >
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_STATUS_COLORS[value]}`}>
+                            {label}
+                          </span>
+                          {value === company.lead_status && (
+                            <span className="ml-auto text-xs text-muted-foreground">current</span>
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  {company.description && (
+                    <span className="text-sm text-muted-foreground">{company.description}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 shrink-0">
+              {!company.active && (
+                <Button size="sm" onClick={handleApprove}>
+                  <CheckCircle2Icon className="mr-2 size-4" />
+                  Approve
+                </Button>
+              )}
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/admin/companies/${company.slug}/edit`}>
+                  <PencilIcon className="mr-2 size-4" />
+                  Edit
+                </Link>
               </Button>
-            </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete company?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete {company.name} and all its
-                locations. This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" disabled={isDeleting}>
+                    <Trash2Icon className="mr-2 size-4" />
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete company?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete {company.name} and all its
+                      locations. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Two-column layout: main content + notes */}
-      <div className="flex gap-6">
-        {/* Left column: main content */}
-        <div className="flex-1 min-w-0 space-y-6">
-
-      {/* Details & Contact */}
-      <div className="rounded-lg border bg-card p-5">
-        <h3 className="font-medium mb-3">Details</h3>
-        <Separator className="mb-1" />
-        <dl>
-          <DetailRow
-            label="Type"
-            value={COMPANY_TYPE_LABELS[company.company_type]}
-          />
-          <DetailRow label="License #" value={company.license_number} />
-          <DetailRow label="Slug" value={company.slug} />
-          <DetailRow
-            label="Referred by"
-            value={company.referred_by ? (
-              <Link
-                href={`/admin/users/${company.referred_by.id}`}
-                className="text-primary hover:underline"
-              >
-                {company.referred_by.full_name || company.referred_by.email}
-              </Link>
-            ) : null}
-          />
-          <DetailRow
-            label="Created"
-            value={new Date(company.created_at).toLocaleDateString()}
-          />
-          <DetailRow
-            label="Email"
-            value={company.email ? (
-              <a href={`mailto:${company.email}`} className="text-primary hover:underline">
+        {/* Key info strip */}
+        <div className="border-t bg-muted/30 px-6 py-3">
+          <div className="flex items-center gap-6 text-sm">
+            {company.email && (
+              <a href={`mailto:${company.email}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                <MailIcon className="size-3.5" />
                 {company.email}
               </a>
-            ) : null}
-          />
-          <DetailRow label="Phone" value={company.phone_number} />
-          <DetailRow
-            label="Website"
-            value={company.website ? (
-              <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                {company.website}
+            )}
+            {company.phone_number && (
+              <a href={`tel:${company.phone_number}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                <PhoneIcon className="size-3.5" />
+                {company.phone_number}
               </a>
-            ) : null}
-          />
-          {socialEntries.map(([platform, handle]) => (
-            <DetailRow
-              key={platform}
-              label={platform.charAt(0).toUpperCase() + platform.slice(1)}
-              value={handle}
-            />
-          ))}
-        </dl>
+            )}
+            {company.website && (
+              <a href={company.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                <GlobeIcon className="size-3.5" />
+                {company.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+              </a>
+            )}
+            {company.license_number && (
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <TagIcon className="size-3.5" />
+                {company.license_number}
+              </span>
+            )}
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <CalendarIcon className="size-3.5" />
+              Since {new Date(company.created_at).toLocaleDateString()}
+            </span>
+            <span className="flex items-center gap-1.5 text-muted-foreground" title={company.last_activity_at ? new Date(company.last_activity_at).toLocaleString() : "No activity yet"}>
+              <ClockIcon className="size-3.5" />
+              Last activity: {timeAgo(company.last_activity_at)}
+            </span>
+          </div>
+        </div>
+
+        {/* Stats strip */}
+        {orders.length > 0 && (
+          <div className="border-t px-6 py-3">
+            <div className="flex items-center gap-8 text-sm">
+              <div>
+                <span className="text-muted-foreground">Revenue</span>
+                <span className="ml-2 font-semibold">${totalRevenue.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Orders</span>
+                <span className="ml-2 font-semibold">{confirmedOrders}</span>
+              </div>
+              {pendingOrders > 0 && (
+                <div>
+                  <span className="text-muted-foreground">Pending</span>
+                  <span className="ml-2 font-semibold text-amber-600">{pendingOrders}</span>
+                </div>
+              )}
+              <div>
+                <span className="text-muted-foreground">Members</span>
+                <span className="ml-2 font-semibold">{company.members?.length || 0}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Cart</span>
+                <span className="ml-2 font-semibold">{cart?.item_count || 0} items</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Members */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium">Members</h3>
-          <Dialog open={memberDialogOpen} onOpenChange={(open) => {
-              setMemberDialogOpen(open);
-              if (!open) { setMemberLookup(null); setMemberError(""); }
-            }}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <PlusIcon className="mr-2 size-4" />
-                Add Member
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Member</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleAddMember} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="member-email">Email *</Label>
-                  <Input
-                    id="member-email"
-                    type="email"
-                    required
-                    value={memberForm.email}
-                    onChange={(e) => {
-                      setMemberForm((f) => ({ ...f, email: e.target.value }));
-                      setMemberLookup(null);
-                    }}
-                    onBlur={(e) => handleMemberEmailLookup(e.target.value)}
-                  />
-                  {lookingUp && (
-                    <p className="text-xs text-muted-foreground">Looking up user...</p>
-                  )}
-                  {memberLookup && !memberLookup.already_member && !memberLookup.deleted && (
-                    <p className="text-xs text-blue-600">
-                      Existing user found — will be added to this company
-                    </p>
-                  )}
-                  {memberLookup?.deleted && (
-                    <p className="text-xs text-amber-600">
-                      Deactivated account — will be restored and added
-                    </p>
-                  )}
-                  {memberLookup?.already_member && (
-                    <p className="text-xs text-destructive">
-                      Already a member of this company
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="member-name">Full Name</Label>
-                  <Input
-                    id="member-name"
-                    value={memberForm.full_name}
-                    onChange={(e) => setMemberForm((f) => ({ ...f, full_name: e.target.value }))}
-                    disabled={!!memberLookup && !memberLookup.already_member && !memberLookup.deleted}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="member-phone">Phone Number</Label>
-                  <Input
-                    id="member-phone"
-                    value={memberForm.phone_number}
-                    onChange={(e) => setMemberForm((f) => ({ ...f, phone_number: e.target.value }))}
-                    disabled={!!memberLookup && !memberLookup.already_member && !memberLookup.deleted}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="member-title">Title</Label>
-                  <Input
-                    id="member-title"
-                    placeholder="e.g. Manager, Buyer"
-                    value={memberForm.company_title}
-                    onChange={(e) => setMemberForm((f) => ({ ...f, company_title: e.target.value }))}
-                  />
-                </div>
-                {memberError && <ErrorAlert message={memberError} />}
-                <DialogFooter>
-                  <Button type="submit" disabled={memberSubmitting || !!memberLookup?.already_member}>
-                    {memberSubmitting ? "Adding..." : memberLookup && !memberLookup.already_member ? "Add Existing User" : "Add Member"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+      {/* Tabs */}
+      <div className="border-b">
+        <div className="flex gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                activeTab === tab.key
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
+              }`}
+            >
+              {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className="ml-1.5 text-xs bg-muted rounded-full px-1.5 py-0.5">{tab.count}</span>
+              )}
+            </button>
+          ))}
         </div>
-        {!company.members || company.members.length === 0 ? (
-          <div className="rounded-lg border bg-card p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              No members yet.
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-lg border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium">Name</th>
-                  <th className="px-4 py-3 text-left font-medium">Title</th>
-                  <th className="px-4 py-3 text-left font-medium">Contact</th>
-                  <th className="px-4 py-3 text-left font-medium">Role</th>
-                  <th className="px-4 py-3 text-left font-medium">Invite</th>
-                  <th className="px-4 py-3 w-10"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {company.members.map((member) => (
-                  <tr
-                    key={member.id}
-                    className="border-b last:border-0 hover:bg-muted/30"
-                  >
-                    <td
-                      className="px-4 py-3 cursor-pointer"
-                      onClick={() => router.push(`/admin/users/${member.id}`)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="size-4 text-muted-foreground shrink-0" />
-                        <div>
-                          <div className="font-medium">
-                            {member.full_name || member.email}
+      </div>
+
+      {/* Tab content */}
+      <div className="flex gap-6">
+        <div className="flex-1 min-w-0 space-y-6">
+
+          {/* ===== OVERVIEW TAB ===== */}
+          {activeTab === "overview" && (
+            <>
+              {/* Details */}
+              <div className="rounded-xl border bg-card p-5 shadow-xs">
+                <h3 className="font-medium mb-3">Details</h3>
+                <Separator className="mb-1" />
+                <dl className="divide-y divide-border/50">
+                  <InfoRow label="Type" value={COMPANY_TYPE_LABELS[company.company_type]} />
+                  <InfoRow label="License #" value={company.license_number} />
+                  <InfoRow label="Slug" value={company.slug} />
+                  <InfoRow
+                    label="Referred by"
+                    value={company.referred_by ? (
+                      <Link href={`/admin/users/${company.referred_by.id}`} className="text-primary hover:underline">
+                        {company.referred_by.full_name || company.referred_by.email}
+                      </Link>
+                    ) : null}
+                  />
+                  <InfoRow label="Created" value={new Date(company.created_at).toLocaleDateString()} />
+                  <InfoRow
+                    label="Last Activity"
+                    value={company.last_activity_at
+                      ? `${timeAgo(company.last_activity_at)} (${new Date(company.last_activity_at).toLocaleDateString()})`
+                      : "No activity yet"
+                    }
+                  />
+                  {socialEntries.map(([platform, handle]) => (
+                    <InfoRow
+                      key={platform}
+                      label={platform.charAt(0).toUpperCase() + platform.slice(1)}
+                      value={handle}
+                    />
+                  ))}
+                </dl>
+              </div>
+
+              {/* Locations */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium">Locations</h3>
+                  <Button variant="outline" size="sm" onClick={openAddLocation}>
+                    <PlusIcon className="mr-2 size-4" />
+                    Add Location
+                  </Button>
+                </div>
+
+                <LocationFormDialog
+                  open={locationFormOpen}
+                  onOpenChange={(open) => {
+                    setLocationFormOpen(open);
+                    if (!open) { setEditingLocationId(null); setLocationForm(emptyLocationForm); }
+                  }}
+                  editingLocationId={editingLocationId}
+                  locationForm={locationForm}
+                  setLocationForm={setLocationForm}
+                  onSave={handleSaveLocation}
+                  locationSubmitting={locationSubmitting}
+                />
+
+                {!company.locations || company.locations.length === 0 ? (
+                  <div className="rounded-xl border bg-card p-6 text-center shadow-xs">
+                    <p className="text-sm text-muted-foreground">No locations added yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {company.locations.map((loc, i) => {
+                      const fullAddress = [loc.address, loc.city, loc.state, loc.zip_code]
+                        .filter(Boolean)
+                        .join(", ");
+                      return (
+                        <div key={loc.id ?? i} className="rounded-xl border bg-card p-4 shadow-xs">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium text-sm">{loc.name || `Location ${i + 1}`}</span>
+                            <div className="flex items-center gap-2">
+                              {loc.region && (
+                                <Badge variant="outline" className="text-xs">
+                                  {REGION_LABELS[loc.region]}
+                                </Badge>
+                              )}
+                              <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground" onClick={() => openEditLocation(loc)}>
+                                <PencilIcon className="size-3.5" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive" disabled={deletingLocationId === loc.id}>
+                                    <Trash2Icon className="size-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Remove location?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will remove {loc.name || "this location"} from {company.name}.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteLocation(loc.id)}>Remove</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
                           </div>
-                          {member.full_name && (
-                            <div className="text-xs text-muted-foreground">
-                              {member.email}
+                          {loc.license_number && (
+                            <div className="flex items-center gap-2 text-sm mb-1">
+                              <Badge variant="secondary" className="text-xs">OCM</Badge>
+                              <span className="text-muted-foreground">{loc.license_number}</span>
+                            </div>
+                          )}
+                          {fullAddress && (
+                            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                              <MapPinIcon className="size-3.5 mt-0.5 shrink-0" />
+                              <span>{fullAddress}</span>
+                            </div>
+                          )}
+                          {loc.phone_number && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                              <PhoneIcon className="size-3.5 shrink-0" />
+                              <span>{loc.phone_number}</span>
                             </div>
                           )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {member.company_title || "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                        {member.phone_number && (
-                          <a href={`tel:${member.phone_number}`} className="flex items-center gap-1.5 hover:text-foreground transition-colors">
-                            <PhoneIcon className="size-3 shrink-0" />
-                            {member.phone_number}
-                          </a>
-                        )}
-                        <a href={`mailto:${member.email}`} className="flex items-center gap-1.5 hover:text-foreground transition-colors">
-                          <MailIcon className="size-3 shrink-0" />
-                          {member.email}
-                        </a>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant="outline">
-                        {ROLE_LABELS[member.role]}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      {member.invitation_sent_at ? (
-                        <Badge variant="secondary" className="text-xs">
-                          Sent {new Date(member.invitation_sent_at).toLocaleDateString()}
-                        </Badge>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setInviteCustomMessage("");
-                            setInviteModalMember({ id: member.id, email: member.email, full_name: member.full_name });
-                          }}
-                        >
-                          <SendIcon className="mr-1.5 size-3.5" />
-                          Send Invite
-                        </Button>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground hover:text-destructive"
-                            disabled={removingMemberId === member.id}
-                          >
-                            <XIcon className="size-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remove member?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will remove {member.full_name || member.email} from {company.name}. They will lose access to the storefront.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleRemoveMember(member.id)}>
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Cart */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <ShoppingCartIcon className="size-5 text-muted-foreground" />
-          <h3 className="text-lg font-medium">Cart</h3>
-          {cart && cart.items.length > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {cart.item_count} item{cart.item_count !== 1 ? "s" : ""}
-            </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
           )}
-        </div>
-        {!cart || cart.items.length === 0 ? (
-          <div className="rounded-lg border bg-card p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Cart is empty.
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-lg border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium">Product</th>
-                  <th className="px-4 py-3 text-left font-medium">Type</th>
-                  <th className="px-4 py-3 text-right font-medium">Qty</th>
-                  <th className="px-4 py-3 text-right font-medium">Unit Price</th>
-                  <th className="px-4 py-3 text-right font-medium">Subtotal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cart.items.map((item) => (
-                  <tr key={item.id} className="border-b last:border-0">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <PackageIcon className="size-4 text-muted-foreground shrink-0" />
-                        <div>
-                          <div className="font-medium">{item.product_name}</div>
-                          {item.strain_name && (
-                            <div className="text-xs text-muted-foreground">{item.strain_name}</div>
+
+          {/* ===== MEMBERS TAB ===== */}
+          {activeTab === "members" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium">Members</h3>
+                <Dialog open={memberDialogOpen} onOpenChange={(open) => {
+                  setMemberDialogOpen(open);
+                  if (!open) { setMemberLookup(null); setMemberError(""); }
+                }}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <PlusIcon className="mr-2 size-4" />
+                      Add Member
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Member</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAddMember} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="member-email">Email *</Label>
+                        <Input
+                          id="member-email"
+                          type="email"
+                          required
+                          value={memberForm.email}
+                          onChange={(e) => {
+                            setMemberForm((f) => ({ ...f, email: e.target.value }));
+                            setMemberLookup(null);
+                          }}
+                          onBlur={(e) => handleMemberEmailLookup(e.target.value)}
+                        />
+                        {lookingUp && <p className="text-xs text-muted-foreground">Looking up user...</p>}
+                        {memberLookup && !memberLookup.already_member && !memberLookup.deleted && (
+                          <p className="text-xs text-blue-600">Existing user found — will be added to this company</p>
+                        )}
+                        {memberLookup?.deleted && (
+                          <p className="text-xs text-amber-600">Deactivated account — will be restored and added</p>
+                        )}
+                        {memberLookup?.already_member && (
+                          <p className="text-xs text-destructive">Already a member of this company</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="member-name">Full Name</Label>
+                        <Input
+                          id="member-name"
+                          value={memberForm.full_name}
+                          onChange={(e) => setMemberForm((f) => ({ ...f, full_name: e.target.value }))}
+                          disabled={!!memberLookup && !memberLookup.already_member && !memberLookup.deleted}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="member-phone">Phone Number</Label>
+                        <Input
+                          id="member-phone"
+                          value={memberForm.phone_number}
+                          onChange={(e) => setMemberForm((f) => ({ ...f, phone_number: e.target.value }))}
+                          disabled={!!memberLookup && !memberLookup.already_member && !memberLookup.deleted}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="member-title">Title</Label>
+                        <Input
+                          id="member-title"
+                          placeholder="e.g. Manager, Buyer"
+                          value={memberForm.company_title}
+                          onChange={(e) => setMemberForm((f) => ({ ...f, company_title: e.target.value }))}
+                        />
+                      </div>
+                      {memberError && <ErrorAlert message={memberError} />}
+                      <DialogFooter>
+                        <Button type="submit" disabled={memberSubmitting || !!memberLookup?.already_member}>
+                          {memberSubmitting ? "Adding..." : memberLookup && !memberLookup.already_member ? "Add Existing User" : "Add Member"}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {!company.members || company.members.length === 0 ? (
+                <div className="rounded-xl border bg-card p-6 text-center shadow-xs">
+                  <p className="text-sm text-muted-foreground">No members yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {company.members.map((member) => (
+                    <div
+                      key={member.id}
+                      className="rounded-xl border bg-card p-4 shadow-xs flex items-center gap-4 hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="size-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <UserIcon className="size-5 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => router.push(`/admin/users/${member.id}`)}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{member.full_name || member.email}</span>
+                          <Badge variant="outline" className="text-xs">{ROLE_LABELS[member.role]}</Badge>
+                          {member.company_title && (
+                            <span className="text-xs text-muted-foreground">{member.company_title}</span>
                           )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {PRODUCT_TYPE_LABELS[item.product_type]}
-                      {item.unit_weight && <span className="ml-1 text-xs">({item.unit_weight}g)</span>}
-                    </td>
-                    <td className="px-4 py-3 text-right">{item.quantity}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">
-                      {item.unit_price ? `$${parseFloat(item.unit_price).toFixed(2)}` : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium">
-                      {item.unit_price
-                        ? `$${(parseFloat(item.unit_price) * item.quantity).toFixed(2)}`
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-muted/30">
-                  <td colSpan={4} className="px-4 py-3 text-right font-medium">
-                    Total
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold">
-                    ${parseFloat(String(cart.subtotal)).toFixed(2)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
-
-        {/* Cart Discounts */}
-        <div className="rounded-lg border bg-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TagIcon className="size-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Discounts</span>
-            </div>
-            {allDiscounts.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <PlusIcon className="mr-1.5 size-3.5" />
-                    Add Discount
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {allDiscounts
-                    .filter(
-                      (d) => !cart?.discounts?.some((cd) => cd.id === d.id)
-                    )
-                    .map((discount) => (
-                      <DropdownMenuItem
-                        key={discount.id}
-                        onClick={() => handleAddCartDiscount(discount.id)}
-                      >
-                        {discount.name}
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {discount.discount_type === "percentage"
-                            ? `${discount.value}%`
-                            : `$${discount.value}`}
-                        </span>
-                      </DropdownMenuItem>
-                    ))}
-                  {allDiscounts.filter(
-                    (d) => !cart?.discounts?.some((cd) => cd.id === d.id)
-                  ).length === 0 && (
-                    <DropdownMenuItem disabled>
-                      No available discounts
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-          {cart?.discounts && cart.discounts.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {cart.discounts.map((discount) => (
-                <Badge
-                  key={discount.id}
-                  variant="secondary"
-                  className="gap-1.5 pr-1.5"
-                >
-                  {discount.name}
-                  <span className="text-xs text-muted-foreground">
-                    {discount.discount_type === "percentage"
-                      ? `${discount.value}%`
-                      : `$${discount.value}`}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveCartDiscount(discount.id)}
-                    className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
-                  >
-                    <XIcon className="size-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              No discounts assigned to this cart.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Follow-up Emails */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageSquareIcon className="size-5 text-muted-foreground" />
-            <h3 className="text-lg font-medium">Follow-up Emails</h3>
-          </div>
-          <div className="flex gap-2">
-            {cart && cart.items.length > 0 && (
-              <Dialog open={cartReminderOpen} onOpenChange={(open) => { setCartReminderOpen(open); if (!open) setCartReminderMessage(""); }}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <ShoppingCartIcon className="mr-1.5 size-3.5" />
-                    Cart Reminder
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-xl">
-                  <DialogHeader>
-                    <DialogTitle>Send Cart Reminder</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Send a &quot;You have items waiting&quot; email to all members of <span className="font-medium text-foreground">{company?.name}</span>.
-                    </p>
-                    <Textarea
-                      placeholder="Add a custom message (optional)..."
-                      value={cartReminderMessage}
-                      onChange={(e) => setCartReminderMessage(e.target.value)}
-                      rows={2}
-                    />
-                    <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Cart items</p>
-                      {cart.items.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between text-sm">
-                          <div>
-                            <span className="font-medium">{item.product_name}</span>
-                            {item.strain_name && <span className="text-muted-foreground ml-1">({item.strain_name})</span>}
-                            <span className="text-muted-foreground"> x{item.quantity}</span>
-                          </div>
-                          <span className="text-muted-foreground">
-                            {item.unit_price ? `$${parseFloat(item.unit_price).toFixed(2)}` : "—"}
-                          </span>
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                          <span>{member.email}</span>
+                          {member.phone_number && <span>{member.phone_number}</span>}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleSendCartReminder} disabled={sendingCartReminder} className="w-full">
-                      <SendIcon className="mr-2 size-4" />
-                      {sendingCartReminder ? "Sending..." : "Send Cart Reminder"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-            <Dialog open={followupOpen} onOpenChange={(open) => { setFollowupOpen(open); if (!open) setFollowupForm({ notification_type: "feedback_request", subject: "", body: "" }); }}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <MailIcon className="mr-1.5 size-3.5" />
-                  Send Follow-up
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-xl">
-                <DialogHeader>
-                  <DialogTitle>Send Follow-up Email</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Send an email to all members of <span className="font-medium text-foreground">{company?.name}</span>.
-                  </p>
-                  <div className="space-y-2">
-                    <Label>Type</Label>
-                    <select
-                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                      value={followupForm.notification_type}
-                      onChange={(e) => setFollowupForm((f) => ({ ...f, notification_type: e.target.value as NotificationType }))}
-                    >
-                      {(["feedback_request", "info_request", "product_update", "announcement"] as NotificationType[]).map((t) => (
-                        <option key={t} value={t}>{NOTIFICATION_TYPE_LABELS[t]}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Subject *</Label>
-                    <Input
-                      value={followupForm.subject}
-                      onChange={(e) => setFollowupForm((f) => ({ ...f, subject: e.target.value }))}
-                      placeholder="Email subject line"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Message</Label>
-                    <Textarea
-                      value={followupForm.body}
-                      onChange={(e) => setFollowupForm((f) => ({ ...f, body: e.target.value }))}
-                      placeholder="Email body..."
-                      rows={4}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleSendFollowup} disabled={sendingFollowup || !followupForm.subject.trim()} className="w-full">
-                    <SendIcon className="mr-2 size-4" />
-                    {sendingFollowup ? "Sending..." : "Send Follow-up"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            {company?.bulk_buyer && (
-              <Dialog open={bulkListOpen} onOpenChange={(open) => { setBulkListOpen(open); if (!open) setBulkListMessage(""); }}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <PackageIcon className="mr-1.5 size-3.5" />
-                    Send Bulk List
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-xl">
-                  <DialogHeader>
-                    <DialogTitle>Send Bulk Flower List</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Email the current bulk flower availability with a PDF attachment to all members of <span className="font-medium text-foreground">{company?.name}</span>.
-                    </p>
-                    <Textarea
-                      placeholder="Add a custom message (optional)..."
-                      value={bulkListMessage}
-                      onChange={(e) => setBulkListMessage(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleSendBulkList} disabled={sendingBulkList} className="w-full">
-                      <SendIcon className="mr-2 size-4" />
-                      {sendingBulkList ? "Sending..." : "Send Bulk List"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
-        </div>
-        <div className="rounded-lg border bg-card p-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            {cart && cart.items.length > 0
-              ? `${cart.item_count} item${cart.item_count !== 1 ? "s" : ""} in cart — use "Cart Reminder" to nudge this company.`
-              : "Cart is empty. Use \"Send Follow-up\" for general emails."}
-          </p>
-        </div>
-      </div>
-
-      {/* Orders & Revenue */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <ClipboardListIcon className="size-5 text-muted-foreground" />
-          <h3 className="text-lg font-medium">Orders</h3>
-          {orders.length > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {orders.length} order{orders.length !== 1 ? "s" : ""}
-            </Badge>
-          )}
-        </div>
-
-        {orders.length > 0 && (
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-lg border bg-card p-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                <DollarSignIcon className="size-4" />
-                Total Revenue
-              </div>
-              <p className="text-2xl font-semibold">
-                ${orders
-                  .filter((o) => o.status !== "cancelled")
-                  .reduce((sum, o) => sum + parseFloat(o.total || "0"), 0)
-                  .toFixed(2)}
-              </p>
-            </div>
-            <div className="rounded-lg border bg-card p-4">
-              <div className="text-sm text-muted-foreground mb-1">Confirmed Orders</div>
-              <p className="text-2xl font-semibold">
-                {orders.filter((o) => o.status !== "pending" && o.status !== "cancelled").length}
-              </p>
-            </div>
-            <div className="rounded-lg border bg-card p-4">
-              <div className="text-sm text-muted-foreground mb-1">Pending</div>
-              <p className="text-2xl font-semibold">
-                {orders.filter((o) => o.status === "pending").length}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {orders.length === 0 ? (
-          <div className="rounded-lg border bg-card p-6 text-center">
-            <p className="text-sm text-muted-foreground">No orders yet.</p>
-          </div>
-        ) : (
-          <div className="rounded-lg border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium">Order #</th>
-                  <th className="px-4 py-3 text-left font-medium">Date</th>
-                  <th className="px-4 py-3 text-left font-medium">Status</th>
-                  <th className="px-4 py-3 text-left font-medium">Placed by</th>
-                  <th className="px-4 py-3 text-right font-medium">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
-                    onClick={() => router.push(`/admin/orders/${order.id}`)}
-                  >
-                    <td className="px-4 py-3 font-medium">{order.order_number}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(order.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
-                        {ORDER_STATUS_LABELS[order.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {order.user?.full_name || order.user?.email || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium">
-                      ${parseFloat(order.total || "0").toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Locations */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium">Locations</h3>
-          <Button variant="outline" size="sm" onClick={openAddLocation}>
-            <PlusIcon className="mr-2 size-4" />
-            Add Location
-          </Button>
-        </div>
-
-        {/* Location Form Dialog */}
-        <Dialog open={locationFormOpen} onOpenChange={(open) => {
-          setLocationFormOpen(open);
-          if (!open) { setEditingLocationId(null); setLocationForm(emptyLocationForm); }
-        }}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{editingLocationId ? "Edit Location" : "Add Location"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSaveLocation} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="loc-name">Location Name</Label>
-                <Input
-                  id="loc-name"
-                  placeholder="e.g. Main Store, Warehouse"
-                  value={locationForm.name}
-                  onChange={(e) => setLocationForm((f) => ({ ...f, name: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="loc-license">OCM License Number</Label>
-                <Input
-                  id="loc-license"
-                  placeholder="OCM-XXXXX"
-                  value={locationForm.license_number}
-                  onChange={(e) => setLocationForm((f) => ({ ...f, license_number: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="loc-address">Street Address</Label>
-                <Input
-                  id="loc-address"
-                  value={locationForm.address}
-                  onChange={(e) => setLocationForm((f) => ({ ...f, address: e.target.value }))}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="loc-city">City</Label>
-                  <Input
-                    id="loc-city"
-                    value={locationForm.city}
-                    onChange={(e) => setLocationForm((f) => ({ ...f, city: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="loc-state">State</Label>
-                  <Input
-                    id="loc-state"
-                    value={locationForm.state}
-                    onChange={(e) => setLocationForm((f) => ({ ...f, state: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="loc-zip">ZIP Code</Label>
-                  <Input
-                    id="loc-zip"
-                    value={locationForm.zip_code}
-                    onChange={(e) => setLocationForm((f) => ({ ...f, zip_code: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="loc-region">Region</Label>
-                  <select
-                    id="loc-region"
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                    value={locationForm.region}
-                    onChange={(e) => setLocationForm((f) => ({ ...f, region: e.target.value }))}
-                  >
-                    <option value="">Select region</option>
-                    {(Object.entries(REGION_LABELS) as [Region, string][]).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="loc-phone">Phone Number</Label>
-                  <Input
-                    id="loc-phone"
-                    value={locationForm.phone_number}
-                    onChange={(e) => setLocationForm((f) => ({ ...f, phone_number: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={locationSubmitting}>
-                  {locationSubmitting ? "Saving..." : editingLocationId ? "Update Location" : "Add Location"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {!company.locations || company.locations.length === 0 ? (
-          <div className="rounded-lg border bg-card p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              No locations added yet.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {company.locations.map((loc, i) => {
-              const fullAddress = [loc.address, loc.city, loc.state, loc.zip_code]
-                .filter(Boolean)
-                .join(", ");
-
-              return (
-                <div key={loc.id ?? i} className="rounded-lg border bg-card p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-sm">
-                      {loc.name || `Location ${i + 1}`}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {loc.region && (
-                        <Badge variant="outline" className="text-xs">
-                          {REGION_LABELS[loc.region]}
-                        </Badge>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted-foreground hover:text-foreground"
-                        onClick={() => openEditLocation(loc)}
-                      >
-                        <PencilIcon className="size-3.5" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {member.invitation_sent_at ? (
+                          <Badge variant="secondary" className="text-xs">
+                            Invited {new Date(member.invitation_sent_at).toLocaleDateString()}
+                          </Badge>
+                        ) : (
                           <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground hover:text-destructive"
-                            disabled={deletingLocationId === loc.id}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setInviteCustomMessage("");
+                              setInviteModalMember({ id: member.id, email: member.email, full_name: member.full_name });
+                            }}
                           >
-                            <Trash2Icon className="size-3.5" />
+                            <SendIcon className="mr-1.5 size-3.5" />
+                            Invite
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remove location?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will remove {loc.name || "this location"} from {company.name}.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteLocation(loc.id)}>
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                        )}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground hover:text-destructive"
+                              disabled={removingMemberId === member.id}
+                            >
+                              <XIcon className="size-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove member?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove {member.full_name || member.email} from {company.name}. They will lose access to the storefront.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleRemoveMember(member.id)}>Remove</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ===== ORDERS TAB ===== */}
+          {activeTab === "orders" && (
+            <div className="space-y-4">
+              {orders.length > 0 && (
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-xl border bg-card p-4 shadow-xs">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <DollarSignIcon className="size-4" />
+                      Total Revenue
+                    </div>
+                    <p className="text-2xl font-semibold">${totalRevenue.toFixed(2)}</p>
                   </div>
-                  {loc.license_number && (
-                    <div className="flex items-center gap-2 text-sm mb-1">
-                      <Badge variant="secondary" className="text-xs">OCM</Badge>
-                      <span className="text-muted-foreground">{loc.license_number}</span>
-                    </div>
-                  )}
-                  {fullAddress && (
-                    <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <MapPinIcon className="size-3.5 mt-0.5 shrink-0" />
-                      <span>{fullAddress}</span>
-                    </div>
-                  )}
-                  {loc.phone_number && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                      <PhoneIcon className="size-3.5 shrink-0" />
-                      <span>{loc.phone_number}</span>
-                    </div>
+                  <div className="rounded-xl border bg-card p-4 shadow-xs">
+                    <div className="text-sm text-muted-foreground mb-1">Confirmed Orders</div>
+                    <p className="text-2xl font-semibold">{confirmedOrders}</p>
+                  </div>
+                  <div className="rounded-xl border bg-card p-4 shadow-xs">
+                    <div className="text-sm text-muted-foreground mb-1">Pending</div>
+                    <p className="text-2xl font-semibold">{pendingOrders}</p>
+                  </div>
+                </div>
+              )}
+
+              {orders.length === 0 ? (
+                <div className="rounded-xl border bg-card p-6 text-center shadow-xs">
+                  <p className="text-sm text-muted-foreground">No orders yet.</p>
+                </div>
+              ) : (
+                <div className="rounded-xl border shadow-xs overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="px-4 py-3 text-left font-medium">Order #</th>
+                        <th className="px-4 py-3 text-left font-medium">Date</th>
+                        <th className="px-4 py-3 text-left font-medium">Status</th>
+                        <th className="px-4 py-3 text-left font-medium">Placed by</th>
+                        <th className="px-4 py-3 text-right font-medium">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map((order) => (
+                        <tr
+                          key={order.id}
+                          className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
+                          onClick={() => router.push(`/admin/orders/${order.id}`)}
+                        >
+                          <td className="px-4 py-3 font-medium">{order.order_number}</td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {new Date(order.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
+                              {ORDER_STATUS_LABELS[order.status]}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {order.user?.full_name || order.user?.email || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium">
+                            ${parseFloat(order.total || "0").toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Cart section */}
+              <div className="space-y-4 mt-6">
+                <div className="flex items-center gap-2">
+                  <ShoppingCartIcon className="size-4 text-muted-foreground" />
+                  <h3 className="font-medium">Cart</h3>
+                  {cart && cart.items.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {cart.item_count} item{cart.item_count !== 1 ? "s" : ""}
+                    </Badge>
                   )}
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+
+                {!cart || cart.items.length === 0 ? (
+                  <div className="rounded-xl border bg-card p-6 text-center shadow-xs">
+                    <p className="text-sm text-muted-foreground">Cart is empty.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border shadow-xs overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="px-4 py-3 text-left font-medium">Product</th>
+                          <th className="px-4 py-3 text-left font-medium">Type</th>
+                          <th className="px-4 py-3 text-right font-medium">Qty</th>
+                          <th className="px-4 py-3 text-right font-medium">Unit Price</th>
+                          <th className="px-4 py-3 text-right font-medium">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cart.items.map((item) => (
+                          <tr key={item.id} className="border-b last:border-0">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <PackageIcon className="size-4 text-muted-foreground shrink-0" />
+                                <div>
+                                  <div className="font-medium">{item.product_name}</div>
+                                  {item.strain_name && (
+                                    <div className="text-xs text-muted-foreground">{item.strain_name}</div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">
+                              {PRODUCT_TYPE_LABELS[item.product_type]}
+                              {item.unit_weight && <span className="ml-1 text-xs">({item.unit_weight}g)</span>}
+                            </td>
+                            <td className="px-4 py-3 text-right">{item.quantity}</td>
+                            <td className="px-4 py-3 text-right text-muted-foreground">
+                              {item.unit_price ? `$${parseFloat(item.unit_price).toFixed(2)}` : "—"}
+                            </td>
+                            <td className="px-4 py-3 text-right font-medium">
+                              {item.unit_price
+                                ? `$${(parseFloat(item.unit_price) * item.quantity).toFixed(2)}`
+                                : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-muted/30">
+                          <td colSpan={4} className="px-4 py-3 text-right font-medium">Total</td>
+                          <td className="px-4 py-3 text-right font-semibold">
+                            ${parseFloat(String(cart.subtotal)).toFixed(2)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+
+                {/* Cart Discounts */}
+                <div className="rounded-xl border bg-card p-4 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TagIcon className="size-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Discounts</span>
+                    </div>
+                    {allDiscounts.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <PlusIcon className="mr-1.5 size-3.5" />
+                            Add Discount
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {allDiscounts
+                            .filter((d) => !cart?.discounts?.some((cd) => cd.id === d.id))
+                            .map((discount) => (
+                              <DropdownMenuItem key={discount.id} onClick={() => handleAddCartDiscount(discount.id)}>
+                                {discount.name}
+                                <span className="ml-auto text-xs text-muted-foreground">
+                                  {discount.discount_type === "percentage" ? `${discount.value}%` : `$${discount.value}`}
+                                </span>
+                              </DropdownMenuItem>
+                            ))}
+                          {allDiscounts.filter((d) => !cart?.discounts?.some((cd) => cd.id === d.id)).length === 0 && (
+                            <DropdownMenuItem disabled>No available discounts</DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                  {cart?.discounts && cart.discounts.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {cart.discounts.map((discount) => (
+                        <Badge key={discount.id} variant="secondary" className="gap-1.5 pr-1.5">
+                          {discount.name}
+                          <span className="text-xs text-muted-foreground">
+                            {discount.discount_type === "percentage" ? `${discount.value}%` : `$${discount.value}`}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCartDiscount(discount.id)}
+                            className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                          >
+                            <XIcon className="size-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No discounts assigned to this cart.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ===== EMAILS TAB ===== */}
+          {activeTab === "emails" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium">Follow-up Emails</h3>
+                <div className="flex gap-2">
+                  {cart && cart.items.length > 0 && (
+                    <Dialog open={cartReminderOpen} onOpenChange={(open) => { setCartReminderOpen(open); if (!open) setCartReminderMessage(""); }}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <ShoppingCartIcon className="mr-1.5 size-3.5" />
+                          Cart Reminder
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-xl">
+                        <DialogHeader>
+                          <DialogTitle>Send Cart Reminder</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Send a &quot;You have items waiting&quot; email to all members of <span className="font-medium text-foreground">{company?.name}</span>.
+                          </p>
+                          <Textarea
+                            placeholder="Add a custom message (optional)..."
+                            value={cartReminderMessage}
+                            onChange={(e) => setCartReminderMessage(e.target.value)}
+                            rows={2}
+                          />
+                          <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Cart items</p>
+                            {cart.items.map((item) => (
+                              <div key={item.id} className="flex items-center justify-between text-sm">
+                                <div>
+                                  <span className="font-medium">{item.product_name}</span>
+                                  {item.strain_name && <span className="text-muted-foreground ml-1">({item.strain_name})</span>}
+                                  <span className="text-muted-foreground"> x{item.quantity}</span>
+                                </div>
+                                <span className="text-muted-foreground">
+                                  {item.unit_price ? `$${parseFloat(item.unit_price).toFixed(2)}` : "—"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button onClick={handleSendCartReminder} disabled={sendingCartReminder} className="w-full">
+                            <SendIcon className="mr-2 size-4" />
+                            {sendingCartReminder ? "Sending..." : "Send Cart Reminder"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+
+                  <Dialog open={followupOpen} onOpenChange={(open) => { setFollowupOpen(open); if (!open) setFollowupForm({ notification_type: "feedback_request", subject: "", body: "" }); }}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <MailIcon className="mr-1.5 size-3.5" />
+                        Send Follow-up
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-xl">
+                      <DialogHeader>
+                        <DialogTitle>Send Follow-up Email</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          Send an email to all members of <span className="font-medium text-foreground">{company?.name}</span>.
+                        </p>
+                        <div className="space-y-2">
+                          <Label>Type</Label>
+                          <select
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                            value={followupForm.notification_type}
+                            onChange={(e) => setFollowupForm((f) => ({ ...f, notification_type: e.target.value as NotificationType }))}
+                          >
+                            {(["feedback_request", "info_request", "product_update", "announcement"] as NotificationType[]).map((t) => (
+                              <option key={t} value={t}>{NOTIFICATION_TYPE_LABELS[t]}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Subject *</Label>
+                          <Input
+                            value={followupForm.subject}
+                            onChange={(e) => setFollowupForm((f) => ({ ...f, subject: e.target.value }))}
+                            placeholder="Email subject line"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Message</Label>
+                          <Textarea
+                            value={followupForm.body}
+                            onChange={(e) => setFollowupForm((f) => ({ ...f, body: e.target.value }))}
+                            placeholder="Email body..."
+                            rows={4}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={handleSendFollowup} disabled={sendingFollowup || !followupForm.subject.trim()} className="w-full">
+                          <SendIcon className="mr-2 size-4" />
+                          {sendingFollowup ? "Sending..." : "Send Follow-up"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  {company?.bulk_buyer && (
+                    <Dialog open={bulkListOpen} onOpenChange={(open) => { setBulkListOpen(open); if (!open) setBulkListMessage(""); }}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <PackageIcon className="mr-1.5 size-3.5" />
+                          Send Bulk List
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-xl">
+                        <DialogHeader>
+                          <DialogTitle>Send Bulk Flower List</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Email the current bulk flower availability with a PDF attachment to all members of <span className="font-medium text-foreground">{company?.name}</span>.
+                          </p>
+                          <Textarea
+                            placeholder="Add a custom message (optional)..."
+                            value={bulkListMessage}
+                            onChange={(e) => setBulkListMessage(e.target.value)}
+                            rows={3}
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button onClick={handleSendBulkList} disabled={sendingBulkList} className="w-full">
+                            <SendIcon className="mr-2 size-4" />
+                            {sendingBulkList ? "Sending..." : "Send Bulk List"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border bg-card p-6 text-center shadow-xs">
+                <p className="text-sm text-muted-foreground">
+                  {cart && cart.items.length > 0
+                    ? `${cart.item_count} item${cart.item_count !== 1 ? "s" : ""} in cart — use "Cart Reminder" to nudge this company.`
+                    : "Cart is empty. Use \"Send Follow-up\" for general emails."}
+                </p>
+              </div>
+            </div>
+          )}
 
         </div>{/* end left column */}
 
@@ -1477,7 +1407,6 @@ export default function CompanyDetailPage({
               To: <span className="font-medium text-foreground">{inviteModalMember?.email}</span>
             </p>
 
-            {/* Tone presets */}
             <div className="flex flex-wrap gap-2">
               {INVITE_PRESETS.map((preset) => (
                 <button
@@ -1495,7 +1424,6 @@ export default function CompanyDetailPage({
               ))}
             </div>
 
-            {/* Custom sentence */}
             <Textarea
               placeholder="Add a custom sentence (optional)..."
               value={inviteCustomMessage}
@@ -1503,12 +1431,9 @@ export default function CompanyDetailPage({
               rows={2}
             />
 
-            {/* Email preview */}
             <div className="rounded-lg border bg-white p-5 text-sm space-y-3 max-h-64 overflow-y-auto">
               <p className="text-lg font-bold">Hi {inviteModalMember?.full_name || "there"}</p>
-              {inviteCustomMessage && (
-                <p>{inviteCustomMessage}</p>
-              )}
+              {inviteCustomMessage && <p>{inviteCustomMessage}</p>}
               <p>
                 We've created wholesale access for you at SPFarms under <strong>{company?.name}</strong>.
               </p>
@@ -1542,7 +1467,92 @@ export default function CompanyDetailPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  if (!value) return null;
+  return (
+    <div className="grid grid-cols-3 gap-4 py-2.5">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="col-span-2 text-sm">{value}</dd>
+    </div>
+  );
+}
+
+function LocationFormDialog({
+  open,
+  onOpenChange,
+  editingLocationId,
+  locationForm,
+  setLocationForm,
+  onSave,
+  locationSubmitting,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  editingLocationId: number | null;
+  locationForm: { name: string; address: string; city: string; state: string; zip_code: string; region: string; phone_number: string; license_number: string };
+  setLocationForm: React.Dispatch<React.SetStateAction<typeof locationForm>>;
+  onSave: (e: React.FormEvent) => void;
+  locationSubmitting: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{editingLocationId ? "Edit Location" : "Add Location"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={onSave} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="loc-name">Location Name</Label>
+            <Input id="loc-name" placeholder="e.g. Main Store, Warehouse" value={locationForm.name} onChange={(e) => setLocationForm((f) => ({ ...f, name: e.target.value }))} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="loc-license">OCM License Number</Label>
+            <Input id="loc-license" placeholder="OCM-XXXXX" value={locationForm.license_number} onChange={(e) => setLocationForm((f) => ({ ...f, license_number: e.target.value }))} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="loc-address">Street Address</Label>
+            <Input id="loc-address" value={locationForm.address} onChange={(e) => setLocationForm((f) => ({ ...f, address: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="loc-city">City</Label>
+              <Input id="loc-city" value={locationForm.city} onChange={(e) => setLocationForm((f) => ({ ...f, city: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="loc-state">State</Label>
+              <Input id="loc-state" value={locationForm.state} onChange={(e) => setLocationForm((f) => ({ ...f, state: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="loc-zip">ZIP Code</Label>
+              <Input id="loc-zip" value={locationForm.zip_code} onChange={(e) => setLocationForm((f) => ({ ...f, zip_code: e.target.value }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="loc-region">Region</Label>
+              <select id="loc-region" className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={locationForm.region} onChange={(e) => setLocationForm((f) => ({ ...f, region: e.target.value }))}>
+                <option value="">Select region</option>
+                {(Object.entries(REGION_LABELS) as [Region, string][]).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="loc-phone">Phone Number</Label>
+              <Input id="loc-phone" value={locationForm.phone_number} onChange={(e) => setLocationForm((f) => ({ ...f, phone_number: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={locationSubmitting}>
+              {locationSubmitting ? "Saving..." : editingLocationId ? "Update Location" : "Add Location"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

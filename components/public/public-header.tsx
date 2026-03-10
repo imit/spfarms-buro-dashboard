@@ -13,30 +13,32 @@ const NAV_LINKS = [
 
 export function PublicHeader() {
   return (
-    <header className="sticky top-0 z-50 border-b border-black/5" style={{ backgroundColor: "#FFFBF9" }}>
-      <div className="flex h-16 items-center justify-between px-6 lg:px-10 max-w-7xl mx-auto w-full">
-        <Link href="/" className="w-32">
-          <Logo />
-        </Link>
+    <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-4">
+      <div className="mx-auto max-w-6xl rounded-2xl border border-black/5 backdrop-blur-xl bg-white/70 shadow-sm">
+        <div className="flex h-14 items-center justify-between px-6">
+          <Link href="/" className="w-28">
+            <Logo />
+          </Link>
 
-        <nav className="hidden md:flex items-center gap-8">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-base text-foreground/80 hover:text-foreground transition-colors"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+          <nav className="hidden md:flex items-center gap-7">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium opacity-70 hover:opacity-100 transition-opacity"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
 
-        <Link
-          href="/login"
-          className="text-base font-medium text-primary hover:opacity-80 transition-opacity"
-        >
-          Partner Login
-        </Link>
+          <Link
+            href="/login"
+            className="text-sm font-semibold hover:opacity-80 transition-opacity"
+          >
+            Partner Login
+          </Link>
+        </div>
       </div>
     </header>
   );

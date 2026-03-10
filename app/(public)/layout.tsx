@@ -9,7 +9,7 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#FFFBF9" }}>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#FFFBF9", color: "#431F13" }}>
       <Suspense>
         <PostHogPageTracker section="public" />
       </Suspense>
