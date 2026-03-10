@@ -81,6 +81,8 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
   const [imageFiles, setImageFiles] = useState<FileList | null>(null);
   const [imageGalleryFileIds, setImageGalleryFileIds] = useState<{ id: number; url: string; filename: string }[]>([]);
   const [promoGalleryFileIds, setPromoGalleryFileIds] = useState<{ id: number; url: string; filename: string }[]>([]);
+  const [removeImageIds, setRemoveImageIds] = useState<number[]>([]);
+  const [removePromoImageIds, setRemovePromoImageIds] = useState<number[]>([]);
   const [galleryPickerOpen, setGalleryPickerOpen] = useState<"thumbnail" | "images" | "promo" | null>(null);
 
   useEffect(() => {
@@ -197,6 +199,12 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       });
       promoGalleryFileIds.forEach((g) => {
         formData.append("promotional_image_gallery_file_ids[]", String(g.id));
+      });
+      removeImageIds.forEach((id) => {
+        formData.append("remove_image_ids[]", String(id));
+      });
+      removePromoImageIds.forEach((id) => {
+        formData.append("remove_promotional_image_ids[]", String(id));
       });
 
       if (isEdit && product) {
@@ -656,9 +664,16 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
             <FieldLabel>Gallery Images</FieldLabel>
             <div className="flex gap-2 flex-wrap">
               {/* Existing images */}
-              {isEdit && product?.image_urls?.map((url, i) => (
-                <div key={`existing-${i}`} className="relative">
-                  <img src={url} alt="" className="h-20 w-20 rounded-md object-cover border" />
+              {isEdit && product?.image_urls?.filter((img) => !removeImageIds.includes(img.attachment_id)).map((img) => (
+                <div key={`existing-${img.attachment_id}`} className="relative">
+                  <img src={img.url} alt="" className="h-20 w-20 rounded-md object-cover border" />
+                  <button
+                    type="button"
+                    onClick={() => setRemoveImageIds((prev) => [...prev, img.attachment_id])}
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-white shadow-sm hover:bg-destructive/90"
+                  >
+                    <XIcon className="size-2.5" />
+                  </button>
                 </div>
               ))}
               {/* Gallery-picked images */}
@@ -668,7 +683,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
                   <button
                     type="button"
                     onClick={() => setImageGalleryFileIds((prev) => prev.filter((x) => x.id !== g.id))}
-                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground shadow-sm hover:bg-destructive/90"
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-white shadow-sm hover:bg-destructive/90"
                   >
                     <XIcon className="size-2.5" />
                   </button>
@@ -719,9 +734,16 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
           <Field>
             <div className="flex gap-2 flex-wrap">
               {/* Existing promo images */}
-              {isEdit && product?.promotional_image_urls?.map((url, i) => (
-                <div key={`existing-promo-${i}`} className="relative">
-                  <img src={url} alt="" className="h-20 w-20 rounded-md object-cover border" />
+              {isEdit && product?.promotional_image_urls?.filter((img) => !removePromoImageIds.includes(img.attachment_id)).map((img) => (
+                <div key={`existing-promo-${img.attachment_id}`} className="relative">
+                  <img src={img.url} alt="" className="h-20 w-20 rounded-md object-cover border" />
+                  <button
+                    type="button"
+                    onClick={() => setRemovePromoImageIds((prev) => [...prev, img.attachment_id])}
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-white shadow-sm hover:bg-destructive/90"
+                  >
+                    <XIcon className="size-2.5" />
+                  </button>
                 </div>
               ))}
               {/* Gallery-picked promo images */}
@@ -731,7 +753,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
                   <button
                     type="button"
                     onClick={() => setPromoGalleryFileIds((prev) => prev.filter((x) => x.id !== g.id))}
-                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground shadow-sm hover:bg-destructive/90"
+                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive p-0.5 text-white shadow-sm hover:bg-destructive/90"
                   >
                     <XIcon className="size-2.5" />
                   </button>

@@ -135,7 +135,7 @@ export function ProductCard({
                 />
                 {product.image_urls?.[0] && (
                   <img
-                    src={product.image_urls[0]}
+                    src={product.image_urls[0].url}
                     alt={`${product.name} gallery`}
                     className="absolute inset-0 size-full object-cover opacity-0 transition-opacity duration-300 group-hover/img:opacity-100"
                   />

@@ -245,11 +245,11 @@ export default function CheckoutPage({
   const locations = company?.locations || [];
 
   return (
-    <div>
+    <div className="rounded-2xl bg-white border shadow-sm p-8 md:p-10 max-w-5xl mx-auto">
       <Button
         variant="ghost"
         size="sm"
-        className="mb-4"
+        className="mb-6"
         onClick={() => router.push(`/${slug}/cart`)}
       >
         <ArrowLeftIcon className="mr-1.5 size-4" />

@@ -362,10 +362,10 @@ export default function ProductDetailPage({
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Gallery</h3>
           <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-            {product.image_urls.map((url, i) => (
+            {product.image_urls.map((img, i) => (
               <img
-                key={i}
-                src={url}
+                key={img.attachment_id}
+                src={img.url}
                 alt={`${product.name} image ${i + 1}`}
                 className="rounded-lg object-cover aspect-square w-full"
               />

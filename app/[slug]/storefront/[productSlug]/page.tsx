@@ -552,7 +552,7 @@ export default function ProductDetailPage({
         {/* Right — first promotional image */}
         <div className="rounded-2xl overflow-hidden " style={{maxHeight:'800px'}}>
           {product.promotional_image_urls?.[0] ? (
-            <img src={product.promotional_image_urls[0]} alt={product.name} className="size-full object-cover" />
+            <img src={product.promotional_image_urls[0].url} alt={product.name} className="size-full object-cover" />
           ) : (
             <div className="size-full flex items-center justify-center bg-muted text-muted-foreground">
               No image
@@ -563,9 +563,9 @@ export default function ProductDetailPage({
 
       {/* Other flowers */}
       {otherFlowers.length > 0 && (
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold mb-6">Other flowers</h2>
-          <div className="grid grid-cols-2 gap-3">
+        <div className="mt-20 mb-20 py-16">
+          <h2 className="text-2xl font-bold mb-8">Other flowers</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {otherFlowers.map((p) => (
               <ProductCard
                 key={p.id}
@@ -577,6 +577,20 @@ export default function ProductDetailPage({
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Promo gallery — 2nd and 3rd promotional images */}
+      {product.promotional_image_urls.length > 1 && (
+        <div className="grid grid-cols-2 gap-4 mt-12">
+          {product.promotional_image_urls.slice(1, 3).map((img) => (
+            <img
+              key={img.attachment_id}
+              src={img.url}
+              alt={product.name}
+              className="w-full rounded-2xl object-cover aspect-4/5"
+            />
+          ))}
         </div>
       )}
 

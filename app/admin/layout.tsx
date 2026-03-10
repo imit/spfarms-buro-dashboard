@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { PostHogPageTracker } from "@/components/public/posthog-page-tracker";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import {
@@ -23,11 +24,11 @@ export default function DashboardLayout({
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {
-      router.push("/");
+      router.push("/login");
       return;
     }
     if (user && !ADMIN_LAYOUT_ROLES.includes(user.role as UserRole)) {
-      const redirectTo = user.company_slug ? `/${user.company_slug}` : "/";
+      const redirectTo = user.company_slug ? `/${user.company_slug}` : "/login";
       router.push(redirectTo);
     }
   }, [isLoading, isAuthenticated, user, router]);
@@ -37,6 +38,10 @@ export default function DashboardLayout({
   if (user && !ADMIN_LAYOUT_ROLES.includes(user.role as UserRole)) return null;
 
   return (
+    <>
+    <Suspense>
+      <PostHogPageTracker section="admin" />
+    </Suspense>
     <SidebarProvider
       style={
         {
@@ -57,5 +62,6 @@ export default function DashboardLayout({
         </div>
       </SidebarInset>
     </SidebarProvider>
+    </>
   );
 }
