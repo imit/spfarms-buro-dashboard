@@ -17,6 +17,8 @@ import {
   ShieldAlertIcon,
   BuildingIcon,
   Trash2Icon,
+  MailIcon,
+  BoxIcon,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -46,6 +48,10 @@ const EVENT_CONFIG: Record<AuditEventType, { icon: React.ReactNode; color: strin
   company_created:               { icon: <BuildingIcon className="h-4 w-4" />,      color: "text-green-500",   bg: "bg-green-100 dark:bg-green-900/30" },
   company_updated:               { icon: <EditIcon className="h-4 w-4" />,          color: "text-blue-500",    bg: "bg-blue-100 dark:bg-blue-900/30" },
   company_deleted:               { icon: <Trash2Icon className="h-4 w-4" />,        color: "text-red-500",     bg: "bg-red-100 dark:bg-red-900/30" },
+  user_welcome_sent:             { icon: <MailIcon className="h-4 w-4" />,          color: "text-sky-500",     bg: "bg-sky-100 dark:bg-sky-900/30" },
+  product_created:               { icon: <BoxIcon className="h-4 w-4" />,           color: "text-green-500",   bg: "bg-green-100 dark:bg-green-900/30" },
+  product_updated:               { icon: <EditIcon className="h-4 w-4" />,          color: "text-blue-500",    bg: "bg-blue-100 dark:bg-blue-900/30" },
+  product_deleted:               { icon: <Trash2Icon className="h-4 w-4" />,        color: "text-red-500",     bg: "bg-red-100 dark:bg-red-900/30" },
 }
 
 function trackableHref(event: AuditEventData): string | null {

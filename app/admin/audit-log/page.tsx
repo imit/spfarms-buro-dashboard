@@ -16,6 +16,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   all: "All Events",
   users: "User Management",
   companies: "Companies",
+  products: "Products",
   grow: "Grow",
 }
 
@@ -66,7 +67,7 @@ export default function AuditLogPage() {
       setIsLoading(true)
       try {
         const res = await apiClient.getAdminAuditEvents({
-          category: category !== "all" ? (category as "users" | "companies" | "grow") : undefined,
+          category: category !== "all" ? (category as "users" | "companies" | "products" | "grow") : undefined,
           from: fromDate || undefined,
           to: toDate || undefined,
           limit: PAGE_SIZE,

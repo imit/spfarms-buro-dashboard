@@ -1554,6 +1554,10 @@ export type AuditEventType =
   | "company_created"
   | "company_updated"
   | "company_deleted"
+  | "user_welcome_sent"
+  | "product_created"
+  | "product_updated"
+  | "product_deleted"
 
 export interface AuditEventData {
   id: number
@@ -1593,6 +1597,10 @@ export const AUDIT_EVENT_LABELS: Record<AuditEventType, string> = {
   company_created: "Company Created",
   company_updated: "Company Updated",
   company_deleted: "Company Deleted",
+  user_welcome_sent: "Welcome Email Sent",
+  product_created: "Product Created",
+  product_updated: "Product Updated",
+  product_deleted: "Product Deleted",
 }
 
 export interface Plant {
@@ -4149,7 +4157,7 @@ export class ApiClient {
 
   async getAdminAuditEvents(opts?: {
     user_id?: number
-    category?: "users" | "companies" | "grow"
+    category?: "users" | "companies" | "products" | "grow"
     from?: string
     to?: string
     limit?: number
