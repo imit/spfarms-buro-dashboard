@@ -62,6 +62,12 @@ export default function CheckoutPage({
   // Checkout form fields
   const [shippingLocationId, setShippingLocationId] = useState<string>("");
   const [billingLocationId, setBillingLocationId] = useState<string>("");
+
+  // Inline add-location (shown when company has no locations)
+  const [newLocation, setNewLocation] = useState({
+    name: "", license_number: "", address: "", city: "", state: "NY", zip_code: "",
+  });
+  const [savingLocation, setSavingLocation] = useState(false);
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
   const [notesToVendor, setNotesToVendor] = useState("");
   const [desiredDeliveryDate, setDesiredDeliveryDate] = useState(() => {
@@ -247,6 +253,33 @@ export default function CheckoutPage({
   const missingName = !user?.full_name;
   const hasMissingInfo = missingLicense || missingName;
 
+  async function handleSaveLocation() {
+    if (!company || !newLocation.address || !newLocation.city) return;
+    setSavingLocation(true);
+    try {
+      const updated = await apiClient.updateCompany(slug, {
+        locations_attributes: [{
+          name: newLocation.name || undefined,
+          license_number: newLocation.license_number || undefined,
+          address: newLocation.address,
+          city: newLocation.city,
+          state: newLocation.state,
+          zip_code: newLocation.zip_code || undefined,
+        }],
+      });
+      setCompany(updated);
+      if (updated.locations.length > 0) {
+        setShippingLocationId(String(updated.locations[0].id));
+        setBillingLocationId(String(updated.locations[0].id));
+      }
+      toast.success("Location saved");
+    } catch (err) {
+      showError("save the location", err);
+    } finally {
+      setSavingLocation(false);
+    }
+  }
+
   if (isLoading) {
     return <p className="text-muted-foreground">Loading checkout...</p>;
   }
@@ -364,53 +397,134 @@ export default function CheckoutPage({
           <div className="rounded-lg border p-4 space-y-4">
             <h2 className="font-semibold text-lg">Shipping & Details</h2>
 
-            {/* Shipping Location */}
-            <div className="space-y-1.5">
-              <Label htmlFor="shipping">Shipping Address</Label>
-              <select
-                id="shipping"
-                value={shippingLocationId}
-                onChange={(e) => setShippingLocationId(e.target.value)}
-                className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="">Select a location</option>
-                {locations.map((loc: Location) => (
-                  <option key={loc.id} value={loc.id}>
-                    {loc.name || loc.address} — {loc.city}, {loc.state} {loc.zip_code}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Billing Location */}
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="billingSame"
-                  checked={billingSameAsShipping}
-                  onChange={(e) => setBillingSameAsShipping(e.target.checked)}
-                  className="rounded border-input"
-                />
-                <Label htmlFor="billingSame" className="text-sm font-normal">
-                  Billing same as shipping
-                </Label>
+            {/* Shipping / Billing Location */}
+            {locations.length === 0 ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 flex gap-3">
+                  <AlertTriangleIcon className="size-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">No locations added yet</p>
+                    <p className="text-sm text-amber-700 mt-0.5">
+                      Add at least one dispensary location to continue. This will be used as your shipping and billing address.
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-lg border p-4 space-y-3">
+                  <p className="text-sm font-medium">Add your dispensary location</p>
+                  <div className="grid gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-sm">Location name</Label>
+                        <Input
+                          value={newLocation.name}
+                          onChange={(e) => setNewLocation((f) => ({ ...f, name: e.target.value }))}
+                          placeholder="Main Dispensary"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm">OCM License</Label>
+                        <Input
+                          value={newLocation.license_number}
+                          onChange={(e) => setNewLocation((f) => ({ ...f, license_number: e.target.value }))}
+                          placeholder="OCM-XXXXX"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">Street address *</Label>
+                      <Input
+                        value={newLocation.address}
+                        onChange={(e) => setNewLocation((f) => ({ ...f, address: e.target.value }))}
+                        placeholder="123 Main St"
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="col-span-1 space-y-1">
+                        <Label className="text-sm">City *</Label>
+                        <Input
+                          value={newLocation.city}
+                          onChange={(e) => setNewLocation((f) => ({ ...f, city: e.target.value }))}
+                          placeholder="New York"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm">State</Label>
+                        <Input
+                          value={newLocation.state}
+                          onChange={(e) => setNewLocation((f) => ({ ...f, state: e.target.value }))}
+                          placeholder="NY"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm">ZIP</Label>
+                        <Input
+                          value={newLocation.zip_code}
+                          onChange={(e) => setNewLocation((f) => ({ ...f, zip_code: e.target.value }))}
+                          placeholder="10001"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={handleSaveLocation}
+                    disabled={savingLocation || !newLocation.address || !newLocation.city}
+                  >
+                    {savingLocation ? "Saving..." : "Save Location & Continue"}
+                  </Button>
+                </div>
               </div>
-              {!billingSameAsShipping && (
-                <select
-                  value={billingLocationId}
-                  onChange={(e) => setBillingLocationId(e.target.value)}
-                  className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <option value="">Select a location</option>
-                  {locations.map((loc: Location) => (
-                    <option key={loc.id} value={loc.id}>
-                      {loc.name || loc.address} — {loc.city}, {loc.state} {loc.zip_code}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="shipping">Shipping Address</Label>
+                  <select
+                    id="shipping"
+                    value={shippingLocationId}
+                    onChange={(e) => setShippingLocationId(e.target.value)}
+                    className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="">Select a location</option>
+                    {locations.map((loc: Location) => (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.name || loc.address} — {loc.city}, {loc.state} {loc.zip_code}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="billingSame"
+                      checked={billingSameAsShipping}
+                      onChange={(e) => setBillingSameAsShipping(e.target.checked)}
+                      className="rounded border-input"
+                    />
+                    <Label htmlFor="billingSame" className="text-sm font-normal">
+                      Billing same as shipping
+                    </Label>
+                  </div>
+                  {!billingSameAsShipping && (
+                    <select
+                      value={billingLocationId}
+                      onChange={(e) => setBillingLocationId(e.target.value)}
+                      className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="">Select a location</option>
+                      {locations.map((loc: Location) => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.name || loc.address} — {loc.city}, {loc.state} {loc.zip_code}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </>
+            )}
 
             {/* Desired Delivery Date */}
             <div className="space-y-1.5">
@@ -650,7 +764,7 @@ export default function CheckoutPage({
             className="w-full"
             size="lg"
             onClick={handleConfirmOrder}
-            disabled={submitting || !cart || cart.items.length === 0 || !meetsMinimum || (needsAgreement && !agreementSigned) || hasMissingInfo}
+            disabled={submitting || !cart || cart.items.length === 0 || !meetsMinimum || (needsAgreement && !agreementSigned) || hasMissingInfo || locations.length === 0}
           >
             {submitting
               ? isPreorder ? "Placing Pre-order..." : "Placing Order..."
