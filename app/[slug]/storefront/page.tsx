@@ -43,9 +43,7 @@ export default function StorefrontPage({
           apiClient.getStrains(),
         ]);
         setProducts(
-          company.bulk_buyer
-            ? productData.filter((p) => p.active && p.status === "active" && p.bulk)
-            : productData.filter((p) => p.active && p.status === "active" && !p.bulk)
+          productData.filter((p) => p.active && p.status === "active")
         );
         setCompany(company);
 
