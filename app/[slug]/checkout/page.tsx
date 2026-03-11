@@ -632,8 +632,8 @@ export default function CheckoutPage({
                   companyName={company.name}
                   paymentTerm={selectedTerm}
                   preview={preview}
-                  userFullName={user?.full_name}
-                  userEmail={user?.email}
+                  userFullName={user?.full_name ?? undefined}
+                  userEmail={user?.email ?? undefined}
                   onSigned={(data) => {
                     setAgreementSigned(true);
                     setAgreementSignerName(data.signer_name);
