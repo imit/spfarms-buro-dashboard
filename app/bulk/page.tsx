@@ -21,7 +21,7 @@ export default function BulkPage() {
           apiClient.getPublicStrains(),
           apiClient.getPublicSettings(),
         ]);
-        const bulkProducts = productData.filter((p) => p.bulk);
+        const bulkProducts = productData.filter((p) => p.product_type === "bulk_flower");
         setProducts(bulkProducts);
         setBulkPhone(settings.bulk_sales_phone || "");
 
@@ -61,7 +61,7 @@ export default function BulkPage() {
   return (
     <div className="min-h-screen">
       <header className="border-b">
-        <div className="mx-auto max-w-4xl flex items-center justify-between px-4 py-4 sm:px-8">
+        <div className="mx-auto max-w-6xl flex items-center justify-between px-4 py-4 sm:px-8">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <div className="w-32">
@@ -70,13 +70,13 @@ export default function BulkPage() {
               <span className="text-lg font-semibold text-amber-600">Bulk</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Current bulk flower availability
+              Indoor, live-soil, craft cannabis — bulk flower availability
             </p>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
         {products.length === 0 ? (
           <p style={{ opacity: 0.5 }}>No bulk products available at this time.</p>
         ) : (
@@ -216,7 +216,7 @@ export default function BulkPage() {
       </main>
 
       <footer className="border-t mt-12 bg-muted/30">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8 text-center text-xs text-muted-foreground">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 text-center text-xs text-muted-foreground">
           &copy; {new Date().getFullYear()} SPFarms. All rights reserved.
         </div>
       </footer>

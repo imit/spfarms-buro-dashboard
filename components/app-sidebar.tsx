@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, PackageCheckIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, PackageCheckIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -167,7 +167,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain label="Dashboard" items={[{ title: "Dashboard", url: "/admin", icon: <LayoutDashboardIcon /> }, ...(canAccess("root_dashboard", role) ? [{ title: "Root Dashboard", url: "/admin/root", icon: <ShieldIcon /> }] : []), ...(canAccess("posts", role) ? [{ title: "Tasks", url: "/admin/posts", icon: <MessageSquareIcon /> }] : []), ...(canAccess("gallery", role) ? [{ title: "Gallery", url: "/admin/gallery", icon: <ImageIcon /> }] : [])]} />
+        <NavMain label="Dashboard" items={[{ title: "Dashboard", url: "/admin", icon: <LayoutDashboardIcon /> }, ...(canAccess("root_dashboard", role) ? [{ title: "Root Dashboard", url: "/admin/root", icon: <ShieldIcon /> }] : []), ...(canAccess("posts", role) ? [{ title: "Tasks", url: "/admin/posts", icon: <MessageSquareIcon /> }] : []), ...(canAccess("gallery", role) ? [{ title: "Gallery", url: "/admin/gallery", icon: <ImageIcon /> }] : []), { title: "Store Preview", url: "/admin/store-preview", icon: <StoreIcon /> }]} />
         {filteredOps.length > 0 && <NavMain label="Ops" items={filteredOps} />}
         {filteredSales.length > 0 && <NavMain label="Sales" items={filteredSales} />}
         {showQuickOnboard && (

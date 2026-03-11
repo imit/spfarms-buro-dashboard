@@ -33,7 +33,7 @@ export default function WholesalePage() {
           apiClient.getPublicProducts(),
           apiClient.getPublicStrains(),
         ]);
-        setProducts(productData);
+        setProducts(productData.filter((p) => p.product_type !== "bulk_flower"));
 
         const map: Record<number, Strain> = {};
         for (const strain of strains) {
@@ -66,7 +66,7 @@ export default function WholesalePage() {
   return (
     <div className="min-h-screen">
       <header className="border-b">
-        <div className="mx-auto max-w-6xl flex items-center justify-between px-4 py-4 sm:px-8">
+        <div className="mx-auto max-w-7xl flex items-center justify-between px-4 py-4 sm:px-8">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <div className="w-32">
@@ -85,7 +85,7 @@ export default function WholesalePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8">
         {products.length === 0 ? (
           <p style={{ opacity: 0.5 }}>No products available.</p>
         ) : (
@@ -117,7 +117,7 @@ export default function WholesalePage() {
       </main>
 
       <footer className="border-t mt-12 bg-muted/30">
-        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-8">
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-3">
               <div className="w-28">
