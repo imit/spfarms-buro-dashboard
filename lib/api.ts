@@ -2131,10 +2131,10 @@ export class ApiClient {
 
   // Invitations
 
-  async createInvitation(email: string, role: UserRole): Promise<void> {
+  async createInvitation(email: string, role: UserRole, custom_message?: string): Promise<void> {
     await this.request("/api/v1/invitations", {
       method: "POST",
-      body: JSON.stringify({ email, role }),
+      body: JSON.stringify({ email, role, custom_message }),
     });
   }
 

@@ -8,6 +8,7 @@ import { apiClient, type User, type UserRole, ROLE_LABELS } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +62,7 @@ export default function UsersPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<UserRole>("account");
+  const [inviteMessage, setInviteMessage] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState("");
   const [inviteError, setInviteError] = useState("");
@@ -94,10 +96,11 @@ export default function UsersPage() {
     setInviteLoading(true);
 
     try {
-      await apiClient.createInvitation(inviteEmail, inviteRole);
+      await apiClient.createInvitation(inviteEmail, inviteRole, inviteMessage || undefined);
       setInviteSuccess(`Invitation sent to ${inviteEmail}`);
       setInviteEmail("");
       setInviteRole("account");
+      setInviteMessage("");
     } catch (err) {
       setInviteError(
         err instanceof Error ? err.message : "We couldn't send the invitation"
@@ -112,6 +115,7 @@ export default function UsersPage() {
     if (!open) {
       setInviteEmail("");
       setInviteRole("account");
+      setInviteMessage("");
       setInviteError("");
       setInviteSuccess("");
     }
@@ -192,6 +196,17 @@ export default function UsersPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="invite-message">Personal message <span className="text-muted-foreground font-normal">(optional)</span></FieldLabel>
+                    <Textarea
+                      id="invite-message"
+                      value={inviteMessage}
+                      onChange={(e) => setInviteMessage(e.target.value)}
+                      placeholder="e.g. Looking forward to working with you! Let me know if you have any questions."
+                      rows={3}
+                      disabled={inviteLoading}
+                    />
                   </Field>
                 </div>
                 <DialogFooter>
