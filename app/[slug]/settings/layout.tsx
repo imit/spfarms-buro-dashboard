@@ -33,7 +33,7 @@ export default function SettingsLayout({
                 key={tab.segment}
                 href={href}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors",
+                  "px-4 py-2.5 text-base font-medium -mb-px border-b-2 transition-colors",
                   isActive
                     ? "border-foreground text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"

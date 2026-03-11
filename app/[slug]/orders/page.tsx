@@ -45,7 +45,7 @@ export default function OrdersPage({
   }
 
   return (
-    <div className="rounded-2xl bg-white border shadow-sm p-8 md:p-10 max-w-3xl mx-auto">
+    <div className="rounded-2xl bg-white border shadow-sm p-8 md:p-10 max-w-5xl mx-auto">
       <h1 className="text-3xl font-bold mb-8">My Orders</h1>
 
       {orders.length === 0 ? (

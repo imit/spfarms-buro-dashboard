@@ -44,7 +44,8 @@ export default function RootLayout({
         <Toaster
           position="top-center"
           expand
-          style={{ width: "100%", left: 0, right: 0, transform: "none", padding: "0 1rem" }}
+          closeButton
+          style={{ width: "100%", maxWidth: "100vw", left: 0, right: 0, transform: "none", padding: "0 1rem", boxSizing: "border-box" }}
           toastOptions={{
             style: {
               background: "#F5D922",
@@ -56,6 +57,8 @@ export default function RootLayout({
               padding: "0.875rem 1.25rem",
               boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
               width: "100%",
+              maxWidth: "100%",
+              boxSizing: "border-box",
             },
           }}
         />

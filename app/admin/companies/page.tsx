@@ -32,6 +32,8 @@ const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   loyal: "bg-emerald-200 text-emerald-800",
   inactive: "bg-gray-100 text-gray-500",
   lost: "bg-red-100 text-red-700",
+  test: "bg-cyan-100 text-cyan-700",
+  misc: "bg-stone-100 text-stone-600",
 };
 
 const COMPANY_TYPE_COLORS: Record<CompanyType, string> = {

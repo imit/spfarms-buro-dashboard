@@ -8,6 +8,7 @@ import {
   XIcon,
   Loader2Icon,
   ImageIcon,
+  InfoIcon,
 } from "lucide-react";
 import {
   apiClient,
@@ -18,6 +19,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
 
@@ -226,39 +232,43 @@ export default function CompanySettingsPage({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="companyName">Company Name</Label>
+        <div className="grid gap-5">
+          <div className="space-y-2">
+            <Label htmlFor="companyName" className="text-base">Company Name</Label>
             <Input
               id="companyName"
+              className="h-12 text-base"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               placeholder="Your company name"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="licenseNumber">License Number</Label>
+          <div className="space-y-2">
+            <Label htmlFor="licenseNumber" className="text-base">License Number</Label>
             <Input
               id="licenseNumber"
+              className="h-12 text-base"
               value={licenseNumber}
               onChange={(e) => setLicenseNumber(e.target.value)}
               placeholder="OCM-XXXXX"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="companyEmail">Company Email</Label>
+          <div className="space-y-2">
+            <Label htmlFor="companyEmail" className="text-base">Company Email</Label>
             <Input
               id="companyEmail"
               type="email"
+              className="h-12 text-base"
               value={companyEmail}
               onChange={(e) => setCompanyEmail(e.target.value)}
               placeholder="info@company.com"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="companyPhoneNumber">Company Phone</Label>
+          <div className="space-y-2">
+            <Label htmlFor="companyPhoneNumber" className="text-base">Company Phone</Label>
             <Input
               id="companyPhoneNumber"
+              className="h-12 text-base"
               value={companyPhone}
               onChange={(e) => setCompanyPhone(e.target.value)}
               placeholder="(555) 123-4567"
@@ -266,8 +276,8 @@ export default function CompanySettingsPage({
           </div>
         </div>
         <Button
-          className="mt-4"
-          size="sm"
+          className="mt-6 w-full"
+          size="lg"
           onClick={handleSaveCompany}
           disabled={savingCompany}
         >
@@ -285,7 +295,27 @@ export default function CompanySettingsPage({
       {/* Locations */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Locations</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">Locations</h2>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="size-8 inline-flex items-center justify-center rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
+                  <InfoIcon className="size-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="bottom"
+                align="start"
+                className="w-80 bg-amber-50 border-amber-200 text-amber-900"
+              >
+                <p className="text-sm leading-relaxed">
+                  If you have multiple dispensary locations, you can add each one here
+                  with its own address and OCM license number. When placing an order,
+                  you'll be able to select which location to ship to and bill from.
+                </p>
+              </PopoverContent>
+            </Popover>
+          </div>
           {!addingLocation && (
             <Button
               variant="outline"
@@ -313,23 +343,23 @@ export default function CompanySettingsPage({
             ) : (
               <div
                 key={loc.id}
-                className="flex items-start justify-between rounded-lg border p-4"
+                className="flex items-start justify-between rounded-lg border p-5"
               >
-                <div>
+                <div className="space-y-0.5">
                   {loc.name && (
-                    <p className="font-medium text-sm">{loc.name}</p>
+                    <p className="font-medium text-base">{loc.name}</p>
                   )}
                   {loc.license_number && (
-                    <p className="text-xs text-muted-foreground">OCM: {loc.license_number}</p>
+                    <p className="text-sm text-muted-foreground">OCM: {loc.license_number}</p>
                   )}
-                  <p className="text-sm text-muted-foreground">{loc.address}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-base text-muted-foreground">{loc.address}</p>
+                  <p className="text-base text-muted-foreground">
                     {[loc.city, loc.state, loc.zip_code]
                       .filter(Boolean)
                       .join(", ")}
                   </p>
                   {loc.phone_number && (
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       {loc.phone_number}
                     </p>
                   )}
@@ -337,10 +367,10 @@ export default function CompanySettingsPage({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-8"
+                  className="size-9"
                   onClick={() => startEditLocation(loc)}
                 >
-                  <PencilIcon className="size-3.5" />
+                  <PencilIcon className="size-4" />
                 </Button>
               </div>
             )
@@ -384,77 +414,84 @@ function LocationFormCard({
   saving: boolean;
 }) {
   return (
-    <div className="rounded-lg border p-4 space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Location Name</Label>
+    <div className="rounded-lg border p-5 space-y-4">
+      <div className="grid gap-4">
+        <div className="space-y-2">
+          <Label className="text-base">Location Name</Label>
           <Input
+            className="h-12 text-base"
             value={form.name}
             onChange={(e) => onChange({ ...form, name: e.target.value })}
             placeholder="Main Office"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label>OCM License</Label>
+        <div className="space-y-2">
+          <Label className="text-base">OCM License</Label>
           <Input
+            className="h-12 text-base"
             value={form.license_number}
             onChange={(e) => onChange({ ...form, license_number: e.target.value })}
             placeholder="OCM-XXXXX"
           />
         </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label>Address</Label>
+        <div className="space-y-2">
+          <Label className="text-base">Address</Label>
           <Input
+            className="h-12 text-base"
             value={form.address}
             onChange={(e) => onChange({ ...form, address: e.target.value })}
             placeholder="123 Main St"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label>City</Label>
+        <div className="space-y-2">
+          <Label className="text-base">City</Label>
           <Input
+            className="h-12 text-base"
             value={form.city}
             onChange={(e) => onChange({ ...form, city: e.target.value })}
             placeholder="New York"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>State</Label>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-base">State</Label>
             <Input
+              className="h-12 text-base"
               value={form.state}
               onChange={(e) => onChange({ ...form, state: e.target.value })}
               placeholder="NY"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label>ZIP</Label>
+          <div className="space-y-2">
+            <Label className="text-base">ZIP</Label>
             <Input
+              className="h-12 text-base"
               value={form.zip_code}
               onChange={(e) => onChange({ ...form, zip_code: e.target.value })}
               placeholder="10001"
             />
           </div>
         </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label>Phone</Label>
+        <div className="space-y-2">
+          <Label className="text-base">Phone</Label>
           <Input
+            className="h-12 text-base"
             value={form.phone_number}
             onChange={(e) => onChange({ ...form, phone_number: e.target.value })}
             placeholder="(555) 123-4567"
           />
         </div>
       </div>
-      <div className="flex gap-2">
-        <Button size="sm" onClick={onSave} disabled={saving}>
+      <div className="grid grid-cols-2 gap-3">
+        <Button size="lg" className="w-full" onClick={onSave} disabled={saving}>
           {saving ? (
             <Loader2Icon className="mr-2 size-4 animate-spin" />
           ) : (
             <CheckIcon className="mr-1.5 size-4" />
           )}
-          Save
+          Save Location
         </Button>
-        <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
+        <Button variant="outline" size="lg" className="w-full" onClick={onCancel} disabled={saving}>
           <XIcon className="mr-1.5 size-4" />
           Cancel
         </Button>

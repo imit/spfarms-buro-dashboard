@@ -139,7 +139,9 @@ export type LeadStatus =
   | "repeat"
   | "loyal"
   | "inactive"
-  | "lost";
+  | "lost"
+  | "test"
+  | "misc";
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   idle: "Idle",
@@ -152,6 +154,8 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   loyal: "Loyal",
   inactive: "Inactive",
   lost: "Lost",
+  test: "Test",
+  misc: "Misc",
 };
 
 export interface Location {
@@ -2901,12 +2905,12 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
-  async updateProfile(data: { full_name?: string; phone_number?: string }): Promise<User> {
+  async updateProfile(data: { full_name?: string; phone_number?: string; company_title?: string }, companySlug?: string): Promise<User> {
     const res = await this.request<JsonApiResponse<User>>(
       "/api/v1/profile",
       {
         method: "PATCH",
-        body: JSON.stringify({ user: data }),
+        body: JSON.stringify({ user: data, company_slug: companySlug }),
       }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
@@ -3083,6 +3087,35 @@ export class ApiClient {
       {
         method: "POST",
         body: JSON.stringify(body),
+      }
+    );
+    return res.data;
+  }
+
+  // Checkout Payment Term Agreement
+
+  async checkPaymentTermAgreement(
+    companyId: number,
+    paymentTermId: number
+  ): Promise<{ signed: boolean; signer_name?: string; signer_email?: string; signed_at?: string }> {
+    const res = await this.request<{ data: { signed: boolean; signer_name?: string; signer_email?: string; signed_at?: string } }>(
+      `/api/v1/cart/payment_term_agreement?company_id=${companyId}&payment_term_id=${paymentTermId}`
+    );
+    return res.data;
+  }
+
+  async signPaymentTermAgreement(params: {
+    company_id: number;
+    payment_term_id: number;
+    signer_name: string;
+    signer_email: string;
+    signature_data: string;
+  }): Promise<{ signed: boolean; signer_name: string; signer_email: string; signed_at: string }> {
+    const res = await this.request<{ data: { signed: boolean; signer_name: string; signer_email: string; signed_at: string } }>(
+      "/api/v1/cart/payment_term_agreement/sign",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
       }
     );
     return res.data;

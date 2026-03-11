@@ -21,14 +21,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { BoxProgress, useMinimumOrderMet } from "@/components/storefront/box-progress";
+import { PaymentTermsSigningModal, PaymentTermsSignedBadge } from "@/components/payment-terms-signing-modal";
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
 
@@ -75,8 +70,11 @@ export default function CheckoutPage({
     return d.toISOString().split("T")[0];
   });
   const [contactUsers, setContactUsers] = useState<ContactUser[]>([]);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [termsDialogOpen, setTermsDialogOpen] = useState(false);
+  const [agreementSigned, setAgreementSigned] = useState(false);
+  const [agreementSignerName, setAgreementSignerName] = useState("");
+  const [agreementSignedAt, setAgreementSignedAt] = useState("");
+  const [signingModalOpen, setSigningModalOpen] = useState(false);
+  const [checkingAgreement, setCheckingAgreement] = useState(false);
 
   // Load cart, company, payment terms
   useEffect(() => {
@@ -145,6 +143,29 @@ export default function CheckoutPage({
     fetchPreview();
   }, [company, cart, selectedPaymentTermId, shippingLocationId]);
 
+  // Check for existing signed agreement when payment term changes
+  useEffect(() => {
+    if (!company || !selectedPaymentTermId) return;
+    const term = paymentTerms.find((t) => t.id === selectedPaymentTermId);
+    if (!term || term.days === 0) {
+      setAgreementSigned(false);
+      return;
+    }
+
+    setCheckingAgreement(true);
+    apiClient
+      .checkPaymentTermAgreement(company.id, selectedPaymentTermId)
+      .then((res) => {
+        setAgreementSigned(res.signed);
+        if (res.signed) {
+          setAgreementSignerName(res.signer_name || "");
+          setAgreementSignedAt(res.signed_at || "");
+        }
+      })
+      .catch(() => setAgreementSigned(false))
+      .finally(() => setCheckingAgreement(false));
+  }, [company, selectedPaymentTermId, paymentTerms]);
+
   const addContactUser = () => {
     setContactUsers([...contactUsers, { full_name: "", email: "", phone_number: "" }]);
   };
@@ -182,9 +203,6 @@ export default function CheckoutPage({
 
       if (selectedPaymentTermId && !skipPaymentTerms) {
         orderParams.payment_term_id = selectedPaymentTermId;
-        if (termsAccepted) {
-          orderParams.payment_terms_accepted = true;
-        }
       }
 
       const validContacts = contactUsers.filter((c) => c.email?.trim());
@@ -216,6 +234,8 @@ export default function CheckoutPage({
   ) ?? [];
   const isBulkOnly = !isPreorder && checkoutItems.length > 0 && checkoutItems.every((i) => i.bulk);
   const skipPaymentTerms = isPreorder || isBulkOnly;
+  const selectedTerm = paymentTerms.find((t) => t.id === selectedPaymentTermId);
+  const needsAgreement = !skipPaymentTerms && selectedTerm && selectedTerm.days > 0;
 
   const meetsMinimum = isPreorder || useMinimumOrderMet(
     preview?.items ?? cart?.items ?? []
@@ -581,81 +601,47 @@ export default function CheckoutPage({
             )}
           </div>
 
-          {/* Payment Terms Agreement */}
-          {!skipPaymentTerms && (
+          {/* Payment Terms Agreement — signing required for net terms */}
+          {needsAgreement && (
             <>
-              <label
-                htmlFor="termsAccepted"
-                className={cn(
-                  "flex items-center gap-3 rounded-lg border-2 p-4 cursor-pointer transition-colors",
-                  termsAccepted
-                    ? "border-primary bg-primary/5"
-                    : "border-muted hover:border-muted-foreground/30"
-                )}
-              >
-                <input
-                  type="checkbox"
-                  id="termsAccepted"
-                  checked={termsAccepted}
-                  onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="size-5 rounded border-input accent-primary shrink-0"
+              {checkingAgreement ? (
+                <div className="flex items-center justify-center py-4">
+                  <LoaderIcon className="size-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : agreementSigned ? (
+                <PaymentTermsSignedBadge
+                  signerName={agreementSignerName}
+                  signedAt={agreementSignedAt}
                 />
-                <span className="text-base leading-snug">
-                  I agree to the selected{" "}
-                  <button
-                    type="button"
-                    className="underline text-primary font-medium hover:text-primary/80"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setTermsDialogOpen(true);
-                    }}
-                  >
-                    payment terms
-                    {selectedPaymentTermId && paymentTerms.find(t => t.id === selectedPaymentTermId) && (
-                      <> ({paymentTerms.find(t => t.id === selectedPaymentTermId)!.name})</>
-                    )}
-                  </button>
-                </span>
-              </label>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full border-2 border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
+                  onClick={() => setSigningModalOpen(true)}
+                >
+                  Review & Sign Payment Terms ({selectedTerm!.name})
+                </Button>
+              )}
 
-              <Dialog open={termsDialogOpen} onOpenChange={setTermsDialogOpen}>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Payment Terms</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 text-sm">
-                    {selectedPaymentTermId && paymentTerms.find(t => t.id === selectedPaymentTermId) ? (
-                      (() => {
-                        const term = paymentTerms.find(t => t.id === selectedPaymentTermId)!;
-                        const discount = parseFloat(term.discount_percentage);
-                        return (
-                          <div className="space-y-3">
-                            <div className="rounded-lg border p-4 space-y-2">
-                              <p className="font-semibold text-base">{term.name}</p>
-                              <p className="text-muted-foreground">
-                                {term.days === 0
-                                  ? <>Payment is due <span className="font-medium text-foreground">on delivery</span> — cash or check accepted at the time of drop-off.</>
-                                  : <>Payment is due within <span className="font-medium text-foreground">{term.days} days</span> of the invoice date.</>
-                                }
-                              </p>
-                              {discount > 0 && (
-                                <p className="text-green-600">
-                                  A <span className="font-medium">{discount}% discount</span> is applied to the order total for this payment term.
-                                </p>
-                              )}
-                            </div>
-                            <p className="text-muted-foreground text-xs leading-relaxed">
-                              By accepting these terms, you agree to pay the full invoice amount within the specified period. Late payments may be subject to additional fees or changes to your available payment terms.
-                            </p>
-                          </div>
-                        );
-                      })()
-                    ) : (
-                      <p className="text-muted-foreground">Please select a payment term above to view its details.</p>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
+              {company && selectedTerm && (
+                <PaymentTermsSigningModal
+                  open={signingModalOpen}
+                  onOpenChange={setSigningModalOpen}
+                  companyId={company.id}
+                  companyName={company.name}
+                  paymentTerm={selectedTerm}
+                  preview={preview}
+                  userFullName={user?.full_name}
+                  userEmail={user?.email}
+                  onSigned={(data) => {
+                    setAgreementSigned(true);
+                    setAgreementSignerName(data.signer_name);
+                    setAgreementSignedAt(data.signed_at);
+                    setSigningModalOpen(false);
+                  }}
+                />
+              )}
             </>
           )}
 
@@ -664,7 +650,7 @@ export default function CheckoutPage({
             className="w-full"
             size="lg"
             onClick={handleConfirmOrder}
-            disabled={submitting || !cart || cart.items.length === 0 || !meetsMinimum || (!skipPaymentTerms && !termsAccepted) || hasMissingInfo}
+            disabled={submitting || !cart || cart.items.length === 0 || !meetsMinimum || (needsAgreement && !agreementSigned) || hasMissingInfo}
           >
             {submitting
               ? isPreorder ? "Placing Pre-order..." : "Placing Order..."
@@ -672,9 +658,11 @@ export default function CheckoutPage({
                 ? "Complete required info to order"
                 : !meetsMinimum
                   ? "Minimum order not met"
-                  : isPreorder
-                    ? `Confirm Pre-order — ${formatPrice(preview?.total || cart.subtotal)}`
-                    : `Confirm Order — ${formatPrice(preview?.total || cart.subtotal)}`}
+                  : needsAgreement && !agreementSigned
+                    ? "Sign payment terms to continue"
+                    : isPreorder
+                      ? `Confirm Pre-order — ${formatPrice(preview?.total || cart.subtotal)}`
+                      : `Confirm Order — ${formatPrice(preview?.total || cart.subtotal)}`}
           </Button>
         </div>
       </div>
