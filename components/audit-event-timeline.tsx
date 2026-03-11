@@ -12,6 +12,11 @@ import {
   StickyNoteIcon,
   PackageIcon,
   ShieldCheckIcon,
+  UserPlusIcon,
+  UserMinusIcon,
+  ShieldAlertIcon,
+  BuildingIcon,
+  Trash2Icon,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -32,6 +37,15 @@ const EVENT_CONFIG: Record<AuditEventType, { icon: React.ReactNode; color: strin
   harvest_admin_reviewed:        { icon: <ShieldCheckIcon className="h-4 w-4" />, color: "text-indigo-500",  bg: "bg-indigo-100 dark:bg-indigo-900/30" },
   batch_created:                 { icon: <LayersIcon className="h-4 w-4" />,        color: "text-emerald-500", bg: "bg-emerald-100 dark:bg-emerald-900/30" },
   note_added:                    { icon: <StickyNoteIcon className="h-4 w-4" />,    color: "text-yellow-500",  bg: "bg-yellow-100 dark:bg-yellow-900/30" },
+  user_created:                  { icon: <UserPlusIcon className="h-4 w-4" />,      color: "text-green-500",   bg: "bg-green-100 dark:bg-green-900/30" },
+  user_updated:                  { icon: <EditIcon className="h-4 w-4" />,          color: "text-blue-500",    bg: "bg-blue-100 dark:bg-blue-900/30" },
+  user_deleted:                  { icon: <UserMinusIcon className="h-4 w-4" />,     color: "text-red-500",     bg: "bg-red-100 dark:bg-red-900/30" },
+  user_role_changed:             { icon: <RefreshCwIcon className="h-4 w-4" />,     color: "text-purple-500",  bg: "bg-purple-100 dark:bg-purple-900/30" },
+  user_impersonated:             { icon: <ShieldAlertIcon className="h-4 w-4" />,   color: "text-orange-500",  bg: "bg-orange-100 dark:bg-orange-900/30" },
+  user_invited:                  { icon: <UserPlusIcon className="h-4 w-4" />,      color: "text-cyan-500",    bg: "bg-cyan-100 dark:bg-cyan-900/30" },
+  company_created:               { icon: <BuildingIcon className="h-4 w-4" />,      color: "text-green-500",   bg: "bg-green-100 dark:bg-green-900/30" },
+  company_updated:               { icon: <EditIcon className="h-4 w-4" />,          color: "text-blue-500",    bg: "bg-blue-100 dark:bg-blue-900/30" },
+  company_deleted:               { icon: <Trash2Icon className="h-4 w-4" />,        color: "text-red-500",     bg: "bg-red-100 dark:bg-red-900/30" },
 }
 
 function trackableHref(event: AuditEventData): string | null {
