@@ -4185,6 +4185,11 @@ export class ApiClient {
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
 
+  async getPublicBulkProducts(): Promise<Product[]> {
+    const res = await this.request<JsonApiCollectionResponse<Product>>("/api/v1/public/products/bulk");
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
   async getPublicProduct(slug: string): Promise<Product> {
     const res = await this.request<JsonApiResponse<Product>>(`/api/v1/public/products/${slug}`);
     return { ...res.data.attributes, id: Number(res.data.id) };

@@ -16,12 +16,11 @@ export default function BulkPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [productData, strains, settings] = await Promise.all([
-          apiClient.getPublicProducts(),
+        const [bulkProducts, strains, settings] = await Promise.all([
+          apiClient.getPublicBulkProducts(),
           apiClient.getPublicStrains(),
           apiClient.getPublicSettings(),
         ]);
-        const bulkProducts = productData.filter((p) => p.product_type === "bulk_flower");
         setProducts(bulkProducts);
         setBulkPhone(settings.bulk_sales_phone || "");
 
