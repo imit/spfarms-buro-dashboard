@@ -1545,6 +1545,15 @@ export type AuditEventType =
   | "harvest_admin_reviewed"
   | "batch_created"
   | "note_added"
+  | "user_created"
+  | "user_updated"
+  | "user_deleted"
+  | "user_role_changed"
+  | "user_impersonated"
+  | "user_invited"
+  | "company_created"
+  | "company_updated"
+  | "company_deleted"
 
 export interface AuditEventData {
   id: number
@@ -1575,6 +1584,15 @@ export const AUDIT_EVENT_LABELS: Record<AuditEventType, string> = {
   harvest_admin_reviewed: "Admin Reviewed",
   batch_created: "Batch Created",
   note_added: "Note Added",
+  user_created: "User Created",
+  user_updated: "User Updated",
+  user_deleted: "User Deleted",
+  user_role_changed: "Role Changed",
+  user_impersonated: "User Impersonated",
+  user_invited: "User Invited",
+  company_created: "Company Created",
+  company_updated: "Company Updated",
+  company_deleted: "Company Deleted",
 }
 
 export interface Plant {
@@ -4127,6 +4145,25 @@ export class ApiClient {
       `/api/v1/facility/harvests/${harvestId}/audit_events`
     )
     return res.data
+  }
+
+  async getAdminAuditEvents(opts?: {
+    user_id?: number
+    category?: "users" | "companies" | "grow"
+    from?: string
+    to?: string
+    limit?: number
+    offset?: number
+  }): Promise<{ data: AuditEventData[]; meta: { total: number } }> {
+    const params = new URLSearchParams()
+    if (opts?.user_id) params.set("user_id", String(opts.user_id))
+    if (opts?.category) params.set("category", opts.category)
+    if (opts?.from) params.set("from", opts.from)
+    if (opts?.to) params.set("to", opts.to)
+    if (opts?.limit) params.set("limit", String(opts.limit))
+    if (opts?.offset) params.set("offset", String(opts.offset))
+    const query = params.toString() ? `?${params.toString()}` : ""
+    return this.request(`/api/v1/admin/audit_events${query}`)
   }
 
   // ---- METRC Tags ----

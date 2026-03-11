@@ -22,7 +22,8 @@ export type Resource =
   | "settings"
   | "gallery"
   | "support_tickets"
-  | "payments";
+  | "payments"
+  | "audit_log";
 
 type RoleAccessMap = Record<Resource, Partial<Record<UserRole, AccessLevel>>>;
 
@@ -47,6 +48,7 @@ export const ROLE_ACCESS: RoleAccessMap = {
   settings:      { admin: "full", observer_admin: "read", account: "read" },
   gallery:       { admin: "full", observer_admin: "read", editor: "full", cultivator: "read", processing: "read", sales: "read" },
   support_tickets: { admin: "full", observer_admin: "read", editor: "full", account: "send_only" },
+  audit_log:       { admin: "full" },
 };
 
 export const ADMIN_LAYOUT_ROLES: UserRole[] = [

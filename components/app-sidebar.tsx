@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, PackageCheckIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, PackageCheckIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -130,6 +130,12 @@ const navSales: NavItem[] = [
 ]
 
 const navSecondary: NavItem[] = [
+  {
+    title: "Audit Log",
+    url: "/admin/audit-log",
+    icon: <ShieldAlertIcon />,
+    resource: "audit_log",
+  },
   {
     title: "Settings",
     url: "/admin/settings",
