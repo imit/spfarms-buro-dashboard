@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import {
   apiClient,
@@ -39,14 +39,30 @@ function formatPrice(price: string | null) {
   return `$${parseFloat(price).toFixed(2)}`;
 }
 
-export default function ProductsPage() {
+export default function ProductsPageWrapper() {
+  return (
+    <Suspense>
+      <ProductsPage />
+    </Suspense>
+  );
+}
+
+function ProductsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const typeFilter = (searchParams.get("type") as TypeFilter) || "all";
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  function setTypeFilter(type: TypeFilter) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (type === "all") params.delete("type");
+    else params.set("type", type);
+    router.replace(`/admin/products?${params.toString()}`);
+  }
 
 
   useEffect(() => {
@@ -76,9 +92,11 @@ export default function ProductsPage() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      if (typeFilter === "cannabis" && !p.cannabis) return false;
+      const isBulk = p.product_type === "bulk_flower";
+      if (typeFilter === "all" && isBulk) return false;
+      if (typeFilter === "cannabis" && (!p.cannabis || isBulk)) return false;
       if (typeFilter === "promo" && p.cannabis) return false;
-      if (typeFilter === "bulk" && !p.bulk) return false;
+      if (typeFilter === "bulk" && !isBulk) return false;
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
       return true;
     });

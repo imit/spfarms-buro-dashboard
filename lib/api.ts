@@ -256,6 +256,19 @@ export interface Invitation {
   created_at: string;
 }
 
+export interface BulkFlowerSend {
+  id: number;
+  recipient_label: string;
+  company_slug: string | null;
+  company_name: string | null;
+  email: string | null;
+  recipient_name: string | null;
+  custom_message: string | null;
+  product_count: number | null;
+  sent_by: { id: number; name: string } | null;
+  sent_at: string;
+}
+
 export type StrainCategory = "indica" | "sativa" | "hybrid";
 
 export const CATEGORY_LABELS: Record<StrainCategory, string> = {
@@ -2445,6 +2458,24 @@ export class ApiClient {
       }
     );
     return res.data;
+  }
+
+  // Bulk Flower Sends
+
+  async getBulkFlowerSends(): Promise<BulkFlowerSend[]> {
+    return this.request<BulkFlowerSend[]>("/api/v1/bulk_flower_sends");
+  }
+
+  async createBulkFlowerSend(params: {
+    company_slug?: string;
+    email?: string;
+    recipient_name?: string;
+    custom_message?: string;
+  }): Promise<BulkFlowerSend> {
+    return this.request<BulkFlowerSend>("/api/v1/bulk_flower_sends", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
   }
 
   // COAs
