@@ -160,6 +160,30 @@ export function LabelCanvasEditor({
     })
   }
 
+  const textLayers: Array<{ key: string; label: string; color: string; zIndex: number }> = [
+    { key: "batch_id", label: "Batch ID", color: "#0ea5e9", zIndex: 7 },
+    { key: "product_id_text", label: "Product ID", color: "#14b8a6", zIndex: 6 },
+    { key: "lot_number", label: "Lot #", color: "#d946ef", zIndex: 5 },
+    { key: "harvest_date", label: "Harvest Date", color: "#f43f5e", zIndex: 4 },
+  ]
+  for (const tl of textLayers) {
+    const cfg = d?.[tl.key as keyof typeof d] as
+      | { enabled?: boolean; x?: number; y?: number; width?: number; height?: number }
+      | undefined
+    if (cfg?.enabled) {
+      handles.push({
+        key: tl.key,
+        label: tl.label,
+        x: cfg.x ?? 0,
+        y: cfg.y ?? 0,
+        width: cfg.width ?? 100,
+        height: cfg.height ?? 20,
+        color: tl.color,
+        zIndex: tl.zIndex,
+      })
+    }
+  }
+
   for (const ov of label.overlays || []) {
     handles.push({
       key: `overlay:${ov.id}`,

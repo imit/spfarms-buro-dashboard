@@ -533,18 +533,24 @@ export interface LabelDesign {
     font_weight?: string;
     text_anchor?: string;
   };
-  expiration_date?: {
-    enabled?: boolean;
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-    font_size?: number;
-    text_color?: string;
-    text?: string;
-    font_weight?: string;
-    text_anchor?: string;
-  };
+  expiration_date?: LabelTextLayer;
+  batch_id?: LabelTextLayer;
+  product_id_text?: LabelTextLayer;
+  lot_number?: LabelTextLayer;
+  harvest_date?: LabelTextLayer;
+}
+
+export interface LabelTextLayer {
+  enabled?: boolean;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  font_size?: number;
+  text_color?: string;
+  text?: string;
+  font_weight?: string;
+  text_anchor?: string;
 }
 
 export type CannabinoidField =
@@ -2594,6 +2600,16 @@ export class ApiClient {
       { method: "POST" }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async copyTextLayers(
+    slug: string,
+    targetLabelIds: number[]
+  ): Promise<{ updated: string[]; count: number }> {
+    return this.request(`/api/v1/labels/${slug}/copy_text_layers`, {
+      method: "POST",
+      body: JSON.stringify({ target_label_ids: targetLabelIds }),
+    });
   }
 
   async getLabelSvgPreview(slug: string): Promise<string> {

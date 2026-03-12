@@ -25,6 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const AVAILABLE_FONTS = [
   { label: "Circular Std", value: "Circular Std, sans-serif" },
@@ -44,6 +51,11 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
   const [error, setError] = useState("");
   const [strains, setStrains] = useState<Strain[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [allLabels, setAllLabels] = useState<Label[]>([]);
+  const [copyTargets, setCopyTargets] = useState<Set<number>>(new Set());
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
+  const [copyResult, setCopyResult] = useState("");
 
   // Basic info
   const [form, setForm] = useState({
@@ -167,6 +179,62 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
     text_anchor: label?.design?.expiration_date?.text_anchor ?? "start",
   });
 
+  // Batch ID
+  const [batchId, setBatchId] = useState({
+    enabled: label?.design?.batch_id?.enabled ?? false,
+    x: label?.design?.batch_id?.x?.toString() ?? "0",
+    y: label?.design?.batch_id?.y?.toString() ?? "0",
+    width: label?.design?.batch_id?.width?.toString() ?? "100",
+    height: label?.design?.batch_id?.height?.toString() ?? "20",
+    font_size: label?.design?.batch_id?.font_size?.toString() ?? "",
+    text_color: label?.design?.batch_id?.text_color ?? "#1a1a1a",
+    text: label?.design?.batch_id?.text ?? "",
+    font_weight: label?.design?.batch_id?.font_weight ?? "400",
+    text_anchor: label?.design?.batch_id?.text_anchor ?? "start",
+  });
+
+  // Product ID Text
+  const [productIdText, setProductIdText] = useState({
+    enabled: label?.design?.product_id_text?.enabled ?? false,
+    x: label?.design?.product_id_text?.x?.toString() ?? "0",
+    y: label?.design?.product_id_text?.y?.toString() ?? "0",
+    width: label?.design?.product_id_text?.width?.toString() ?? "100",
+    height: label?.design?.product_id_text?.height?.toString() ?? "20",
+    font_size: label?.design?.product_id_text?.font_size?.toString() ?? "",
+    text_color: label?.design?.product_id_text?.text_color ?? "#1a1a1a",
+    text: label?.design?.product_id_text?.text ?? "",
+    font_weight: label?.design?.product_id_text?.font_weight ?? "400",
+    text_anchor: label?.design?.product_id_text?.text_anchor ?? "start",
+  });
+
+  // Lot Number
+  const [lotNumber, setLotNumber] = useState({
+    enabled: label?.design?.lot_number?.enabled ?? false,
+    x: label?.design?.lot_number?.x?.toString() ?? "0",
+    y: label?.design?.lot_number?.y?.toString() ?? "0",
+    width: label?.design?.lot_number?.width?.toString() ?? "100",
+    height: label?.design?.lot_number?.height?.toString() ?? "20",
+    font_size: label?.design?.lot_number?.font_size?.toString() ?? "",
+    text_color: label?.design?.lot_number?.text_color ?? "#1a1a1a",
+    text: label?.design?.lot_number?.text ?? "",
+    font_weight: label?.design?.lot_number?.font_weight ?? "400",
+    text_anchor: label?.design?.lot_number?.text_anchor ?? "start",
+  });
+
+  // Harvest Date
+  const [harvestDate, setHarvestDate] = useState({
+    enabled: label?.design?.harvest_date?.enabled ?? false,
+    x: label?.design?.harvest_date?.x?.toString() ?? "0",
+    y: label?.design?.harvest_date?.y?.toString() ?? "0",
+    width: label?.design?.harvest_date?.width?.toString() ?? "100",
+    height: label?.design?.harvest_date?.height?.toString() ?? "20",
+    font_size: label?.design?.harvest_date?.font_size?.toString() ?? "",
+    text_color: label?.design?.harvest_date?.text_color ?? "#1a1a1a",
+    text: label?.design?.harvest_date?.text ?? "",
+    font_weight: label?.design?.harvest_date?.font_weight ?? "400",
+    text_anchor: label?.design?.harvest_date?.text_anchor ?? "start",
+  });
+
   // METRC Zone
   const [metrcZone, setMetrcZone] = useState({
     enabled: label?.design?.metrc_zone?.enabled ?? false,
@@ -185,6 +253,7 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
     apiClient.getStrains().then(setStrains).catch(() => {});
     apiClient.getProducts().then(setProducts).catch(() => {});
     apiClient.getLabelPresets().then(setPresets).catch(() => {});
+    apiClient.getLabels().then(setAllLabels).catch(() => {});
   }, []);
 
   // Presets
@@ -343,6 +412,30 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
         designPayload.expiration_date = { enabled: false };
       }
 
+      for (const [key, state] of [
+        ["batch_id", batchId],
+        ["product_id_text", productIdText],
+        ["lot_number", lotNumber],
+        ["harvest_date", harvestDate],
+      ] as const) {
+        if (state.enabled) {
+          designPayload[key] = {
+            enabled: true,
+            x: parseFloat(state.x) || 0,
+            y: parseFloat(state.y) || 0,
+            width: parseFloat(state.width) || 100,
+            height: parseFloat(state.height) || 20,
+            font_size: parseFloat(state.font_size) || undefined,
+            text_color: state.text_color,
+            text: state.text,
+            font_weight: state.font_weight,
+            text_anchor: state.text_anchor,
+          };
+        } else {
+          designPayload[key] = { enabled: false };
+        }
+      }
+
       if (metrcZone.enabled) {
         designPayload.metrc_zone = {
           enabled: true,
@@ -396,6 +489,209 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleCopyTextLayers() {
+    if (!label || copyTargets.size === 0) return;
+    setIsCopying(true);
+    setCopyResult("");
+    try {
+      const res = await apiClient.copyTextLayers(label.slug, Array.from(copyTargets));
+      setCopyResult(`Copied to ${res.count} label${res.count !== 1 ? "s" : ""}`);
+      setCopyTargets(new Set());
+      setTimeout(() => {
+        setCopyDialogOpen(false);
+        setCopyResult("");
+      }, 1500);
+    } catch (err) {
+      setCopyResult(err instanceof Error ? err.message : "Failed to copy");
+    } finally {
+      setIsCopying(false);
+    }
+  }
+
+  function renderTextLayerSection(
+    title: string,
+    prefix: string,
+    state: typeof batchId,
+    setState: React.Dispatch<React.SetStateAction<typeof batchId>>,
+    placeholder: string,
+  ) {
+    return (
+      <section className="space-y-4">
+        <h3 className="text-lg font-medium">{title}</h3>
+        <FieldGroup>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={`${prefix}_enabled`}
+              checked={state.enabled}
+              onCheckedChange={(checked) =>
+                setState((p) => ({ ...p, enabled: checked === true }))
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor={`${prefix}_enabled`} className="text-sm font-medium">
+              Show {title}
+            </label>
+          </div>
+
+          {state.enabled && (
+            <>
+              <Field>
+                <FieldLabel htmlFor={`${prefix}_text`}>Text</FieldLabel>
+                <Input
+                  id={`${prefix}_text`}
+                  value={state.text}
+                  onChange={(e) =>
+                    setState((p) => ({ ...p, text: e.target.value }))
+                  }
+                  placeholder={placeholder}
+                  disabled={isSubmitting}
+                />
+              </Field>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor={`${prefix}_x`}>Position X</FieldLabel>
+                  <Input
+                    id={`${prefix}_x`}
+                    type="number"
+                    value={state.x}
+                    onChange={(e) =>
+                      setState((p) => ({ ...p, x: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor={`${prefix}_y`}>Position Y</FieldLabel>
+                  <Input
+                    id={`${prefix}_y`}
+                    type="number"
+                    value={state.y}
+                    onChange={(e) =>
+                      setState((p) => ({ ...p, y: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor={`${prefix}_width`}>Width</FieldLabel>
+                  <Input
+                    id={`${prefix}_width`}
+                    type="number"
+                    min="1"
+                    value={state.width}
+                    onChange={(e) =>
+                      setState((p) => ({ ...p, width: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor={`${prefix}_height`}>Height</FieldLabel>
+                  <Input
+                    id={`${prefix}_height`}
+                    type="number"
+                    min="1"
+                    value={state.height}
+                    onChange={(e) =>
+                      setState((p) => ({ ...p, height: e.target.value }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor={`${prefix}_font_size`}>Font Size (auto if empty)</FieldLabel>
+                  <Input
+                    id={`${prefix}_font_size`}
+                    type="number"
+                    step="0.5"
+                    min="1"
+                    value={state.font_size}
+                    onChange={(e) =>
+                      setState((p) => ({ ...p, font_size: e.target.value }))
+                    }
+                    placeholder="Auto"
+                    disabled={isSubmitting}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor={`${prefix}_text_anchor`}>Text Align</FieldLabel>
+                  <Select
+                    value={state.text_anchor}
+                    onValueChange={(v) =>
+                      setState((p) => ({ ...p, text_anchor: v }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id={`${prefix}_text_anchor`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="start">Left</SelectItem>
+                      <SelectItem value="middle">Center</SelectItem>
+                      <SelectItem value="end">Right</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor={`${prefix}_font_weight`}>Font Weight</FieldLabel>
+                  <Select
+                    value={state.font_weight}
+                    onValueChange={(v) =>
+                      setState((p) => ({ ...p, font_weight: v }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id={`${prefix}_font_weight`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="400">Normal</SelectItem>
+                      <SelectItem value="500">Medium</SelectItem>
+                      <SelectItem value="600">Semi-Bold</SelectItem>
+                      <SelectItem value="700">Bold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor={`${prefix}_text_color`}>Text Color</FieldLabel>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={state.text_color}
+                      onChange={(e) =>
+                        setState((p) => ({ ...p, text_color: e.target.value }))
+                      }
+                      className="h-9 w-12 rounded border cursor-pointer"
+                      disabled={isSubmitting}
+                    />
+                    <Input
+                      id={`${prefix}_text_color`}
+                      value={state.text_color}
+                      onChange={(e) =>
+                        setState((p) => ({ ...p, text_color: e.target.value }))
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </Field>
+              </div>
+            </>
+          )}
+        </FieldGroup>
+      </section>
+    );
   }
 
   return (
@@ -1635,6 +1931,113 @@ export function LabelForm({ label, mode = "create", onSaved }: LabelFormProps) {
           )}
         </FieldGroup>
       </section>
+
+      <Separator />
+
+      {/* Batch ID */}
+      {renderTextLayerSection("Batch ID", "batch_id", batchId, setBatchId, "B-20260312-001")}
+
+      <Separator />
+
+      {/* Product ID */}
+      {renderTextLayerSection("Product ID", "product_id_text", productIdText, setProductIdText, "PRD-00142")}
+
+      <Separator />
+
+      {/* Lot Number */}
+      {renderTextLayerSection("Lot #", "lot_number", lotNumber, setLotNumber, "LOT-2026-0045")}
+
+      <Separator />
+
+      {/* Harvest Date */}
+      {renderTextLayerSection("Harvest Date", "harvest_date", harvestDate, setHarvestDate, "Harvested: 02/28/2026")}
+
+      {/* Copy text layers to other labels */}
+      {isEdit && label && (
+        <>
+          <Separator />
+          <section className="space-y-4">
+            <h3 className="text-lg font-medium">Copy Text Layers</h3>
+            <p className="text-sm text-muted-foreground">
+              Copy Batch ID, Product ID, Lot #, and Harvest Date (values + positioning) to other labels.
+            </p>
+            <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+              <DialogTrigger asChild>
+                <Button type="button" variant="outline">
+                  Copy to other labels...
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Copy text layers to other labels</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground mb-3">
+                  This will copy Batch ID, Product ID, Lot #, and Harvest Date
+                  (including position, size, font, and text values) from <strong>{label.name}</strong> to the selected labels.
+                </p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {allLabels
+                    .filter((l) => l.id !== label.id)
+                    .map((l) => (
+                      <label
+                        key={l.id}
+                        className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={copyTargets.has(l.id)}
+                          onCheckedChange={(checked) => {
+                            setCopyTargets((prev) => {
+                              const next = new Set(prev);
+                              if (checked) next.add(l.id);
+                              else next.delete(l.id);
+                              return next;
+                            });
+                          }}
+                        />
+                        <span className="text-sm">{l.name}</span>
+                        {l.strain_name && (
+                          <span className="text-xs text-muted-foreground">({l.strain_name})</span>
+                        )}
+                      </label>
+                    ))}
+                  {allLabels.filter((l) => l.id !== label.id).length === 0 && (
+                    <p className="text-sm text-muted-foreground py-4 text-center">No other labels found</p>
+                  )}
+                </div>
+                <div className="flex items-center justify-between pt-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const otherIds = allLabels.filter((l) => l.id !== label.id).map((l) => l.id);
+                      setCopyTargets((prev) =>
+                        prev.size === otherIds.length ? new Set() : new Set(otherIds)
+                      );
+                    }}
+                  >
+                    {copyTargets.size === allLabels.filter((l) => l.id !== label.id).length
+                      ? "Deselect all"
+                      : "Select all"}
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    {copyResult && (
+                      <span className="text-sm text-muted-foreground">{copyResult}</span>
+                    )}
+                    <Button
+                      type="button"
+                      disabled={copyTargets.size === 0 || isCopying}
+                      onClick={handleCopyTextLayers}
+                    >
+                      {isCopying ? "Copying..." : `Copy to ${copyTargets.size} label${copyTargets.size !== 1 ? "s" : ""}`}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </section>
+        </>
+      )}
 
       <Separator />
 

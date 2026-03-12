@@ -110,6 +110,18 @@ export default function EditLabelPage({
       } else if (key === "expiration_date" && design.expiration_date) {
         design.expiration_date.x = x;
         design.expiration_date.y = y;
+      } else if (key === "batch_id" && design.batch_id) {
+        design.batch_id.x = x;
+        design.batch_id.y = y;
+      } else if (key === "product_id_text" && design.product_id_text) {
+        design.product_id_text.x = x;
+        design.product_id_text.y = y;
+      } else if (key === "lot_number" && design.lot_number) {
+        design.lot_number.x = x;
+        design.lot_number.y = y;
+      } else if (key === "harvest_date" && design.harvest_date) {
+        design.harvest_date.x = x;
+        design.harvest_date.y = y;
       }
 
       try {
