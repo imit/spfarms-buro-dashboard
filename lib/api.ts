@@ -1231,7 +1231,8 @@ export type NotificationType =
   | "bank_info_send"
   | "payment_terms_agreement"
   | "payment_received"
-  | "price_adjustment";
+  | "price_adjustment"
+  | "thank_you";
 
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   order_status: "Order Status",
@@ -1245,6 +1246,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   payment_terms_agreement: "Terms Agreement",
   payment_received: "Payment Received",
   price_adjustment: "Price Adjustment",
+  thank_you: "Thank You",
 };
 
 export type NotificationChannel = "email_and_in_app" | "email_only" | "in_app_only";
