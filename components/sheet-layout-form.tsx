@@ -32,15 +32,15 @@ export function SheetLayoutForm({
     name: layout?.name ?? "",
     sheet_width_cm: layout?.sheet_width_cm ?? "21.59",
     sheet_height_cm: layout?.sheet_height_cm ?? "27.94",
-    label_width_cm: layout?.label_width_cm ?? "5.08",
-    label_height_cm: layout?.label_height_cm ?? "2.54",
-    corner_radius_mm: layout?.corner_radius_mm ?? "2.0",
+    label_width_cm: layout?.label_width_cm ?? "6.35",
+    label_height_cm: layout?.label_height_cm ?? "3.9688",
+    corner_radius_mm: layout?.corner_radius_mm ?? "1.5875",
     margin_top_cm: layout?.margin_top_cm ?? "1.27",
     margin_bottom_cm: layout?.margin_bottom_cm ?? "1.27",
-    margin_left_cm: layout?.margin_left_cm ?? "0.48",
-    margin_right_cm: layout?.margin_right_cm ?? "0.48",
-    gap_x_cm: layout?.gap_x_cm ?? "0.3",
-    gap_y_cm: layout?.gap_y_cm ?? "0.0",
+    margin_left_cm: layout?.margin_left_cm ?? "0.9525",
+    margin_right_cm: layout?.margin_right_cm ?? "0.9525",
+    gap_x_cm: layout?.gap_x_cm ?? "0.3175",
+    gap_y_cm: layout?.gap_y_cm ?? "0.3175",
     default: layout?.default ?? false,
   });
 
@@ -203,7 +203,7 @@ export function SheetLayoutForm({
                   <Input
                     id="sheet_width_cm"
                     type="number"
-                    step="0.01"
+                    step="0.0001"
                     min="0"
                     value={form.sheet_width_cm}
                     onChange={(e) =>
@@ -219,7 +219,7 @@ export function SheetLayoutForm({
                   <Input
                     id="sheet_height_cm"
                     type="number"
-                    step="0.01"
+                    step="0.0001"
                     min="0"
                     value={form.sheet_height_cm}
                     onChange={(e) =>
@@ -244,7 +244,7 @@ export function SheetLayoutForm({
                   <Input
                     id="label_width_cm"
                     type="number"
-                    step="0.01"
+                    step="0.0001"
                     min="0"
                     value={form.label_width_cm}
                     onChange={(e) =>
@@ -260,7 +260,7 @@ export function SheetLayoutForm({
                   <Input
                     id="label_height_cm"
                     type="number"
-                    step="0.01"
+                    step="0.0001"
                     min="0"
                     value={form.label_height_cm}
                     onChange={(e) =>
@@ -299,7 +299,7 @@ export function SheetLayoutForm({
                   <Input
                     id="margin_top_cm"
                     type="number"
-                    step="0.01"
+                    step="0.0001"
                     min="0"
                     value={form.margin_top_cm}
                     onChange={(e) =>
@@ -315,7 +315,7 @@ export function SheetLayoutForm({
                   <Input
                     id="margin_bottom_cm"
                     type="number"
-                    step="0.01"
+                    step="0.0001"
                     min="0"
                     value={form.margin_bottom_cm}
                     onChange={(e) =>
@@ -331,7 +331,7 @@ export function SheetLayoutForm({
                   <Input
                     id="margin_left_cm"
                     type="number"
-                    step="0.01"
+                    step="0.0001"
                     min="0"
                     value={form.margin_left_cm}
                     onChange={(e) =>
@@ -345,7 +345,7 @@ export function SheetLayoutForm({
                   <Input
                     id="margin_right_cm"
                     type="number"
-                    step="0.01"
+                    step="0.0001"
                     min="0"
                     value={form.margin_right_cm}
                     onChange={(e) =>
@@ -368,7 +368,7 @@ export function SheetLayoutForm({
                   <Input
                     id="gap_x_cm"
                     type="number"
-                    step="0.01"
+                    step="0.0001"
                     min="0"
                     value={form.gap_x_cm}
                     onChange={(e) => updateField("gap_x_cm", e.target.value)}
@@ -380,7 +380,7 @@ export function SheetLayoutForm({
                   <Input
                     id="gap_y_cm"
                     type="number"
-                    step="0.01"
+                    step="0.0001"
                     min="0"
                     value={form.gap_y_cm}
                     onChange={(e) => updateField("gap_y_cm", e.target.value)}
