@@ -44,6 +44,7 @@ const TYPE_COLORS: Record<NotificationType, string> = {
   payment_terms_agreement: "bg-violet-100 text-violet-800",
   payment_received: "bg-green-100 text-green-800",
   price_adjustment: "bg-amber-100 text-amber-800",
+  thank_you: "bg-teal-100 text-teal-800",
 };
 
 function targetLabel(n: Notification) {
