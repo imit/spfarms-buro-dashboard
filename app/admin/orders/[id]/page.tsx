@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState, useCallback } from "react";
+import React, { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -1116,12 +1116,28 @@ export default function AdminOrderDetailPage({
                 </SelectTrigger>
                 <SelectContent>
                   {labels.map((l) => (
-                    <SelectItem key={l.slug} value={l.slug}>
-                      {l.name}{l.strain_name ? ` (${l.strain_name})` : ""}
-                    </SelectItem>
+                    <React.Fragment key={l.slug}>
+                      <SelectItem value={l.slug}>
+                        {l.name}{l.strain_name ? ` (${l.strain_name})` : ""}
+                      </SelectItem>
+                      {(l.strain_variants ?? []).map((v) => (
+                        <SelectItem key={v.id} value={l.slug} disabled className="pl-8 text-xs text-muted-foreground">
+                          ↳ {v.strain_name} variant
+                        </SelectItem>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </SelectContent>
               </Select>
+              {(() => {
+                const selectedLabel = labels.find((l) => l.slug === metrcLabelId);
+                if (!selectedLabel?.strain_variants?.length) return null;
+                return (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Has {selectedLabel.strain_variants.length} strain variant{selectedLabel.strain_variants.length > 1 ? "s" : ""} — variant is auto-matched by strain at print time.
+                  </p>
+                );
+              })()}
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">METRC PDF</Label>

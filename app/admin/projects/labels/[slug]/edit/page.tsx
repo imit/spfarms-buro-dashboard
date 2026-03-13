@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { LabelForm } from "@/components/label-form";
 import { LabelOverlayPanel } from "@/components/label-overlay-panel";
 import { MetrcLabelSetPanel } from "@/components/metrc-label-set-panel";
+import { LabelStrainVariantPanel } from "@/components/label-strain-variant-panel";
 import { LabelCanvasEditor } from "@/components/label-canvas-editor";
 import { ArrowLeftIcon, RefreshCwIcon } from "lucide-react";
 import { ErrorAlert } from "@/components/ui/error-alert";
@@ -209,6 +210,13 @@ export default function EditLabelPage({
           <Separator />
 
           <LabelOverlayPanel
+            label={label}
+            onUpdated={handleOverlayUpdated}
+          />
+
+          <Separator />
+
+          <LabelStrainVariantPanel
             label={label}
             onUpdated={handleOverlayUpdated}
           />

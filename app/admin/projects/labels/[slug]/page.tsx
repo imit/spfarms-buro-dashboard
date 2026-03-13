@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LabelPrintDialog } from "@/components/label-print-dialog";
 import { MetrcLabelSetPanel } from "@/components/metrc-label-set-panel";
+import { LabelStrainVariantPanel } from "@/components/label-strain-variant-panel";
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -366,6 +367,11 @@ export default function LabelDetailPage({
           </div>
         </div>
       )}
+
+      <Separator />
+
+      {/* Strain Variants */}
+      <LabelStrainVariantPanel label={label} onUpdated={setLabel} />
 
       <Separator />
 

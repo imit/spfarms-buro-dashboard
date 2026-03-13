@@ -646,8 +646,21 @@ export interface Label {
   overlays: LabelOverlayData[];
   render_data: Record<string, unknown>;
   metrc_label_sets: MetrcLabelSetSummary[];
+  strain_variants: LabelStrainVariant[];
   created_at: string;
   updated_at: string;
+}
+
+export interface LabelStrainVariant {
+  id: number;
+  strain_id: number;
+  strain_name: string | null;
+  image_x: number;
+  image_y: number;
+  image_width: number;
+  image_height: number;
+  text_overrides: Record<string, string>;
+  strain_image_url: string | null;
 }
 
 // ---- QR Codes ----
@@ -2641,6 +2654,28 @@ export class ApiClient {
     return res.text();
   }
 
+  async getLabelVariantSvgPreview(
+    slug: string,
+    variantId: number
+  ): Promise<string> {
+    const url = `${this.baseUrl}/api/v1/labels/${slug}/render_svg`;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ variant_id: variantId }),
+    });
+    if (!res.ok) throw new Error("Failed to render variant SVG");
+    return res.text();
+  }
+
   async getLabelPdf(slug: string): Promise<Blob> {
     const url = `${this.baseUrl}/api/v1/labels/${slug}/render_pdf`;
     const token =
@@ -2721,6 +2756,78 @@ export class ApiClient {
   ): Promise<Label> {
     const res = await this.request<JsonApiResponse<Label>>(
       `/api/v1/labels/${labelSlug}/label_overlays/${overlayId}`,
+      { method: "DELETE" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  // Label Strain Variants
+
+  async createLabelStrainVariant(
+    labelSlug: string,
+    data: FormData
+  ): Promise<Label> {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/labels/${labelSlug}/label_strain_variants`,
+      {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: data,
+      }
+    );
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(
+        json.errors?.join(", ") || json.error || "Failed to create variant"
+      );
+    }
+    const json = await res.json();
+    return { ...json.data.attributes, id: Number(json.data.id) };
+  }
+
+  async updateLabelStrainVariant(
+    labelSlug: string,
+    variantId: number,
+    data: FormData
+  ): Promise<Label> {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/labels/${labelSlug}/label_strain_variants/${variantId}`,
+      {
+        method: "PATCH",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: data,
+      }
+    );
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(
+        json.errors?.join(", ") || json.error || "Failed to update variant"
+      );
+    }
+    const json = await res.json();
+    return { ...json.data.attributes, id: Number(json.data.id) };
+  }
+
+  async deleteLabelStrainVariant(
+    labelSlug: string,
+    variantId: number
+  ): Promise<Label> {
+    const res = await this.request<JsonApiResponse<Label>>(
+      `/api/v1/labels/${labelSlug}/label_strain_variants/${variantId}`,
       { method: "DELETE" }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
