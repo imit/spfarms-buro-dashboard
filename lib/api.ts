@@ -846,6 +846,16 @@ export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
   preorder: "Pre-order",
 };
 
+export interface OrderItemMetrcSet {
+  id: number;
+  name: string;
+  item_count: number;
+  label_id: number;
+  label_slug: string;
+  label_name: string;
+  created_at: string;
+}
+
 export interface OrderItem {
   id: number;
   product_id: number;
@@ -857,6 +867,7 @@ export interface OrderItem {
   line_total: string;
   thumbnail_url: string | null;
   strain_name: string | null;
+  metrc_label_sets?: OrderItemMetrcSet[];
 }
 
 export interface OrderUser {
@@ -3521,6 +3532,90 @@ export class ApiClient {
     if (!res.ok) throw new Error("Record payment failed");
     const json = await res.json();
     return { ...json.data.attributes, id: Number(json.data.id) };
+  }
+
+  // Order METRC
+
+  async importOrderMetrc(
+    orderId: number,
+    orderItemId: number,
+    labelId: string,
+    pdf: File
+  ): Promise<OrderItemMetrcSet> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/import_metrc`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const formData = new FormData();
+    formData.append("order_item_id", orderItemId.toString());
+    formData.append("label_id", labelId);
+    formData.append("pdf", pdf);
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+      body: formData,
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || json.errors?.[0] || "Import failed");
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  async printOrderMetrcLabels(
+    orderId: number,
+    metrcLabelSetId: number,
+    sheetLayoutId: string
+  ): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/print_metrc_labels`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ metrc_label_set_id: metrcLabelSetId, sheet_layout_id: sheetLayoutId }),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || "Print failed");
+    }
+    return res.blob();
+  }
+
+  async printAllOrderMetrcLabels(
+    orderId: number,
+    sheetLayoutId: string
+  ): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/print_all_metrc_labels`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ sheet_layout_id: sheetLayoutId }),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || "Print failed");
+    }
+    return res.blob();
+  }
+
+  async deleteOrderMetrcSet(orderId: number, metrcLabelSetId: number): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${orderId}/delete_metrc_set`,
+      { method: "DELETE", body: JSON.stringify({ metrc_label_set_id: metrcLabelSetId }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
   // Sample Batches
