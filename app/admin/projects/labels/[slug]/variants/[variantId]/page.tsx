@@ -660,6 +660,14 @@ export default function VariantEditorPage({
               </p>
             )}
           </div>
+
+          {/* Sticky save at bottom of sidebar */}
+          <div className="sticky bottom-0 pt-3 pb-1 bg-background border-t">
+            <Button className="w-full" onClick={handleSave} disabled={saving}>
+              <SaveIcon className="mr-1.5 size-3.5" />
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
