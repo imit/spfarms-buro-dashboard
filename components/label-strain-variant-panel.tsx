@@ -122,9 +122,12 @@ export function LabelStrainVariantPanel({
     });
   }
 
-  // Strains that don't already have a variant
+  // Strains that don't already have a non-sample variant
   const availableStrains = strains.filter(
-    (s) => !(label.strain_variants ?? []).some((v) => v.strain_id === s.id)
+    (s) =>
+      !(label.strain_variants ?? []).some(
+        (v) => v.strain_id === s.id && !v.is_sample
+      )
   );
 
   async function handleAdd() {
