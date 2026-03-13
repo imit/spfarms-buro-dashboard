@@ -92,6 +92,8 @@ export default function VariantEditorPage({
     {}
   );
   const [strain, setStrain] = useState<Strain | null>(null);
+  const [allStrains, setAllStrains] = useState<Strain[]>([]);
+  const [selectedStrainId, setSelectedStrainId] = useState<string>("");
 
   // Sample / overlay / color state
   const [isSample, setIsSample] = useState(false);
@@ -165,8 +167,10 @@ export default function VariantEditorPage({
     apiClient
       .getStrains()
       .then((strains) => {
+        setAllStrains(strains);
         const s = strains.find((st) => st.id === variant.strain_id);
         if (s) setStrain(s);
+        setSelectedStrainId(String(variant.strain_id));
       })
       .catch(() => {});
   }, [variant]);
@@ -255,6 +259,7 @@ export default function VariantEditorPage({
     setSaving(true);
     setError("");
     const formData = new FormData();
+    formData.append("label_strain_variant[strain_id]", selectedStrainId);
     formData.append("label_strain_variant[image_x]", imageX);
     formData.append("label_strain_variant[image_y]", imageY);
     formData.append("label_strain_variant[image_width]", imageW);
@@ -432,7 +437,7 @@ export default function VariantEditorPage({
           </Button>
           <div>
             <h2 className="text-2xl font-semibold">
-              {variant.strain_name || "Variant"}{" "}
+              {strain?.name || variant.strain_name || "Variant"}{" "}
               <span className="text-muted-foreground font-normal text-lg">
                 variant
               </span>
@@ -578,6 +583,28 @@ export default function VariantEditorPage({
                 </span>
               )}
             </div>
+            <Field>
+              <FieldLabel>Strain</FieldLabel>
+              <Select
+                value={selectedStrainId}
+                onValueChange={(val) => {
+                  setSelectedStrainId(val);
+                  const s = allStrains.find((st) => String(st.id) === val);
+                  if (s) setStrain(s);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select strain..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allStrains.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
                 type="checkbox"
