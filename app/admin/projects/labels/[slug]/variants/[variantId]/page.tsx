@@ -9,6 +9,7 @@ import {
   type Label,
   type LabelStrainVariant,
   type Strain,
+  type SheetLayout,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ArrowLeftIcon,
   SaveIcon,
   PlusIcon,
@@ -33,18 +41,27 @@ import {
   RefreshCwIcon,
   LockIcon,
   UnlockIcon,
+  PrinterIcon,
+  ImageIcon,
 } from "lucide-react";
 
 const CM_TO_PX = 37.7953;
 
 const TEXT_OVERRIDE_KEYS = [
   { key: "product_info.left_text", label: "Product Info Text" },
+  { key: "product_info.text_color", label: "Product Info Color" },
   { key: "weight_info.text", label: "Weight Text" },
+  { key: "weight_info.text_color", label: "Weight Color" },
   { key: "expiration_date.text", label: "Expiration Date" },
+  { key: "expiration_date.text_color", label: "Expiration Color" },
   { key: "batch_id.text", label: "Batch ID" },
+  { key: "batch_id.text_color", label: "Batch ID Color" },
   { key: "lot_number.text", label: "Lot Number" },
+  { key: "lot_number.text_color", label: "Lot Number Color" },
   { key: "harvest_date.text", label: "Harvest Date" },
+  { key: "harvest_date.text_color", label: "Harvest Date Color" },
   { key: "product_id_text.text", label: "Product ID" },
+  { key: "product_id_text.text_color", label: "Product ID Color" },
 ];
 
 export default function VariantEditorPage({
@@ -75,6 +92,20 @@ export default function VariantEditorPage({
     {}
   );
   const [strain, setStrain] = useState<Strain | null>(null);
+
+  // Sample / overlay / color state
+  const [isSample, setIsSample] = useState(false);
+  const [bgColorOverride, setBgColorOverride] = useState("");
+  const [overlayFile, setOverlayFile] = useState<File | null>(null);
+  const [overlayX, setOverlayX] = useState("0");
+  const [overlayY, setOverlayY] = useState("0");
+  const [overlayW, setOverlayW] = useState("60");
+  const [overlayH, setOverlayH] = useState("30");
+
+  // Print state
+  const [sheetLayouts, setSheetLayouts] = useState<SheetLayout[]>([]);
+  const [selectedLayout, setSelectedLayout] = useState("");
+  const [printing, setPrinting] = useState(false);
 
   // Drag state
   const containerRef = useRef<HTMLDivElement>(null);
@@ -108,6 +139,12 @@ export default function VariantEditorPage({
       setImageW(String(v.image_width));
       setImageH(String(v.image_height));
       setTextOverrides({ ...v.text_overrides });
+      setIsSample(v.is_sample ?? false);
+      setBgColorOverride(v.background_color_override ?? "");
+      setOverlayX(String(v.overlay_x ?? 0));
+      setOverlayY(String(v.overlay_y ?? 0));
+      setOverlayW(String(v.overlay_width ?? 60));
+      setOverlayH(String(v.overlay_height ?? 30));
       if (v.image_width && v.image_height) {
         aspectRatioRef.current = v.image_width / v.image_height;
       }
@@ -133,6 +170,19 @@ export default function VariantEditorPage({
       })
       .catch(() => {});
   }, [variant]);
+
+  // Load sheet layouts for print
+  useEffect(() => {
+    apiClient
+      .getSheetLayouts()
+      .then((layouts) => {
+        setSheetLayouts(layouts);
+        const def = layouts.find((l) => l.default);
+        if (def) setSelectedLayout(def.slug);
+        else if (layouts.length > 0) setSelectedLayout(layouts[0].slug);
+      })
+      .catch(() => {});
+  }, []);
 
   // Load strain image to get natural aspect ratio
   useEffect(() => {
@@ -209,6 +259,15 @@ export default function VariantEditorPage({
     formData.append("label_strain_variant[image_y]", imageY);
     formData.append("label_strain_variant[image_width]", imageW);
     formData.append("label_strain_variant[image_height]", imageH);
+    formData.append("label_strain_variant[is_sample]", String(isSample));
+    formData.append("label_strain_variant[background_color_override]", bgColorOverride);
+    formData.append("label_strain_variant[overlay_x]", overlayX);
+    formData.append("label_strain_variant[overlay_y]", overlayY);
+    formData.append("label_strain_variant[overlay_width]", overlayW);
+    formData.append("label_strain_variant[overlay_height]", overlayH);
+    if (overlayFile) {
+      formData.append("label_strain_variant[overlay_image]", overlayFile);
+    }
     Object.entries(textOverrides).forEach(([key, value]) => {
       formData.append(`label_strain_variant[text_overrides][${key}]`, value);
     });
@@ -222,7 +281,16 @@ export default function VariantEditorPage({
       const v = (updated.strain_variants ?? []).find(
         (sv) => sv.id === variant.id
       );
-      if (v) setVariant(v);
+      if (v) {
+        setVariant(v);
+        setIsSample(v.is_sample ?? false);
+        setBgColorOverride(v.background_color_override ?? "");
+        setOverlayX(String(v.overlay_x ?? 0));
+        setOverlayY(String(v.overlay_y ?? 0));
+        setOverlayW(String(v.overlay_width ?? 60));
+        setOverlayH(String(v.overlay_height ?? 30));
+      }
+      setOverlayFile(null);
       fetchPreview();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -240,6 +308,24 @@ export default function VariantEditorPage({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
       setIsDeleting(false);
+    }
+  }
+
+  async function handlePrintSheet() {
+    if (!variant || !label || !selectedLayout) return;
+    setPrinting(true);
+    try {
+      const blob = await apiClient.printLabelVariant(
+        label.slug,
+        variant.id,
+        selectedLayout
+      );
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to print");
+    } finally {
+      setPrinting(false);
     }
   }
 
@@ -482,6 +568,53 @@ export default function VariantEditorPage({
             </div>
           )}
 
+          {/* Sample toggle & background color */}
+          <div className="rounded-lg border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Variant Settings</h4>
+              {isSample && (
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-200 text-amber-800">
+                  Sample
+                </span>
+              )}
+            </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isSample}
+                onChange={(e) => setIsSample(e.target.checked)}
+                className="rounded"
+              />
+              Mark as sample variant
+            </label>
+            <Field>
+              <FieldLabel>Background Color Override</FieldLabel>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={bgColorOverride || "#ffffff"}
+                  onChange={(e) => setBgColorOverride(e.target.value)}
+                  className="h-9 w-12 rounded border cursor-pointer"
+                />
+                <Input
+                  value={bgColorOverride}
+                  placeholder="e.g. #FF0000 or leave empty"
+                  onChange={(e) => setBgColorOverride(e.target.value)}
+                  className="flex-1"
+                />
+                {bgColorOverride && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setBgColorOverride("")}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </Field>
+          </div>
+
           {/* Cannabinoid info from strain */}
           {strain && (
             <div className="rounded-lg border bg-card p-4 space-y-2">
@@ -659,6 +792,96 @@ export default function VariantEditorPage({
                 No text overrides. Use the buttons above to add common fields.
               </p>
             )}
+          </div>
+
+          {/* Overlay image */}
+          <div className="rounded-lg border bg-card p-4 space-y-3">
+            <h4 className="text-sm font-medium">Overlay Image</h4>
+            {variant.overlay_image_url && !overlayFile && (
+              <img
+                src={variant.overlay_image_url}
+                alt="Overlay"
+                className="w-full max-h-24 rounded border object-contain bg-white"
+              />
+            )}
+            <Field>
+              <FieldLabel>Upload Overlay Image</FieldLabel>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setOverlayFile(e.target.files?.[0] || null)}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field>
+                <FieldLabel>X</FieldLabel>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={overlayX}
+                  onChange={(e) => setOverlayX(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Y</FieldLabel>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={overlayY}
+                  onChange={(e) => setOverlayY(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Width</FieldLabel>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={overlayW}
+                  onChange={(e) => setOverlayW(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Height</FieldLabel>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={overlayH}
+                  onChange={(e) => setOverlayH(e.target.value)}
+                />
+              </Field>
+            </div>
+          </div>
+
+          {/* Print sheet */}
+          <div className="rounded-lg border bg-card p-4 space-y-3">
+            <h4 className="text-sm font-medium">Print Sheet</h4>
+            <p className="text-xs text-muted-foreground">
+              Print a full sheet of this variant (no METRC tags).
+            </p>
+            <Field>
+              <FieldLabel>Sheet Layout</FieldLabel>
+              <Select value={selectedLayout} onValueChange={setSelectedLayout}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select layout..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sheetLayouts.map((l) => (
+                    <SelectItem key={l.slug} value={l.slug}>
+                      {l.name} ({l.columns}x{l.rows})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={handlePrintSheet}
+              disabled={printing || !selectedLayout}
+            >
+              <PrinterIcon className="mr-1.5 size-3.5" />
+              {printing ? "Generating..." : "Print Sheet"}
+            </Button>
           </div>
 
           {/* Sticky save at bottom of sidebar */}

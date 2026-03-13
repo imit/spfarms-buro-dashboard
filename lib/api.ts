@@ -660,7 +660,14 @@ export interface LabelStrainVariant {
   image_width: number;
   image_height: number;
   text_overrides: Record<string, string>;
+  is_sample: boolean;
+  background_color_override: string | null;
+  overlay_x: number;
+  overlay_y: number;
+  overlay_width: number;
+  overlay_height: number;
   strain_image_url: string | null;
+  overlay_image_url: string | null;
 }
 
 // ---- QR Codes ----
@@ -2831,6 +2838,39 @@ export class ApiClient {
       { method: "DELETE" }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async printLabelVariant(
+    labelSlug: string,
+    variantId: number,
+    sheetLayoutId: string,
+    copies?: number
+  ): Promise<Blob> {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(
+      `${this.baseUrl}/api/v1/labels/${labelSlug}/print_variant`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          variant_id: variantId,
+          sheet_layout_id: sheetLayoutId,
+          ...(copies ? { copies } : {}),
+        }),
+      }
+    );
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || "Failed to print variant");
+    }
+    return res.blob();
   }
 
   // Label Presets

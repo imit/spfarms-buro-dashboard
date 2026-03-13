@@ -263,12 +263,19 @@ export function LabelStrainVariantPanel({
   // Commonly overridden text fields from the label design
   const TEXT_OVERRIDE_KEYS = [
     { key: "product_info.left_text", label: "Product Info Text" },
+    { key: "product_info.text_color", label: "Product Info Color" },
     { key: "weight_info.text", label: "Weight Text" },
+    { key: "weight_info.text_color", label: "Weight Color" },
     { key: "expiration_date.text", label: "Expiration Date" },
+    { key: "expiration_date.text_color", label: "Expiration Color" },
     { key: "batch_id.text", label: "Batch ID" },
+    { key: "batch_id.text_color", label: "Batch ID Color" },
     { key: "lot_number.text", label: "Lot Number" },
+    { key: "lot_number.text_color", label: "Lot Number Color" },
     { key: "harvest_date.text", label: "Harvest Date" },
+    { key: "harvest_date.text_color", label: "Harvest Date Color" },
     { key: "product_id_text.text", label: "Product ID" },
+    { key: "product_id_text.text_color", label: "Product ID Color" },
   ];
 
   const variants = label.strain_variants ?? [];
@@ -412,7 +419,10 @@ export function LabelStrainVariantPanel({
         const expanded = expandedVariants.has(variant.id);
         const state = editState[variant.id];
         return (
-          <div key={variant.id} className="rounded-lg border bg-card">
+          <div
+            key={variant.id}
+            className={`rounded-lg border ${variant.is_sample ? "border-amber-400 bg-amber-50 dark:bg-amber-950/20" : "bg-card"}`}
+          >
             <div className="flex items-center gap-3 p-3">
               <button
                 className="flex items-center gap-2 flex-1 min-w-0 text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors"
@@ -433,6 +443,11 @@ export function LabelStrainVariantPanel({
                 <span className="font-medium text-sm truncate">
                   {variant.strain_name || `Strain #${variant.strain_id}`}
                 </span>
+                {variant.is_sample && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200">
+                    Sample
+                  </span>
+                )}
                 <span className="text-xs text-muted-foreground">
                   ({variant.image_width}x{variant.image_height} @{" "}
                   {variant.image_x},{variant.image_y})
