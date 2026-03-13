@@ -39,6 +39,7 @@ import {
   ImageIcon,
   SaveIcon,
   PencilIcon,
+  CopyIcon,
 } from "lucide-react";
 
 interface LabelStrainVariantPanelProps {
@@ -57,6 +58,7 @@ export function LabelStrainVariantPanel({
     new Set()
   );
   const [saving, setSaving] = useState<number | null>(null);
+  const [duplicating, setDuplicating] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // New variant form
@@ -215,6 +217,24 @@ export function LabelStrainVariantPanel({
       setError(
         err instanceof Error ? err.message : "Failed to delete variant"
       );
+    }
+  }
+
+  async function handleDuplicate(variantId: number) {
+    setError("");
+    setDuplicating(variantId);
+    try {
+      const updated = await apiClient.duplicateLabelStrainVariant(
+        label.slug,
+        variantId
+      );
+      onUpdated(updated);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to duplicate variant"
+      );
+    } finally {
+      setDuplicating(null);
     }
   }
 
@@ -453,14 +473,25 @@ export function LabelStrainVariantPanel({
                   {variant.image_x},{variant.image_y})
                 </span>
               </button>
-              <Button variant="outline" size="sm" asChild>
-                <Link
-                  href={`/admin/projects/labels/${label.slug}/variants/${variant.id}`}
+              <div className="flex gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDuplicate(variant.id)}
+                  disabled={duplicating === variant.id}
                 >
-                  <PencilIcon className="mr-1.5 size-3.5" />
-                  Edit
-                </Link>
-              </Button>
+                  <CopyIcon className="mr-1.5 size-3.5" />
+                  {duplicating === variant.id ? "Duplicating..." : "Duplicate"}
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link
+                    href={`/admin/projects/labels/${label.slug}/variants/${variant.id}`}
+                  >
+                    <PencilIcon className="mr-1.5 size-3.5" />
+                    Edit
+                  </Link>
+                </Button>
+              </div>
             </div>
 
             {expanded && state && (

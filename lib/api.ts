@@ -2840,6 +2840,24 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
+  async duplicateLabelStrainVariant(
+    labelSlug: string,
+    variantId: number,
+    strainId?: number
+  ): Promise<Label> {
+    const body: Record<string, unknown> = {};
+    if (strainId) body.strain_id = strainId;
+    const res = await this.request<JsonApiResponse<Label>>(
+      `/api/v1/labels/${labelSlug}/label_strain_variants/${variantId}/duplicate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async printLabelVariant(
     labelSlug: string,
     variantId: number,
