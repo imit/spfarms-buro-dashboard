@@ -73,6 +73,10 @@ export default function PaymentTermAgreementPage({
   const [submitting, setSubmitting] = useState(false);
   const [signed, setSigned] = useState(false);
   const [selectedTermId, setSelectedTermId] = useState<number | null>(null);
+  const [rejected, setRejected] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showRejectForm, setShowRejectForm] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -201,6 +205,35 @@ export default function PaymentTermAgreementPage({
     }
   };
 
+  const handleReject = async () => {
+    setRejecting(true);
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/public/payment_term_agreements/${token}/reject`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: rejectReason || undefined }),
+        }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.error || "Failed to decline order");
+        return;
+      }
+      setRejected(true);
+      posthog.capture("agreement_rejected", {
+        order_number: order.order_number,
+        company_name: order.company_name,
+        reason: rejectReason || undefined,
+      });
+    } catch {
+      setError("Failed to decline order");
+    } finally {
+      setRejecting(false);
+    }
+  };
+
   // Compute estimated total with selected term discount
   const subtotalNum = parseFloat(order.subtotal) || 0;
   const discountPct = selectedTerm ? parseFloat(selectedTerm.discount_percentage) || 0 : 0;
@@ -211,6 +244,32 @@ export default function PaymentTermAgreementPage({
   const estimatedTotal = requiresTermSelection && selectedTerm
     ? afterDiscount + taxNum + deliveryNum
     : parseFloat(order.total) || 0;
+
+  if (rejected) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="text-center space-y-5 max-w-md">
+          <div className="mx-auto w-36">
+            <Logo />
+          </div>
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-muted">
+            <AlertCircleIcon className="size-7 text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-bold">Order Declined</h1>
+          <p className="text-muted-foreground">
+            Order <strong>{order.order_number}</strong> has been declined.
+            We&apos;ve notified SPFarms. If you change your mind, please contact us.
+          </p>
+          <a href="mailto:wholesale@spfarms.com">
+            <Button variant="outline">
+              <MailIcon className="mr-2 size-4" />
+              Contact Us
+            </Button>
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (signed) {
     return (
@@ -606,6 +665,47 @@ export default function PaymentTermAgreementPage({
           <p className="text-xs text-muted-foreground text-center">
             By signing, you agree to the {requiresTermSelection ? "order and " : ""}payment terms outlined above.
           </p>
+        </div>
+      )}
+
+      {/* Decline section (draft orders only) */}
+      {requiresTermSelection && (
+        <div className="mt-8 border-t pt-6">
+          {!showRejectForm ? (
+            <button
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+              onClick={() => setShowRejectForm(true)}
+            >
+              I don&apos;t want this order
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Decline this order?</p>
+              <textarea
+                className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                placeholder="Reason (optional)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleReject}
+                  disabled={rejecting}
+                >
+                  {rejecting ? "Declining..." : "Decline Order"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowRejectForm(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
