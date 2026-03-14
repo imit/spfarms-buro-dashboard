@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/shared/logo";
-import { CheckCircleIcon, LoaderIcon, AlertCircleIcon, ShoppingBagIcon, MailIcon } from "lucide-react";
+import { CheckCircleIcon, LoaderIcon, AlertCircleIcon, ShoppingBagIcon, MailIcon, CheckIcon } from "lucide-react";
 import Link from "next/link";
 import posthog from "posthog-js";
 
@@ -14,13 +14,18 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface AgreementOrder {
   order_number: string;
+  status: string;
   company_name: string;
   company_slug: string | null;
   total: string;
   subtotal: string;
-  payment_term_name: string;
-  payment_term_days: number;
-  payment_term_discount_percentage: string;
+  tax_amount: string | null;
+  delivery_fee: string | null;
+  delivery_fee_waived: boolean;
+  payment_term_name: string | null;
+  payment_term_days: number | null;
+  payment_term_discount_percentage: string | null;
+  payment_term_discount_amount: string | null;
   created_at: string;
   items: {
     product_name: string;
@@ -31,12 +36,21 @@ interface AgreementOrder {
   }[];
 }
 
+interface PaymentTermOption {
+  id: number;
+  name: string;
+  days: number;
+  discount_percentage: string;
+}
+
 interface AgreementData {
   signed: boolean;
   signer_name: string | null;
   signed_at: string | null;
+  requires_payment_term_selection: boolean;
   order: AgreementOrder;
   bank_info: string;
+  payment_terms?: PaymentTermOption[];
 }
 
 function formatPrice(amount: string | number | null) {
@@ -58,6 +72,7 @@ export default function PaymentTermAgreementPage({
   const [signerEmail, setSignerEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [signed, setSigned] = useState(false);
+  const [selectedTermId, setSelectedTermId] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -83,6 +98,7 @@ export default function PaymentTermAgreementPage({
           payment_term_name: o.payment_term_name,
           payment_term_days: o.payment_term_days,
           already_signed: json.data.signed,
+          is_draft: o.status === "draft",
         });
         if (json.data.signed) setSigned(true);
       } catch {
@@ -95,23 +111,33 @@ export default function PaymentTermAgreementPage({
     load();
   }, [token]);
 
+  const isCod = selectedTerm ? selectedTerm.days === 0 : false;
+
   const handleSign = async () => {
-    if (!signerName.trim() || !signerEmail.trim()) return;
-    if (!sigRef.current || sigRef.current.isEmpty()) return;
+    if (!isCod) {
+      if (!signerName.trim() || !signerEmail.trim()) return;
+      if (!sigRef.current || sigRef.current.isEmpty()) return;
+    }
+    if (data?.requires_payment_term_selection && !selectedTermId) return;
 
     setSubmitting(true);
     try {
-      const signatureData = sigRef.current.toDataURL("image/png");
+      const payload: Record<string, unknown> = {};
+      if (!isCod) {
+        payload.signer_name = signerName;
+        payload.signer_email = signerEmail;
+        payload.signature_data = sigRef.current!.toDataURL("image/png");
+      }
+      if (selectedTermId) {
+        payload.payment_term_id = selectedTermId;
+      }
+
       const res = await fetch(
         `${API_BASE_URL}/api/v1/public/payment_term_agreements/${token}/sign`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            signer_name: signerName,
-            signer_email: signerEmail,
-            signature_data: signatureData,
-          }),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -134,7 +160,7 @@ export default function PaymentTermAgreementPage({
         company_name: data?.order.company_name,
         company_slug: data?.order.company_slug,
         total: data?.order.total,
-        payment_term_name: data?.order.payment_term_name,
+        payment_term_name: data?.order.payment_term_name || selectedTerm?.name,
         signer_name: signerName,
         signer_email: signerEmail,
       });
@@ -173,6 +199,19 @@ export default function PaymentTermAgreementPage({
 
   if (!data) return null;
   const { order } = data;
+  const requiresTermSelection = data.requires_payment_term_selection;
+  const selectedTerm = data.payment_terms?.find((t) => t.id === selectedTermId);
+
+  // Compute estimated total with selected term discount
+  const subtotalNum = parseFloat(order.subtotal) || 0;
+  const discountPct = selectedTerm ? parseFloat(selectedTerm.discount_percentage) || 0 : 0;
+  const termDiscount = subtotalNum * discountPct / 100;
+  const afterDiscount = subtotalNum - termDiscount;
+  const taxNum = parseFloat(order.tax_amount || "0") || 0;
+  const deliveryNum = parseFloat(order.delivery_fee || "0") || 0;
+  const estimatedTotal = requiresTermSelection && selectedTerm
+    ? afterDiscount + taxNum + deliveryNum
+    : parseFloat(order.total) || 0;
 
   if (signed) {
     return (
@@ -184,9 +223,11 @@ export default function PaymentTermAgreementPage({
           <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-green-100">
             <CheckCircleIcon className="size-7 text-green-600" />
           </div>
-          <h1 className="text-2xl font-bold">Agreement Signed</h1>
+          <h1 className="text-2xl font-bold">
+            {requiresTermSelection ? "Order Confirmed" : "Agreement Signed"}
+          </h1>
           <p className="text-muted-foreground">
-            Thank you for signing the payment terms agreement for order{" "}
+            Thank you for {requiresTermSelection ? "confirming" : "signing the payment terms agreement for"} order{" "}
             <strong>{order.order_number}</strong>. We will be in touch regarding
             payment details.
           </p>
@@ -224,7 +265,11 @@ export default function PaymentTermAgreementPage({
       {/* Header */}
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Payment Terms Agreement</h1>
+          <h1 className="text-2xl font-bold">
+            {requiresTermSelection
+              ? "Review & Confirm Order"
+              : "Payment Terms Agreement"}
+          </h1>
           <p className="text-muted-foreground mt-1">
             Order {order.order_number} &middot; {order.company_name}
           </p>
@@ -253,80 +298,219 @@ export default function PaymentTermAgreementPage({
             </div>
           ))}
         </div>
-        <div className="border-t px-4 py-3">
+        <div className="border-t px-4 py-3 space-y-1">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Subtotal</span>
             <span>{formatPrice(order.subtotal)}</span>
           </div>
-          <div className="flex justify-between font-semibold mt-1">
+          {requiresTermSelection && selectedTerm && termDiscount > 0 && (
+            <div className="flex justify-between text-sm text-green-600">
+              <span>{selectedTerm.name} discount ({selectedTerm.discount_percentage}%)</span>
+              <span>-{formatPrice(termDiscount)}</span>
+            </div>
+          )}
+          {taxNum > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Tax</span>
+              <span>{formatPrice(taxNum)}</span>
+            </div>
+          )}
+          {deliveryNum > 0 && !order.delivery_fee_waived && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Delivery Fee</span>
+              <span>{formatPrice(deliveryNum)}</span>
+            </div>
+          )}
+          <div className="flex justify-between font-semibold pt-1 border-t">
             <span>Total</span>
-            <span>{formatPrice(order.total)}</span>
+            <span>{formatPrice(requiresTermSelection ? estimatedTotal : order.total)}</span>
           </div>
         </div>
       </div>
 
-      {/* Payment Terms */}
-      <div className="rounded-lg border p-4 mb-6 bg-muted/30">
-        <h2 className="font-semibold text-sm mb-3">Payment Terms</h2>
-        <div className="space-y-3 text-sm">
-          <p>
-            This agreement confirms that <strong>{order.company_name}</strong>{" "}
-            agrees to pay SPFarms Cannabis the total amount of{" "}
-            <strong>{formatPrice(order.total)}</strong> for order{" "}
-            <strong>{order.order_number}</strong> under the following terms:
+      {/* Payment Term Selection (for draft orders) */}
+      {requiresTermSelection && data.payment_terms && (
+        <div className="rounded-lg border p-4 mb-6">
+          <h2 className="font-semibold text-sm mb-3">Select Payment Terms</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Choose how you&apos;d like to pay for this order:
           </p>
-          <div className="rounded-md border bg-background p-3 space-y-1">
-            <p>
-              <strong>Payment Term:</strong> {order.payment_term_name} ({order.payment_term_days} days)
-            </p>
-            <p>
-              <strong>Due Date:</strong>{" "}
-              {new Date(
-                new Date(order.created_at).getTime() + order.payment_term_days * 86400000
-              ).toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </p>
-            <p>
-              <strong>Amount Due:</strong> {formatPrice(order.total)}
-            </p>
+          <div className="space-y-2">
+            {data.payment_terms.map((term) => {
+              const isSelected = selectedTermId === term.id;
+              const discount = parseFloat(term.discount_percentage) || 0;
+              return (
+                <button
+                  key={term.id}
+                  className={`w-full text-left rounded-lg border p-4 transition-colors ${
+                    isSelected
+                      ? "border-primary bg-primary/5 ring-2 ring-primary"
+                      : "hover:border-foreground/30"
+                  }`}
+                  onClick={() => setSelectedTermId(term.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`flex size-5 items-center justify-center rounded-full border-2 ${
+                          isSelected
+                            ? "border-primary bg-primary"
+                            : "border-muted-foreground/30"
+                        }`}
+                      >
+                        {isSelected && (
+                          <CheckIcon className="size-3 text-primary-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{term.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {term.days === 0
+                            ? "Pay on delivery"
+                            : `Pay within ${term.days} days of delivery`}
+                        </p>
+                      </div>
+                    </div>
+                    {discount > 0 && (
+                      <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                        {term.discount_percentage}% discount
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
-          <p>
-            Payment may be made via ACH transfer, direct bank transfer, or
-            check (accepted by driver at time of delivery). Failure to pay within
-            the agreed terms may result in suspension of future orders.
-          </p>
-          <ol className="list-decimal list-outside pl-5 space-y-2">
-            <li>
-              Buyer agrees to timely accept all product transfers in the state
-              tracking system upon delivery. Failure to accept transfer does not
-              relieve Buyer of payment obligations.
-            </li>
-            <li>
-              Buyer represents and warrants that it holds a valid and active
-              New York State cannabis retail license issued by the Office of
-              Cannabis Management and is authorized to receive the products
-              listed in this order. Buyer agrees to notify Seller immediately
-              of any suspension, restriction, or lapse in its license.
-            </li>
-            <li>
-              Title and risk of loss transfer to Buyer upon physical delivery
-              and signed receipt.
-            </li>
-            <li>
-              All sales are final. Claims for shortages or damage must be made
-              at time of delivery. No returns permitted except for
-              state-mandated recalls or verified defects.
-            </li>
-            <li>
-              Upon default, all outstanding invoices become immediately due and
-              payable.
-            </li>
-          </ol>
         </div>
-      </div>
+      )}
+
+      {/* Payment Terms (for non-draft orders with terms already set) */}
+      {!requiresTermSelection && order.payment_term_name && (
+        <div className="rounded-lg border p-4 mb-6 bg-muted/30">
+          <h2 className="font-semibold text-sm mb-3">Payment Terms Agreement</h2>
+          <div className="space-y-3 text-sm">
+            <p>
+              This agreement confirms that <strong>{order.company_name}</strong> (&quot;Buyer&quot;){" "}
+              agrees to pay Catskill Mountain Cannabis LLC dba SPFarms (&quot;Seller&quot;) the total amount of{" "}
+              <strong>{formatPrice(order.total)}</strong> for order{" "}
+              <strong>{order.order_number}</strong> under the following terms:
+            </p>
+            <div className="rounded-md border bg-background p-3 space-y-1">
+              <p>
+                <strong>Payment Term:</strong> {order.payment_term_name} ({order.payment_term_days} days)
+              </p>
+              <p>
+                <strong>Due Date:</strong>{" "}
+                {new Date(
+                  new Date(order.created_at).getTime() + (order.payment_term_days || 0) * 86400000
+                ).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
+              <p>
+                <strong>Amount Due:</strong> {formatPrice(order.total)}
+              </p>
+            </div>
+            <p>
+              Payment may be made via ACH transfer, direct bank transfer, or
+              check (accepted by driver at time of delivery). Failure to pay within
+              the agreed terms may result in suspension of future orders and
+              referral to collections.
+            </p>
+            <ol className="list-decimal list-outside pl-5 space-y-2 text-muted-foreground">
+              <li>
+                Buyer agrees to timely accept all product transfers in the state
+                tracking system upon delivery. Failure to accept transfer does not
+                relieve Buyer of payment obligations.
+              </li>
+              <li>
+                Buyer represents and warrants that it holds a valid and active
+                New York State cannabis retail license issued by the Office of
+                Cannabis Management and is authorized to receive the products
+                listed in this order. Buyer agrees to notify Seller immediately
+                of any suspension, restriction, or lapse in its license.
+              </li>
+              <li>
+                Title and risk of loss transfer to Buyer upon physical delivery
+                and signed receipt.
+              </li>
+              <li>
+                All sales are final. Claims for shortages or damage must be made
+                at time of delivery. No returns permitted except for
+                state-mandated recalls or verified defects.
+              </li>
+              <li>
+                Upon default, all outstanding invoices become immediately due and
+                payable. Seller may suspend future orders and charge a late fee
+                of 1.5% per month on overdue balances.
+              </li>
+              <li>
+                This agreement shall be governed by the laws of the State of
+                New York. Any disputes shall be resolved in the courts of
+                New York State.
+              </li>
+            </ol>
+          </div>
+        </div>
+      )}
+
+      {/* Terms for draft orders with selected non-COD term */}
+      {requiresTermSelection && selectedTerm && selectedTerm.days > 0 && (
+        <div className="rounded-lg border p-4 mb-6 bg-muted/30">
+          <h2 className="font-semibold text-sm mb-3">Payment Terms Agreement</h2>
+          <div className="space-y-3 text-sm">
+            <p>
+              By signing below, <strong>{order.company_name}</strong> (&quot;Buyer&quot;) agrees to
+              pay Catskill Mountain Cannabis LLC dba SPFarms (&quot;Seller&quot;) the total amount of{" "}
+              <strong>{formatPrice(estimatedTotal)}</strong> for order{" "}
+              <strong>{order.order_number}</strong> under{" "}
+              <strong>{selectedTerm.name}</strong> terms
+              {` (${selectedTerm.days} days from delivery)`}.
+            </p>
+            <p>
+              Payment may be made via ACH transfer, direct bank transfer, or
+              check (accepted by driver at time of delivery). Failure to pay within
+              the agreed terms may result in suspension of future orders and
+              referral to collections.
+            </p>
+            <ol className="list-decimal list-outside pl-5 space-y-2 text-muted-foreground">
+              <li>
+                Buyer agrees to timely accept all product transfers in the state
+                tracking system upon delivery. Failure to accept transfer does not
+                relieve Buyer of payment obligations.
+              </li>
+              <li>
+                Buyer represents and warrants that it holds a valid and active
+                New York State cannabis retail license issued by the Office of
+                Cannabis Management and is authorized to receive the products
+                listed in this order. Buyer agrees to notify Seller immediately
+                of any suspension, restriction, or lapse in its license.
+              </li>
+              <li>
+                Title and risk of loss transfer to Buyer upon physical delivery
+                and signed receipt.
+              </li>
+              <li>
+                All sales are final. Claims for shortages or damage must be made
+                at time of delivery. No returns permitted except for
+                state-mandated recalls or verified defects.
+              </li>
+              <li>
+                Upon default, all outstanding invoices become immediately due and
+                payable. Seller may suspend future orders and charge a late fee
+                of 1.5% per month on overdue balances.
+              </li>
+              <li>
+                This agreement shall be governed by the laws of the State of
+                New York. Any disputes shall be resolved in the courts of
+                New York State.
+              </li>
+            </ol>
+          </div>
+        </div>
+      )}
 
       {/* Bank Info */}
       {data.bank_info && (
@@ -338,66 +522,93 @@ export default function PaymentTermAgreementPage({
         </div>
       )}
 
-      {/* Signature Section */}
-      <div className="rounded-lg border p-4 space-y-4">
-        <h2 className="font-semibold">Sign Agreement</h2>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="signerName">Full Name</Label>
-            <Input
-              id="signerName"
-              placeholder="Your full name"
-              value={signerName}
-              onChange={(e) => setSignerName(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="signerEmail">Email</Label>
-            <Input
-              id="signerEmail"
-              type="email"
-              placeholder="Your email"
-              value={signerEmail}
-              onChange={(e) => setSignerEmail(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Signature</Label>
-          <div className="rounded-md border bg-white">
-            <SignatureCanvas
-              ref={sigRef}
-              canvasProps={{
-                className: "w-full",
-                style: { width: "100%", height: 150 },
-              }}
-              penColor="#050403"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => sigRef.current?.clear()}
-            className="text-xs text-muted-foreground hover:text-foreground"
+      {/* Signature Section — skip for COD */}
+      {isCod ? (
+        <div className="space-y-3">
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleSign}
+            disabled={submitting || (requiresTermSelection && !selectedTermId)}
           >
-            Clear signature
-          </button>
+            {submitting ? "Confirming..." : "Confirm Order"}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            Payment will be collected on delivery.
+          </p>
         </div>
+      ) : (
+        <div className="rounded-lg border p-4 space-y-4">
+          <h2 className="font-semibold">
+            {requiresTermSelection ? "Confirm & Sign" : "Sign Agreement"}
+          </h2>
 
-        <Button
-          className="w-full"
-          size="lg"
-          onClick={handleSign}
-          disabled={submitting || !signerName.trim() || !signerEmail.trim()}
-        >
-          {submitting ? "Signing..." : "Sign Agreement"}
-        </Button>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="signerName">Full Name</Label>
+              <Input
+                id="signerName"
+                placeholder="Your full name"
+                value={signerName}
+                onChange={(e) => setSignerName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="signerEmail">Email</Label>
+              <Input
+                id="signerEmail"
+                type="email"
+                placeholder="Your email"
+                value={signerEmail}
+                onChange={(e) => setSignerEmail(e.target.value)}
+              />
+            </div>
+          </div>
 
-        <p className="text-xs text-muted-foreground text-center">
-          By signing, you agree to the payment terms outlined above.
-        </p>
-      </div>
+          <div className="space-y-1.5">
+            <Label>Signature</Label>
+            <div className="rounded-md border bg-white">
+              <SignatureCanvas
+                ref={sigRef}
+                canvasProps={{
+                  className: "w-full",
+                  style: { width: "100%", height: 150 },
+                }}
+                penColor="#050403"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => sigRef.current?.clear()}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Clear signature
+            </button>
+          </div>
+
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleSign}
+            disabled={
+              submitting ||
+              !signerName.trim() ||
+              !signerEmail.trim() ||
+              (requiresTermSelection && !selectedTermId)
+            }
+          >
+            {submitting
+              ? "Signing..."
+              : requiresTermSelection
+              ? "Confirm Order & Sign"
+              : "Sign Agreement"}
+          </Button>
+
+          <p className="text-xs text-muted-foreground text-center">
+            By signing, you agree to the {requiresTermSelection ? "order and " : ""}payment terms outlined above.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

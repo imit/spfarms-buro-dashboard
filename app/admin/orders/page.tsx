@@ -13,6 +13,8 @@ import {
 } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
+import { Button } from "@/components/ui/button";
+import { PlusIcon } from "lucide-react";
 
 const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
   unpaid: "bg-slate-100 text-slate-700",
@@ -60,11 +62,19 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6 px-10">
-      <div>
-        <h2 className="text-2xl font-semibold">Orders</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage dispensary orders
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">Orders</h2>
+          <p className="text-sm text-muted-foreground">
+            Manage dispensary orders
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/admin/orders/new">
+            <PlusIcon className="mr-1.5 size-4" />
+            Create Order
+          </Link>
+        </Button>
       </div>
 
       {isLoading ? (

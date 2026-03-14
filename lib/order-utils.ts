@@ -1,6 +1,12 @@
 import type { OrderStatus } from "@/lib/api";
 
 export const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string; dot: string; border: string }> = {
+  draft: {
+    bg: "bg-slate-50 dark:bg-slate-950/30",
+    text: "text-slate-700 dark:text-slate-400",
+    dot: "bg-slate-400",
+    border: "border-slate-200 dark:border-slate-800",
+  },
   pending: {
     bg: "bg-amber-50 dark:bg-amber-950/30",
     text: "text-amber-700 dark:text-amber-400",

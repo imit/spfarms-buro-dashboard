@@ -837,9 +837,11 @@ export type OrderStatus =
   | "shipped"
   | "delivered"
   | "cancelled"
-  | "payment_received";
+  | "payment_received"
+  | "draft";
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  draft: "Draft",
   pending: "Pending",
   confirmed: "Confirmed",
   processing: "Processing",
@@ -1398,6 +1400,16 @@ export interface CreateOrderParams {
   contact_users?: { full_name: string; email: string; phone_number?: string }[];
   payment_term_id?: number;
   payment_terms_accepted?: boolean;
+}
+
+export interface CreateManualOrderParams {
+  company_id: number;
+  shipping_location_id?: number;
+  billing_location_id?: number;
+  notes_to_vendor?: string;
+  desired_delivery_date?: string;
+  internal_notes?: string;
+  items: { product_id: number; quantity: number; unit_price?: number }[];
 }
 
 // ---- Grow / Facility ----
@@ -3493,6 +3505,17 @@ export class ApiClient {
   async createOrder(params: CreateOrderParams): Promise<Order> {
     const res = await this.request<JsonApiResponse<Order>>(
       "/api/v1/orders",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createManualOrder(params: CreateManualOrderParams): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      "/api/v1/orders/create_manual",
       {
         method: "POST",
         body: JSON.stringify(params),

@@ -3,6 +3,9 @@
 import { use } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogOutIcon } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -20,6 +23,7 @@ export default function SettingsLayout({
 }) {
   const { slug } = use(params);
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -46,6 +50,16 @@ export default function SettingsLayout({
         </nav>
         {children}
       </div>
+
+      <Button
+        variant="outline"
+        className="mt-6 w-full text-muted-foreground"
+        size="lg"
+        onClick={logout}
+      >
+        <LogOutIcon className="mr-2 size-4" />
+        Log Out
+      </Button>
     </div>
   );
 }

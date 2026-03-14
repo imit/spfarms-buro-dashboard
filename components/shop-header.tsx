@@ -12,20 +12,25 @@ export function ShopHeader({ slug }: { slug: string }) {
   const { logout } = useAuth();
   const router = useRouter();
   const [cartCount, setCartCount] = useState(0);
+  const [hasDraftOrder, setHasDraftOrder] = useState(false);
 
   useEffect(() => {
-    async function fetchCartCount() {
+    async function fetchCounts() {
       try {
         const companyData = await apiClient.getCompany(slug);
-        const cart = await apiClient.getCart(companyData.id);
-        setCartCount(cart.item_count);
+        const [cart, orders] = await Promise.all([
+          apiClient.getCart(companyData.id).catch(() => null),
+          apiClient.getOrders({ company_id: companyData.id }).catch(() => []),
+        ]);
+        if (cart) setCartCount(cart.item_count);
+        setHasDraftOrder(orders.some((o) => o.status === "draft"));
       } catch {
-        // Cart may not exist yet
+        // ignore
       }
     }
-    fetchCartCount();
+    fetchCounts();
 
-    const handler = () => fetchCartCount();
+    const handler = () => fetchCounts();
     window.addEventListener("cart:updated", handler);
     return () => window.removeEventListener("cart:updated", handler);
   }, [slug]);
@@ -50,9 +55,12 @@ export function ShopHeader({ slug }: { slug: string }) {
           </button>
           <Link
             href={`/${slug}/orders`}
-            className="text-base text-foreground hover:opacity-70 transition-opacity"
+            className="relative text-base text-foreground hover:opacity-70 transition-opacity"
           >
             orders
+            {hasDraftOrder && (
+              <span className="absolute -top-1 -right-2.5 size-2 rounded-full bg-red-500" />
+            )}
           </Link>
           <Link
             href={`/${slug}/settings`}
