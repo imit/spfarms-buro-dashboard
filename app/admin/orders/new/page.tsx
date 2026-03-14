@@ -57,6 +57,7 @@ export default function NewManualOrderPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [productSearch, setProductSearch] = useState("");
+  const [companySearch, setCompanySearch] = useState("");
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/");
@@ -78,6 +79,13 @@ export default function NewManualOrderPage() {
     (c) => String(c.id) === selectedCompanyId
   );
   const locations: Location[] = selectedCompany?.locations ?? [];
+
+  const filteredCompanies = companies.filter(
+    (c) =>
+      companySearch.length >= 1 &&
+      (c.name.toLowerCase().includes(companySearch.toLowerCase()) ||
+        c.slug?.toLowerCase().includes(companySearch.toLowerCase()))
+  );
 
   const filteredProducts = products
     .filter((p) => p.status === "active" && !p.coming_soon)
@@ -170,28 +178,51 @@ export default function NewManualOrderPage() {
       {/* Company selector */}
       <div className="rounded-lg border bg-card p-4 space-y-4">
         <h3 className="text-sm font-medium">Customer</h3>
-        <Field>
-          <FieldLabel>Company</FieldLabel>
-          <Select
-            value={selectedCompanyId}
-            onValueChange={(val) => {
-              setSelectedCompanyId(val);
-              setShippingLocationId("");
-              setBillingLocationId("");
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select company..." />
-            </SelectTrigger>
-            <SelectContent>
-              {companies.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
+
+        {/* Company search */}
+        {!selectedCompany ? (
+          <div className="relative">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              placeholder="Search companies..."
+              value={companySearch}
+              onChange={(e) => setCompanySearch(e.target.value)}
+              className="pl-9"
+            />
+            {companySearch.length >= 1 && (
+              <div className="mt-1 rounded-md border max-h-48 overflow-y-auto divide-y">
+                {filteredCompanies.length === 0 ? (
+                  <p className="text-sm text-muted-foreground p-3">No companies found</p>
+                ) : (
+                  filteredCompanies.slice(0, 20).map((c) => (
+                    <button
+                      key={c.id}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 transition-colors text-left"
+                      onClick={() => {
+                        setSelectedCompanyId(String(c.id));
+                        setCompanySearch("");
+                        setShippingLocationId("");
+                        setBillingLocationId("");
+                      }}
+                    >
+                      {c.logo_url ? (
+                        <img src={c.logo_url} alt="" className="size-6 rounded object-cover" />
+                      ) : (
+                        <div className="flex size-6 items-center justify-center rounded bg-muted">
+                          <BuildingIcon className="size-3 text-muted-foreground" />
+                        </div>
+                      )}
+                      <span className="font-medium">{c.name}</span>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {COMPANY_TYPE_LABELS[c.company_type]}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        ) : null}
 
         {selectedCompany && (
           <div className="flex items-start gap-3 rounded-md border bg-muted/30 px-3 py-2.5 text-sm">
@@ -229,14 +260,27 @@ export default function NewManualOrderPage() {
                 )}
               </div>
             </div>
-            <Link
-              href={`/admin/companies/${selectedCompany.slug}`}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 mt-0.5"
-              target="_blank"
-            >
-              View
-              <ExternalLinkIcon className="size-3" />
-            </Link>
+            <div className="flex flex-col items-end gap-1 mt-0.5">
+              <Link
+                href={`/admin/companies/${selectedCompany.slug}`}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                target="_blank"
+              >
+                View
+                <ExternalLinkIcon className="size-3" />
+              </Link>
+              <button
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => {
+                  setSelectedCompanyId("");
+                  setShippingLocationId("");
+                  setBillingLocationId("");
+                  setItems([]);
+                }}
+              >
+                Change
+              </button>
+            </div>
           </div>
         )}
 
