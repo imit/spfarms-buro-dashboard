@@ -73,6 +73,22 @@ export default function CartPage({
   const preorderItems = (cart?.items.filter((i) => i.coming_soon) ?? []).sort((a, b) => a.id - b.id);
   const meetsMinimum = useMinimumOrderMet(regularItems);
 
+  const fillMinimum = async (weight: number, remaining: number) => {
+    if (!company) return;
+    // Find the first non-bulk item in this weight group and increase its quantity
+    const item = regularItems.find(
+      (i) => !i.bulk && i.unit_weight && parseFloat(i.unit_weight) === weight
+    );
+    if (!item) return;
+    try {
+      const updated = await apiClient.updateCartItem(company.id, item.id, item.quantity + remaining);
+      setCart(updated);
+      window.dispatchEvent(new CustomEvent("cart:updated"));
+    } catch {
+      showError("update the quantity");
+    }
+  };
+
   const regularSubtotal = regularItems.reduce(
     (sum, i) => sum + parseFloat(i.unit_price || "0") * i.quantity, 0
   );
@@ -142,7 +158,16 @@ export default function CartPage({
           <Button variant="ghost" size="icon" className="size-9 rounded-l-lg rounded-r-none" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
             <MinusIcon className="size-3.5" />
           </Button>
-          <span className="w-10 text-center text-base font-medium">{item.quantity}</span>
+          <input
+            type="number"
+            min={1}
+            value={item.quantity}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val >= 1) updateQuantity(item.id, val);
+            }}
+            className="w-12 text-center text-base font-medium bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
           <Button variant="ghost" size="icon" className="size-9 rounded-r-lg rounded-l-none" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
             <PlusIcon className="size-3.5" />
           </Button>
@@ -161,7 +186,16 @@ export default function CartPage({
           <Button variant="ghost" size="icon" className="size-8 rounded-l-lg rounded-r-none" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
             <MinusIcon className="size-3" />
           </Button>
-          <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+          <input
+            type="number"
+            min={1}
+            value={item.quantity}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val >= 1) updateQuantity(item.id, val);
+            }}
+            className="w-10 text-center text-sm font-medium bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
           <Button variant="ghost" size="icon" className="size-8 rounded-r-lg rounded-l-none" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
             <PlusIcon className="size-3" />
           </Button>
@@ -195,9 +229,11 @@ export default function CartPage({
         <div className="rounded-2xl bg-white border shadow-sm p-6 sm:p-8 mb-6">
           {/* Box progress */}
           {regularItems.some((i) => !i.bulk) && (
-            <div className="rounded-xl border bg-muted/20 p-4 mb-6">
-              <p className="text-sm font-medium text-muted-foreground mb-3">Order minimums</p>
-              <BoxProgress items={regularItems.filter((i) => !i.bulk)} />
+            <div className={`rounded-xl border p-4 mb-6 ${meetsMinimum ? "bg-green-50/50 border-green-200" : "bg-amber-50 border-amber-200"}`}>
+              <p className={`text-sm font-semibold mb-3 ${meetsMinimum ? "text-green-700" : "text-amber-800"}`}>
+                {meetsMinimum ? "Order minimums met" : "Order minimums not met"}
+              </p>
+              <BoxProgress items={regularItems.filter((i) => !i.bulk)} onFillMinimum={fillMinimum} />
             </div>
           )}
 

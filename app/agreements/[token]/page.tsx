@@ -111,6 +111,32 @@ export default function PaymentTermAgreementPage({
     load();
   }, [token]);
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <LoaderIcon className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="text-center space-y-2">
+          <AlertCircleIcon className="mx-auto size-10 text-muted-foreground" />
+          <p className="text-lg font-medium">{error}</p>
+          <p className="text-sm text-muted-foreground">
+            Please contact SPFarms if you believe this is an error.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+  const { order } = data;
+  const requiresTermSelection = data.requires_payment_term_selection;
+  const selectedTerm = data.payment_terms?.find((t) => t.id === selectedTermId);
   const isCod = selectedTerm ? selectedTerm.days === 0 : false;
 
   const handleSign = async () => {
@@ -118,7 +144,7 @@ export default function PaymentTermAgreementPage({
       if (!signerName.trim() || !signerEmail.trim()) return;
       if (!sigRef.current || sigRef.current.isEmpty()) return;
     }
-    if (data?.requires_payment_term_selection && !selectedTermId) return;
+    if (requiresTermSelection && !selectedTermId) return;
 
     setSubmitting(true);
     try {
@@ -148,19 +174,19 @@ export default function PaymentTermAgreementPage({
         posthog.capture("agreement_sign_error", {
           error: msg,
           status: res.status,
-          order_number: data?.order.order_number,
-          company_name: data?.order.company_name,
+          order_number: order.order_number,
+          company_name: order.company_name,
         });
         return;
       }
 
       setSigned(true);
       posthog.capture("agreement_signed", {
-        order_number: data?.order.order_number,
-        company_name: data?.order.company_name,
-        company_slug: data?.order.company_slug,
-        total: data?.order.total,
-        payment_term_name: data?.order.payment_term_name || selectedTerm?.name,
+        order_number: order.order_number,
+        company_name: order.company_name,
+        company_slug: order.company_slug,
+        total: order.total,
+        payment_term_name: order.payment_term_name || selectedTerm?.name,
         signer_name: signerName,
         signer_email: signerEmail,
       });
@@ -168,39 +194,12 @@ export default function PaymentTermAgreementPage({
       setError("Failed to sign agreement");
       posthog.capture("agreement_sign_error", {
         error: "network_failure",
-        order_number: data?.order.order_number,
+        order_number: order.order_number,
       });
     } finally {
       setSubmitting(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <LoaderIcon className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="text-center space-y-2">
-          <AlertCircleIcon className="mx-auto size-10 text-muted-foreground" />
-          <p className="text-lg font-medium">{error}</p>
-          <p className="text-sm text-muted-foreground">
-            Please contact SPFarms if you believe this is an error.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) return null;
-  const { order } = data;
-  const requiresTermSelection = data.requires_payment_term_selection;
-  const selectedTerm = data.payment_terms?.find((t) => t.id === selectedTermId);
 
   // Compute estimated total with selected term discount
   const subtotalNum = parseFloat(order.subtotal) || 0;

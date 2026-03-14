@@ -79,9 +79,11 @@ export function useMinimumOrderMet(items: BoxProgressItem[]): boolean {
 export function BoxProgress({
   items,
   compact = false,
+  onFillMinimum,
 }: {
   items: BoxProgressItem[];
   compact?: boolean;
+  onFillMinimum?: (weightGroup: number, remaining: number) => void;
 }) {
   const groups = useMemo(() => groupByWeight(items), [items]);
 
@@ -118,9 +120,19 @@ export function BoxProgress({
             />
 
             <div className="text-xs text-muted-foreground">
-              {metMinimum
-                ? `Minimum met (${group.minimumOrder} units)`
-                : `Add ${remaining} more to meet minimum of ${group.minimumOrder}`}
+              {metMinimum ? (
+                `Minimum met (${group.minimumOrder} units)`
+              ) : onFillMinimum ? (
+                <button
+                  type="button"
+                  className="underline underline-offset-2 font-medium text-foreground hover:opacity-70 transition-opacity"
+                  onClick={() => onFillMinimum(group.weight, remaining)}
+                >
+                  Add {remaining} more to meet minimum
+                </button>
+              ) : (
+                `Add ${remaining} more to meet minimum of ${group.minimumOrder}`
+              )}
             </div>
 
             {/* Strain breakdown */}

@@ -731,7 +731,7 @@ export default function CheckoutPage({
                 <Button
                   variant="outline"
                   size="lg"
-                  className="w-full border-2 border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:text-amber-900"
+                  className="w-full"
                   onClick={() => setSigningModalOpen(true)}
                 >
                   Review & Sign Payment Terms ({selectedTerm!.name})
