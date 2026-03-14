@@ -88,7 +88,7 @@ export default function NewManualOrderPage() {
   );
 
   const filteredProducts = products
-    .filter((p) => p.status === "active" && !p.coming_soon)
+    .filter((p) => p.status === "active" && !p.coming_soon && !p.bulk && p.product_type !== "bulk_flower")
     .filter(
       (p) =>
         !productSearch ||
