@@ -23,6 +23,7 @@ export type Resource =
   | "gallery"
   | "support_tickets"
   | "payments"
+  | "shipments"
   | "audit_log";
 
 type RoleAccessMap = Record<Resource, Partial<Record<UserRole, AccessLevel>>>;
@@ -41,6 +42,7 @@ export const ROLE_ACCESS: RoleAccessMap = {
   orders_show:   { admin: "full", observer_admin: "read", editor: "full", cultivator: "read", processing: "read", account: "read" },
   fulfilment:    { admin: "full", observer_admin: "read", editor: "full", cultivator: "full", processing: "full", delivery: "full" },
   payments:      { admin: "full", editor: "full" },
+  shipments:     { admin: "full", observer_admin: "read", editor: "full", delivery: "full" },
   carts:         { admin: "full", observer_admin: "read", editor: "full", account: "send_only" },
   products:      { admin: "full", observer_admin: "read", editor: "full_no_delete", account: "read" },
   notifications: { admin: "full", observer_admin: "read", editor: "full", sales: "send_only", account: "read" },

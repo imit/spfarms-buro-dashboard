@@ -1390,6 +1390,54 @@ export interface GalleryFile {
   updated_at: string;
 }
 
+// ---- Shipments ----
+
+export type ShipmentStatus = "draft" | "loading" | "in_transit" | "delivered" | "cancelled";
+
+export const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
+  draft: "Draft",
+  loading: "Loading",
+  in_transit: "In Transit",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+export interface ShipmentOrderItem {
+  id: number;
+  product_name: string;
+  quantity: number;
+  unit_price: string;
+  metrc_label_sets?: { id: number; name: string; item_count: number; label_id: number; label_slug: string; label_name: string }[];
+}
+
+export interface ShipmentOrderSummary {
+  id: number;
+  order_number: string;
+  status: string;
+  total: string;
+  company_name: string;
+  company_slug: string;
+  items: ShipmentOrderItem[];
+  payment_status: string;
+  desired_delivery_date: string | null;
+  position: number;
+}
+
+export interface Shipment {
+  id: number;
+  shipment_number: string;
+  status: ShipmentStatus;
+  scheduled_date: string | null;
+  departed_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  driver: { id: number; full_name: string | null; email: string } | null;
+  orders: ShipmentOrderSummary[];
+  totals: { order_count: number; total_value: number; total_items: number };
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CreateOrderParams {
   company_id: number;
   order_type?: OrderType;
@@ -4853,6 +4901,145 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify({ body }),
     });
+  }
+
+  // ---- Shipments ----
+
+  async getShipments(status?: string): Promise<Shipment[]> {
+    const query = status ? `?status=${status}` : "";
+    const res = await this.request<JsonApiCollectionResponse<Shipment>>(
+      `/api/v1/shipments${query}`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getShipment(id: number): Promise<Shipment> {
+    const res = await this.request<JsonApiResponse<Shipment>>(
+      `/api/v1/shipments/${id}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createShipment(data: { scheduled_date?: string; notes?: string; order_ids?: number[] }): Promise<Shipment> {
+    const res = await this.request<JsonApiResponse<Shipment>>(
+      "/api/v1/shipments",
+      {
+        method: "POST",
+        body: JSON.stringify({ shipment: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateShipment(
+    id: number,
+    data: { status?: string; notes?: string; scheduled_date?: string; user_id?: number | null }
+  ): Promise<Shipment> {
+    const res = await this.request<JsonApiResponse<Shipment>>(
+      `/api/v1/shipments/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ shipment: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteShipment(id: number): Promise<void> {
+    await this.request(`/api/v1/shipments/${id}`, { method: "DELETE" });
+  }
+
+  async addOrdersToShipment(id: number, orderIds: number[]): Promise<Shipment> {
+    const res = await this.request<JsonApiResponse<Shipment>>(
+      `/api/v1/shipments/${id}/add_orders`,
+      {
+        method: "POST",
+        body: JSON.stringify({ order_ids: orderIds }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async removeOrderFromShipment(id: number, orderId: number): Promise<Shipment> {
+    const res = await this.request<JsonApiResponse<Shipment>>(
+      `/api/v1/shipments/${id}/remove_order`,
+      {
+        method: "DELETE",
+        body: JSON.stringify({ order_id: orderId }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async reorderShipmentStops(id: number, orderIds: number[]): Promise<Shipment> {
+    const res = await this.request<JsonApiResponse<Shipment>>(
+      `/api/v1/shipments/${id}/reorder_stops`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ order_ids: orderIds }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async downloadShipmentBatchInvoices(id: number): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/shipments/${id}/batch_invoices`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to generate batch invoices");
+    return res.blob();
+  }
+
+  async downloadShipmentBatchDeliveryAgreements(id: number): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/shipments/${id}/batch_delivery_agreements`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to generate batch delivery agreements");
+    return res.blob();
+  }
+
+  async downloadShipmentBatchPaymentTerms(id: number): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/shipments/${id}/batch_payment_terms`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to generate batch payment terms");
+    return res.blob();
+  }
+
+  async downloadShipmentBatchAllDocuments(id: number): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/shipments/${id}/batch_all_documents`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to generate combined documents");
+    return res.blob();
+  }
+
+  async downloadShipmentBatchMetrcLabels(id: number, sheetLayoutId: string): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/shipments/${id}/batch_metrc_labels`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ sheet_layout_id: sheetLayoutId }),
+    });
+    if (!res.ok) throw new Error("Failed to generate batch METRC labels");
+    return res.blob();
   }
 }
 
