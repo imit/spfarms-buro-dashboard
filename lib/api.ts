@@ -3596,13 +3596,14 @@ export class ApiClient {
 
   async updateOrder(
     id: number,
-    data: { status?: string; internal_notes?: string; shipping_location_id?: number; billing_location_id?: number }
+    data: { status?: string; internal_notes?: string; shipping_location_id?: number; billing_location_id?: number },
+    sendNotification?: boolean
   ): Promise<Order> {
     const res = await this.request<JsonApiResponse<Order>>(
       `/api/v1/orders/${id}`,
       {
         method: "PATCH",
-        body: JSON.stringify({ order: data }),
+        body: JSON.stringify({ order: data, ...(sendNotification !== undefined && { send_notification: sendNotification }) }),
       }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };

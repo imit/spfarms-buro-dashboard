@@ -18,6 +18,7 @@ import {
 import { statusBadgeClasses, STATUS_COLORS, TIMELINE_STEPS, getStepIndex } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,6 +73,7 @@ export default function AdminOrderDetailPage({
   const [internalNotes, setInternalNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [sendStatusEmail, setSendStatusEmail] = useState(true);
   const [showDoneConfirm, setShowDoneConfirm] = useState(false);
   const [sendingBankInfo, setSendingBankInfo] = useState(false);
   const [sendingAgreement, setSendingAgreement] = useState(false);
@@ -132,11 +134,11 @@ export default function AdminOrderDetailPage({
     apiClient.getSheetLayouts().then(setSheetLayouts).catch(() => {});
   }, [isAuthenticated, id]);
 
-  const updateStatus = async (newStatus: string) => {
+  const updateStatus = async (newStatus: string, sendNotification = true) => {
     try {
-      const updated = await apiClient.updateOrder(Number(id), { status: newStatus });
+      const updated = await apiClient.updateOrder(Number(id), { status: newStatus }, sendNotification);
       setOrder(updated);
-      toast.success("Status updated");
+      toast.success(sendNotification ? "Status updated" : "Status updated (no email sent)");
     } catch {
       showError("update the order status");
     }
@@ -1083,22 +1085,27 @@ export default function AdminOrderDetailPage({
       </div>
 
       {/* Dialogs */}
-      <AlertDialog open={!!pendingStatus} onOpenChange={(open) => { if (!open) setPendingStatus(null); }}>
+      <AlertDialog open={!!pendingStatus} onOpenChange={(open) => { if (!open) { setPendingStatus(null); setSendStatusEmail(true); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Change order status?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will change the status from <strong>{ORDER_STATUS_LABELS[order.status]}</strong> to <strong>{ORDER_STATUS_LABELS[pendingStatus as OrderStatus]}</strong>.
-              {pendingStatus === "fulfilled" || pendingStatus === "delivered"
-                ? <> This is an internal status — no email will be sent.</>
-                : pendingStatus === "payment_received"
-                ? <> A payment received email will be sent to <strong>{order.company?.name ?? "the company"}</strong>.</>
-                : <> An email will be sent to <strong>{order.company?.name ?? "the company"}</strong>.</>}
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                <p>
+                  This will change the status from <strong>{ORDER_STATUS_LABELS[order.status]}</strong> to <strong>{ORDER_STATUS_LABELS[pendingStatus as OrderStatus]}</strong>.
+                </p>
+                {pendingStatus !== "fulfilled" && (
+                  <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                    <Checkbox checked={sendStatusEmail} onCheckedChange={(v) => setSendStatusEmail(v === true)} />
+                    <span>Send notification email to {order.company?.name ?? "the company"}</span>
+                  </label>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingStatus(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => { if (pendingStatus) { await updateStatus(pendingStatus); setPendingStatus(null); } }}>Confirm</AlertDialogAction>
+            <AlertDialogCancel onClick={() => { setPendingStatus(null); setSendStatusEmail(true); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => { if (pendingStatus) { await updateStatus(pendingStatus, sendStatusEmail); setPendingStatus(null); setSendStatusEmail(true); } }}>Confirm</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 // Roxbury, NY coordinates
 const LAT = 42.2962;
@@ -149,6 +150,24 @@ export function HeroParallax() {
         <p className="text-sm md:text-base font-medium tracking-wide uppercase drop-shadow">
           Roxbury, New York
         </p>
+
+        {/* Scalloped "Shop Now" button */}
+        <Link href="/products" className="group relative mt-8 inline-block">
+          <svg
+            viewBox="0 0 280 120"
+            className="w-[240px] md:w-[290px] h-auto drop-shadow-xl"
+            aria-hidden="true"
+          >
+            <path
+              d="M 20 20 a 20 20 0 0 0 40 0 a 20 20 0 0 0 40 0 a 20 20 0 0 0 40 0 a 20 20 0 0 0 40 0 a 20 20 0 0 0 40 0 a 20 20 0 0 0 40 0 a 20 20 0 0 0 0 40 a 20 20 0 0 0 0 40 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 0 -40 a 20 20 0 0 0 0 -40 Z"
+              fill="#3B1515"
+              className="transition-colors group-hover:fill-[#4D2222]"
+            />
+          </svg>
+          <span className="absolute inset-0 flex items-center justify-center text-[#EBC430] text-lg md:text-2xl font-black tracking-widest drop-shadow">
+            SHOP NOW
+          </span>
+        </Link>
       </div>
     </section>
   );
