@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import {
   apiClient, type Shipment, type ShipmentStatus, type ShipmentOrderSummary,
-  type Order, type SheetLayout, type Label as LabelType,
+  type Order, type SheetLayout, type Label as LabelType, type Strain,
   SHIPMENT_STATUS_LABELS,
 } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
@@ -110,6 +110,20 @@ export default function AdminShipmentDetailPage({
   const [perSetSheetLayoutId, setPerSetSheetLayoutId] = useState("");
   const [perSetPrinting, setPerSetPrinting] = useState(false);
 
+  // Sample METRC
+  const [strains, setStrains] = useState<Strain[]>([]);
+  const [showSampleImport, setShowSampleImport] = useState(false);
+  const [sampleLabelId, setSampleLabelId] = useState("");
+  const [sampleStrainId, setSampleStrainId] = useState("");
+  const [sampleFile, setSampleFile] = useState<File | null>(null);
+  const [sampleImporting, setSampleImporting] = useState(false);
+  const [samplePrintSetId, setSamplePrintSetId] = useState<number | null>(null);
+  const [samplePrintLayoutId, setSamplePrintLayoutId] = useState("");
+  const [samplePrinting, setSamplePrinting] = useState(false);
+  const [showBatchSampleDialog, setShowBatchSampleDialog] = useState(false);
+  const [batchSampleLayoutId, setBatchSampleLayoutId] = useState("");
+  const [batchSamplePrinting, setBatchSamplePrinting] = useState(false);
+
   const loadShipment = useCallback(async () => {
     try {
       const data = await apiClient.getShipment(Number(id));
@@ -127,6 +141,7 @@ export default function AdminShipmentDetailPage({
     loadShipment();
     apiClient.getSheetLayouts().then(setSheetLayouts).catch(() => {});
     apiClient.getLabels().then(setLabels).catch(() => {});
+    apiClient.getStrains().then(setStrains).catch(() => {});
   }, [isAuthenticated, loadShipment]);
 
   const updateStatus = async (newStatus: string) => {
@@ -448,6 +463,78 @@ export default function AdminShipmentDetailPage({
     }
   };
 
+  // Sample METRC import
+  const handleSampleMetrcImport = async () => {
+    if (!sampleLabelId || !sampleStrainId || !sampleFile) return;
+    setSampleImporting(true);
+    try {
+      await apiClient.importShipmentSampleMetrc(Number(id), sampleLabelId, Number(sampleStrainId), sampleFile);
+      await loadShipment();
+      setShowSampleImport(false);
+      setSampleFile(null);
+      setSampleLabelId("");
+      setSampleStrainId("");
+      toast.success("Sample METRC labels imported");
+    } catch {
+      showError("import sample METRC labels");
+    } finally {
+      setSampleImporting(false);
+    }
+  };
+
+  // Sample METRC print
+  const handleSampleMetrcPrint = async () => {
+    if (!samplePrintSetId || !samplePrintLayoutId) return;
+    setSamplePrinting(true);
+    try {
+      const blob = await apiClient.printShipmentSampleMetrcLabels(Number(id), samplePrintSetId, samplePrintLayoutId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sample-metrc-labels.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setSamplePrintSetId(null);
+      toast.success("PDF downloaded");
+    } catch {
+      showError("print sample METRC labels");
+    } finally {
+      setSamplePrinting(false);
+    }
+  };
+
+  // Batch sample METRC download
+  const handleBatchSampleMetrcDownload = async () => {
+    if (!batchSampleLayoutId) return;
+    setBatchSamplePrinting(true);
+    try {
+      const blob = await apiClient.downloadShipmentBatchSampleMetrcLabels(Number(id), batchSampleLayoutId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sample-metrc-labels-${shipment?.shipment_number || id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowBatchSampleDialog(false);
+      toast.success("PDF downloaded");
+    } catch {
+      showError("download batch sample METRC labels");
+    } finally {
+      setBatchSamplePrinting(false);
+    }
+  };
+
+  // Sample METRC delete
+  const handleDeleteSampleMetrcSet = async (setId: number) => {
+    try {
+      await apiClient.deleteShipmentSampleMetrcSet(Number(id), setId);
+      await loadShipment();
+      toast.success("Sample METRC set deleted");
+    } catch {
+      showError("delete sample METRC set");
+    }
+  };
+
   if (!isAuthenticated) return null;
   if (isLoading) return <div className="px-10"><p className="text-muted-foreground">Loading...</p></div>;
   if (!shipment) return <div className="px-10"><p className="text-muted-foreground">Shipment not found.</p></div>;
@@ -741,6 +828,62 @@ export default function AdminShipmentDetailPage({
         )}
       </div>
 
+      {/* Sample METRC section */}
+      <div className="rounded-xl border bg-card shadow-xs">
+        <div className="px-3 sm:px-5 py-3.5 border-b flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Sample METRC Labels</h3>
+          <div className="flex items-center gap-2">
+            {shipment.sample_metrc_sets && shipment.sample_metrc_sets.length > 0 && (
+              <Button variant="outline" size="sm" onClick={() => { setShowBatchSampleDialog(true); setBatchSampleLayoutId(""); }}>
+                <DownloadIcon className="mr-1.5 size-3.5" />
+                Download All
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => { setShowSampleImport(true); setSampleLabelId(""); setSampleStrainId(""); setSampleFile(null); }}>
+              <UploadIcon className="mr-1.5 size-3.5" />
+              Import
+            </Button>
+          </div>
+        </div>
+        {(!shipment.sample_metrc_sets || shipment.sample_metrc_sets.length === 0) ? (
+          <div className="p-6 text-center">
+            <p className="text-sm text-muted-foreground">No sample METRC labels imported yet.</p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {shipment.sample_metrc_sets.map((ms) => (
+              <div key={ms.id} className="px-3 sm:px-5 py-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-[10px]">SAMPLE</Badge>
+                    <span className="text-sm font-medium">{ms.strain_name}</span>
+                    <span className="text-xs text-muted-foreground">{ms.label_name}</span>
+                    <span className="text-xs text-muted-foreground">({ms.item_count} tag{ms.item_count !== 1 ? "s" : ""})</span>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className="h-6 text-xs px-2"
+                  onClick={() => { setSamplePrintSetId(ms.id); setSamplePrintLayoutId(""); }}
+                >
+                  <FileTextIcon className="mr-1 size-3" />
+                  Print
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => handleDeleteSampleMetrcSet(ms.id)}
+                >
+                  <Trash2Icon className="size-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Notes section */}
       <div className="rounded-xl border bg-card shadow-xs">
         <div className="px-3 sm:px-5 py-3.5 border-b">
@@ -976,6 +1119,126 @@ export default function AdminShipmentDetailPage({
               <Button variant="outline" onClick={() => { setMetrcImportItemId(null); setMetrcImportOrderId(null); }}>Cancel</Button>
               <Button onClick={handleMetrcImport} disabled={!metrcLabelId || !metrcFile || metrcImporting}>
                 {metrcImporting ? "Importing..." : "Import"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sample METRC Import Dialog */}
+      <Dialog open={showSampleImport} onOpenChange={setShowSampleImport}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import Sample METRC Labels</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Select a label design:</p>
+              <Select value={sampleLabelId} onValueChange={setSampleLabelId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select label..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {labels.map((label) => (
+                    <SelectItem key={label.id} value={String(label.id)}>
+                      {label.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Select strain:</p>
+              <Select value={sampleStrainId} onValueChange={setSampleStrainId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select strain..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {strains.map((strain) => (
+                    <SelectItem key={strain.id} value={String(strain.id)}>
+                      {strain.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Upload METRC PDF:</p>
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={(e) => setSampleFile(e.target.files?.[0] ?? null)}
+                className="text-sm"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowSampleImport(false)}>Cancel</Button>
+              <Button onClick={handleSampleMetrcImport} disabled={!sampleLabelId || !sampleStrainId || !sampleFile || sampleImporting}>
+                {sampleImporting ? "Importing..." : "Import"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Sample METRC Download Dialog */}
+      <Dialog open={showBatchSampleDialog} onOpenChange={setShowBatchSampleDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Download All Sample METRC Labels</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Select a sheet layout for printing:</p>
+              <Select value={batchSampleLayoutId} onValueChange={setBatchSampleLayoutId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select sheet layout..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sheetLayouts.map((layout) => (
+                    <SelectItem key={layout.id} value={layout.slug}>
+                      {layout.name} ({layout.columns}x{layout.rows})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowBatchSampleDialog(false)}>Cancel</Button>
+              <Button onClick={handleBatchSampleMetrcDownload} disabled={!batchSampleLayoutId || batchSamplePrinting}>
+                {batchSamplePrinting ? "Generating PDF..." : "Download"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sample METRC Print Dialog */}
+      <Dialog open={samplePrintSetId !== null} onOpenChange={(open) => { if (!open) setSamplePrintSetId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Print Sample METRC Labels</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Select a sheet layout:</p>
+              <Select value={samplePrintLayoutId} onValueChange={setSamplePrintLayoutId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select sheet layout..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sheetLayouts.map((layout) => (
+                    <SelectItem key={layout.id} value={layout.slug}>
+                      {layout.name} ({layout.columns}x{layout.rows})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSamplePrintSetId(null)}>Cancel</Button>
+              <Button onClick={handleSampleMetrcPrint} disabled={!samplePrintLayoutId || samplePrinting}>
+                {samplePrinting ? "Generating PDF..." : "Print"}
               </Button>
             </div>
           </div>

@@ -1433,6 +1433,7 @@ export interface Shipment {
   notes: string | null;
   driver: { id: number; full_name: string | null; email: string } | null;
   orders: ShipmentOrderSummary[];
+  sample_metrc_sets: { id: number; name: string; item_count: number; label_id: number; label_slug: string; label_name: string; strain_id: number | null; strain_name: string | null }[];
   totals: { order_count: number; total_value: number; total_items: number };
   created_at: string;
   updated_at: string;
@@ -5041,6 +5042,78 @@ export class ApiClient {
     });
     if (!res.ok) throw new Error("Failed to generate batch METRC labels");
     return res.blob();
+  }
+
+  // Shipment sample METRC
+
+  async importShipmentSampleMetrc(
+    shipmentId: number,
+    labelId: string,
+    strainId: number,
+    pdf: File
+  ): Promise<{ id: number; name: string; item_count: number; label_id: number; label_slug: string; label_name: string; strain_id: number; strain_name: string }> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/import_sample_metrc`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const form = new FormData();
+    form.append("label_id", labelId);
+    form.append("strain_id", String(strainId));
+    form.append("pdf", pdf);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+      body: form,
+    });
+    if (!res.ok) throw new Error("Failed to import sample METRC");
+    const json = await res.json();
+    return json.data;
+  }
+
+  async printShipmentSampleMetrcLabels(shipmentId: number, metrcLabelSetId: number, sheetLayoutId: string): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/print_sample_metrc_labels`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ metrc_label_set_id: metrcLabelSetId, sheet_layout_id: sheetLayoutId }),
+    });
+    if (!res.ok) throw new Error("Failed to print sample METRC labels");
+    return res.blob();
+  }
+
+  async downloadShipmentBatchSampleMetrcLabels(id: number, sheetLayoutId: string): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/shipments/${id}/batch_sample_metrc_labels`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ sheet_layout_id: sheetLayoutId }),
+    });
+    if (!res.ok) throw new Error("Failed to generate batch sample METRC labels");
+    return res.blob();
+  }
+
+  async deleteShipmentSampleMetrcSet(shipmentId: number, metrcLabelSetId: number): Promise<void> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/delete_sample_metrc_set`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ metrc_label_set_id: metrcLabelSetId }),
+    });
+    if (!res.ok) throw new Error("Failed to delete sample METRC set");
   }
 }
 
