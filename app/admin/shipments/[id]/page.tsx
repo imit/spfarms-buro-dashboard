@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import {
   apiClient, type Shipment, type ShipmentStatus, type ShipmentOrderSummary,
-  type Order, type SheetLayout, type Label as LabelType, type Strain,
+  type Order, type SheetLayout, type Label as LabelType,
   SHIPMENT_STATUS_LABELS,
 } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
@@ -111,10 +111,9 @@ export default function AdminShipmentDetailPage({
   const [perSetPrinting, setPerSetPrinting] = useState(false);
 
   // Sample METRC
-  const [strains, setStrains] = useState<Strain[]>([]);
   const [showSampleImport, setShowSampleImport] = useState(false);
   const [sampleLabelId, setSampleLabelId] = useState("");
-  const [sampleStrainId, setSampleStrainId] = useState("");
+  const [sampleVariantId, setSampleVariantId] = useState("");
   const [sampleFile, setSampleFile] = useState<File | null>(null);
   const [sampleImporting, setSampleImporting] = useState(false);
   const [samplePrintSetId, setSamplePrintSetId] = useState<number | null>(null);
@@ -141,7 +140,6 @@ export default function AdminShipmentDetailPage({
     loadShipment();
     apiClient.getSheetLayouts().then(setSheetLayouts).catch(() => {});
     apiClient.getLabels().then(setLabels).catch(() => {});
-    apiClient.getStrains().then(setStrains).catch(() => {});
   }, [isAuthenticated, loadShipment]);
 
   const updateStatus = async (newStatus: string) => {
@@ -465,15 +463,15 @@ export default function AdminShipmentDetailPage({
 
   // Sample METRC import
   const handleSampleMetrcImport = async () => {
-    if (!sampleLabelId || !sampleStrainId || !sampleFile) return;
+    if (!sampleVariantId || !sampleFile) return;
     setSampleImporting(true);
     try {
-      await apiClient.importShipmentSampleMetrc(Number(id), sampleLabelId, Number(sampleStrainId), sampleFile);
+      await apiClient.importShipmentSampleMetrc(Number(id), Number(sampleVariantId), sampleFile);
       await loadShipment();
       setShowSampleImport(false);
       setSampleFile(null);
       setSampleLabelId("");
-      setSampleStrainId("");
+      setSampleVariantId("");
       toast.success("Sample METRC labels imported");
     } catch {
       showError("import sample METRC labels");
@@ -839,7 +837,7 @@ export default function AdminShipmentDetailPage({
                 Download All
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => { setShowSampleImport(true); setSampleLabelId(""); setSampleStrainId(""); setSampleFile(null); }}>
+            <Button variant="outline" size="sm" onClick={() => { setShowSampleImport(true); setSampleLabelId(""); setSampleVariantId(""); setSampleFile(null); }}>
               <UploadIcon className="mr-1.5 size-3.5" />
               Import
             </Button>
@@ -1134,34 +1132,42 @@ export default function AdminShipmentDetailPage({
           <div className="space-y-4">
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Select a label design:</p>
-              <Select value={sampleLabelId} onValueChange={setSampleLabelId}>
+              <Select value={sampleLabelId} onValueChange={(v) => { setSampleLabelId(v); setSampleVariantId(""); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select label..." />
                 </SelectTrigger>
                 <SelectContent>
                   {labels.map((label) => (
-                    <SelectItem key={label.id} value={String(label.id)}>
+                    <SelectItem key={label.id} value={label.slug}>
                       {label.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Select strain:</p>
-              <Select value={sampleStrainId} onValueChange={setSampleStrainId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select strain..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {strains.map((strain) => (
-                    <SelectItem key={strain.id} value={String(strain.id)}>
-                      {strain.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {sampleLabelId && (() => {
+              const selectedLabel = labels.find((l) => l.slug === sampleLabelId);
+              const variants = selectedLabel?.strain_variants ?? [];
+              return variants.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Select variant:</p>
+                  <Select value={sampleVariantId} onValueChange={setSampleVariantId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select variant..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {variants.map((v) => (
+                        <SelectItem key={v.id} value={String(v.id)}>
+                          {v.strain_name}{v.is_sample ? " (sample)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No variants for this label.</p>
+              );
+            })()}
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Upload METRC PDF:</p>
               <input
@@ -1173,7 +1179,7 @@ export default function AdminShipmentDetailPage({
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowSampleImport(false)}>Cancel</Button>
-              <Button onClick={handleSampleMetrcImport} disabled={!sampleLabelId || !sampleStrainId || !sampleFile || sampleImporting}>
+              <Button onClick={handleSampleMetrcImport} disabled={!sampleVariantId || !sampleFile || sampleImporting}>
                 {sampleImporting ? "Importing..." : "Import"}
               </Button>
             </div>

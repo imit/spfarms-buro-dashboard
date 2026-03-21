@@ -5048,15 +5048,13 @@ export class ApiClient {
 
   async importShipmentSampleMetrc(
     shipmentId: number,
-    labelId: string,
-    strainId: number,
+    variantId: number,
     pdf: File
   ): Promise<{ id: number; name: string; item_count: number; label_id: number; label_slug: string; label_name: string; strain_id: number; strain_name: string }> {
     const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/import_sample_metrc`;
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
     const form = new FormData();
-    form.append("label_id", labelId);
-    form.append("strain_id", String(strainId));
+    form.append("variant_id", String(variantId));
     form.append("pdf", pdf);
     const res = await fetch(url, {
       method: "POST",
