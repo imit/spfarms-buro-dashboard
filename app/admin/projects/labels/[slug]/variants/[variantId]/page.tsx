@@ -99,6 +99,8 @@ export default function VariantEditorPage({
   const [isSample, setIsSample] = useState(false);
   const [bgColorOverride, setBgColorOverride] = useState("");
   const [overlayFile, setOverlayFile] = useState<File | null>(null);
+  const [removeOverlay, setRemoveOverlay] = useState(false);
+  const [removeStrainImage, setRemoveStrainImage] = useState(false);
   const [overlayX, setOverlayX] = useState("0");
   const [overlayY, setOverlayY] = useState("0");
   const [overlayW, setOverlayW] = useState("60");
@@ -273,6 +275,12 @@ export default function VariantEditorPage({
     if (overlayFile) {
       formData.append("label_strain_variant[overlay_image]", overlayFile);
     }
+    if (removeOverlay) {
+      formData.append("label_strain_variant[remove_overlay_image]", "true");
+    }
+    if (removeStrainImage) {
+      formData.append("label_strain_variant[remove_strain_image]", "true");
+    }
     Object.entries(textOverrides).forEach(([key, value]) => {
       formData.append(`label_strain_variant[text_overrides][${key}]`, value);
     });
@@ -296,6 +304,8 @@ export default function VariantEditorPage({
         setOverlayH(String(v.overlay_height ?? 30));
       }
       setOverlayFile(null);
+      setRemoveOverlay(false);
+      setRemoveStrainImage(false);
       fetchPreview();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -562,7 +572,7 @@ export default function VariantEditorPage({
         {/* Controls sidebar */}
         <div className="space-y-5">
           {/* Strain image preview */}
-          {variant.strain_image_url && (
+          {variant.strain_image_url && !removeStrainImage && (
             <div className="rounded-lg border bg-card p-4 space-y-3">
               <h4 className="text-sm font-medium">Strain Image</h4>
               <img
@@ -570,6 +580,21 @@ export default function VariantEditorPage({
                 alt={variant.strain_name || "Strain"}
                 className="w-full max-h-32 rounded border object-contain bg-white"
               />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setRemoveStrainImage(true)}
+              >
+                <Trash2Icon className="mr-1 size-3" />
+                Remove Strain Image
+              </Button>
+            </div>
+          )}
+          {removeStrainImage && (
+            <div className="rounded-lg border bg-card p-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Strain image will be removed on save.</span>
+              <Button variant="ghost" size="sm" onClick={() => setRemoveStrainImage(false)}>Undo</Button>
             </div>
           )}
 
@@ -824,12 +849,29 @@ export default function VariantEditorPage({
           {/* Overlay image */}
           <div className="rounded-lg border bg-card p-4 space-y-3">
             <h4 className="text-sm font-medium">Overlay Image</h4>
-            {variant.overlay_image_url && !overlayFile && (
-              <img
-                src={variant.overlay_image_url}
-                alt="Overlay"
-                className="w-full max-h-24 rounded border object-contain bg-white"
-              />
+            {variant.overlay_image_url && !overlayFile && !removeOverlay && (
+              <div className="space-y-2">
+                <img
+                  src={variant.overlay_image_url}
+                  alt="Overlay"
+                  className="w-full max-h-24 rounded border object-contain bg-white"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setRemoveOverlay(true)}
+                >
+                  <Trash2Icon className="mr-1 size-3" />
+                  Remove Overlay
+                </Button>
+              </div>
+            )}
+            {removeOverlay && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Overlay will be removed on save.</span>
+                <Button variant="ghost" size="sm" onClick={() => setRemoveOverlay(false)}>Undo</Button>
+              </div>
             )}
             <Field>
               <FieldLabel>Upload Overlay Image</FieldLabel>
