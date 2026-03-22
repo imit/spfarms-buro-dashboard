@@ -4573,6 +4573,26 @@ export class ApiClient {
     return res.data;
   }
 
+  // ---- Metrc Proxy (test) ----
+
+  async getMetrcProxy(endpoint: string, opts?: Record<string, string | number | undefined>): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (opts) {
+      for (const [k, v] of Object.entries(opts)) {
+        if (v !== undefined && v !== "") params.set(k, String(v));
+      }
+    }
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/api/v1/metrc_proxy/${endpoint}${query}`);
+  }
+
+  async postMetrcProxy(endpoint: string, body: unknown): Promise<unknown> {
+    return this.request(`/api/v1/metrc_proxy/${endpoint}`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
   // ---- Public Wholesale ----
 
   async getPublicProducts(): Promise<Product[]> {
