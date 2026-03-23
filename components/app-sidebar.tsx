@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, PackageCheckIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, PackageCheckIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -75,6 +75,16 @@ const navOps: NavItem[] = [
     url: "/admin/bulk-flower",
     icon: <LeafIcon />,
     resource: "products",
+  },
+  {
+    title: "Metrc",
+    url: "/admin/metrc",
+    icon: <ActivityIcon />,
+    resource: "grow",
+    children: [
+      { title: "Explorer", url: "/admin/metrc" },
+      { title: "Create Packages", url: "/admin/metrc/create-packages" },
+    ],
   },
 ]
 
