@@ -381,12 +381,14 @@ export default function AdminShipmentDetailPage({
     try {
       for (const order of shipment.orders) {
         for (const item of order.items) {
-          for (const ms of (item.metrc_label_sets ?? []).filter((ms) => ms.processing_status !== "processing")) {
+          const sets = (item.metrc_label_sets ?? []).filter((ms) => ms.processing_status !== "processing");
+          for (let msIdx = 0; msIdx < sets.length; msIdx++) {
+            const ms = sets[msIdx];
             const blob = await apiClient.printOrderMetrcLabels(order.id, ms.id, metrcSheetLayoutId);
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `${item.product_name}-set${msIdx + 1}-${ms.item_count}tags.pdf`;
+            a.download = `${item.product_name}${sets.length > 1 ? `-set${msIdx + 1}of${sets.length}` : ""}-${ms.item_count}tags.pdf`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
