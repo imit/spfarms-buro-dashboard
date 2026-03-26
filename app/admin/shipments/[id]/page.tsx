@@ -1194,10 +1194,18 @@ export default function AdminShipmentDetailPage({
         <div className="rounded-xl border bg-card shadow-xs">
           <div className="px-3 sm:px-5 py-3.5 border-b flex items-center justify-between">
             <h3 className="font-semibold text-sm">Sample Groups</h3>
-            <Button variant="outline" size="sm" onClick={() => { setShowCreateGroup(true); setNewGroupCompanyId(""); setNewGroupName(""); }}>
-              <PlusIcon className="mr-1.5 size-3.5" />
-              New Group
-            </Button>
+            <div className="flex items-center gap-2">
+              {shipment.sample_metrc_sets && shipment.sample_metrc_sets.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => { setShowBatchSampleDialog(true); setBatchSampleLayoutId(""); }}>
+                  <DownloadIcon className="mr-1.5 size-3.5" />
+                  Download All
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => { setShowCreateGroup(true); setNewGroupCompanyId(""); setNewGroupName(""); }}>
+                <PlusIcon className="mr-1.5 size-3.5" />
+                New Group
+              </Button>
+            </div>
           </div>
           {(!shipment.sample_groups || shipment.sample_groups.length === 0) ? (
             <div className="p-6 text-center">
@@ -1595,13 +1603,13 @@ export default function AdminShipmentDetailPage({
 
       {/* Sample METRC Import Dialog (Multi-file) */}
       <Dialog open={showSampleImport} onOpenChange={setShowSampleImport}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl overflow-hidden">
           <DialogHeader>
             <DialogTitle>Import Sample METRC Labels</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-hidden">
             <div className="flex items-center gap-3">
-              <div className="flex-1 space-y-1">
+              <div className="flex-1 min-w-0 space-y-1">
                 <p className="text-xs text-muted-foreground font-medium">Label Design</p>
                 <Select value={sampleLabelId} onValueChange={(v) => { setSampleLabelId(v); }}>
                   <SelectTrigger className="h-8">
@@ -1652,21 +1660,23 @@ export default function AdminShipmentDetailPage({
                 <>
                   {/* Bulk assign */}
                   {unassignedCount > 0 && variants.length > 0 && (
-                    <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
+                    <div className="rounded-lg bg-muted/50 px-3 py-2 space-y-1.5">
                       <span className="text-xs text-muted-foreground">{unassignedCount} unassigned — set all to:</span>
-                      {variants.map((v) => (
-                        <Button
-                          key={v.id}
-                          variant="outline"
-                          size="xs"
-                          className="h-6 text-xs"
-                          onClick={() => {
-                            setSampleFiles((prev) => prev.map((f) => f.variantId ? f : { ...f, variantId: String(v.id) }));
-                          }}
-                        >
-                          {v.strain_name}
-                        </Button>
-                      ))}
+                      <div className="flex flex-wrap gap-1.5">
+                        {variants.map((v) => (
+                          <Button
+                            key={v.id}
+                            variant="outline"
+                            size="xs"
+                            className="h-6 text-xs"
+                            onClick={() => {
+                              setSampleFiles((prev) => prev.map((f) => f.variantId ? f : { ...f, variantId: String(v.id) }));
+                            }}
+                          >
+                            {v.strain_name}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
                   )}
 
