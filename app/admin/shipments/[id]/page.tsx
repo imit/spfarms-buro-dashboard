@@ -1595,94 +1595,137 @@ export default function AdminShipmentDetailPage({
 
       {/* Sample METRC Import Dialog (Multi-file) */}
       <Dialog open={showSampleImport} onOpenChange={setShowSampleImport}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Import Sample METRC Labels</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Select a label design:</p>
-              <Select value={sampleLabelId} onValueChange={(v) => { setSampleLabelId(v); }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select label..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {labels.map((label) => (
-                    <SelectItem key={label.id} value={label.slug}>
-                      {label.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Label Design</p>
+                <Select value={sampleLabelId} onValueChange={(v) => { setSampleLabelId(v); }}>
+                  <SelectTrigger className="h-8">
+                    <SelectValue placeholder="Select label..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {labels.map((label) => (
+                      <SelectItem key={label.id} value={label.slug}>
+                        {label.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {sampleLabelId && (
+                <div className="shrink-0 pt-4">
+                  <label className="cursor-pointer">
+                    <Button variant="outline" size="sm" asChild>
+                      <span>
+                        <UploadIcon className="mr-1.5 size-3.5" />
+                        Add Files
+                      </span>
+                    </Button>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setSampleFiles((prev) => [
+                          ...prev,
+                          ...files.map((f) => ({ file: f, variantId: "" })),
+                        ]);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
             </div>
 
-            {sampleLabelId && (
-              <>
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Upload PDF files:</p>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    multiple
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files || []);
-                      setSampleFiles((prev) => [
-                        ...prev,
-                        ...files.map((f) => ({ file: f, variantId: "" })),
-                      ]);
-                      e.target.value = "";
-                    }}
-                    className="text-sm"
-                  />
-                </div>
-
-                {sampleFiles.length > 0 && (() => {
-                  const selectedLabel = labels.find((l) => l.slug === sampleLabelId);
-                  const variants = selectedLabel?.strain_variants ?? [];
-                  return (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {sampleFiles.map((entry, idx) => (
-                        <div key={idx} className="rounded-lg border p-3 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium truncate flex-1" title={entry.file.name}>
-                              {entry.file.name}
-                            </p>
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              className="text-destructive hover:text-destructive shrink-0"
-                              onClick={() => setSampleFiles((prev) => prev.filter((_, i) => i !== idx))}
-                            >
-                              <XIcon className="size-3" />
-                            </Button>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {(entry.file.size / 1024).toFixed(1)} KB
-                          </p>
-                          <Select
-                            value={entry.variantId}
-                            onValueChange={(v) => {
-                              setSampleFiles((prev) => prev.map((f, i) => i === idx ? { ...f, variantId: v } : f));
-                            }}
-                          >
-                            <SelectTrigger className="h-8">
-                              <SelectValue placeholder="Select variant..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {variants.map((v) => (
-                                <SelectItem key={v.id} value={String(v.id)}>
-                                  {v.strain_name}{v.is_sample ? " (sample)" : ""}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+            {sampleLabelId && sampleFiles.length > 0 && (() => {
+              const selectedLabel = labels.find((l) => l.slug === sampleLabelId);
+              const variants = selectedLabel?.strain_variants ?? [];
+              const unassignedCount = sampleFiles.filter((f) => !f.variantId).length;
+              return (
+                <>
+                  {/* Bulk assign */}
+                  {unassignedCount > 0 && variants.length > 0 && (
+                    <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
+                      <span className="text-xs text-muted-foreground">{unassignedCount} unassigned — set all to:</span>
+                      {variants.map((v) => (
+                        <Button
+                          key={v.id}
+                          variant="outline"
+                          size="xs"
+                          className="h-6 text-xs"
+                          onClick={() => {
+                            setSampleFiles((prev) => prev.map((f) => f.variantId ? f : { ...f, variantId: String(v.id) }));
+                          }}
+                        >
+                          {v.strain_name}
+                        </Button>
                       ))}
                     </div>
-                  );
-                })()}
-              </>
-            )}
+                  )}
+
+                  {/* File table */}
+                  <div className="rounded-lg border max-h-80 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-card z-10">
+                        <tr className="border-b text-xs text-muted-foreground">
+                          <th className="text-left font-medium px-3 py-2">File</th>
+                          <th className="text-left font-medium px-3 py-2 w-48">Variant</th>
+                          <th className="w-8"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {sampleFiles.map((entry, idx) => (
+                          <tr key={idx} className={cn("hover:bg-muted/30", !entry.variantId && "bg-amber-50/50")}>
+                            <td className="px-3 py-1.5">
+                              <p className="text-sm font-mono truncate max-w-[280px]" title={entry.file.name}>
+                                {entry.file.name}
+                              </p>
+                            </td>
+                            <td className="px-3 py-1.5">
+                              <Select
+                                value={entry.variantId}
+                                onValueChange={(v) => {
+                                  setSampleFiles((prev) => prev.map((f, i) => i === idx ? { ...f, variantId: v } : f));
+                                }}
+                              >
+                                <SelectTrigger className="h-7 text-xs">
+                                  <SelectValue placeholder="Select..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {variants.map((v) => (
+                                    <SelectItem key={v.id} value={String(v.id)}>
+                                      {v.strain_name}{v.is_sample ? " (sample)" : ""}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                className="text-muted-foreground hover:text-destructive"
+                                onClick={() => setSampleFiles((prev) => prev.filter((_, i) => i !== idx))}
+                              >
+                                <XIcon className="size-3" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{sampleFiles.length} file{sampleFiles.length !== 1 ? "s" : ""}{unassignedCount > 0 ? ` (${unassignedCount} need variant)` : ""}</p>
+                </>
+              );
+            })()}
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowSampleImport(false)}>Cancel</Button>
