@@ -1074,7 +1074,10 @@ export default function AdminShipmentDetailPage({
                             </div>
 
                             {/* METRC section */}
-                            {item.metrc_label_sets && item.metrc_label_sets.length > 0 && (
+                            {item.metrc_label_sets && item.metrc_label_sets.length > 0 && (() => {
+                              const totalImported = item.metrc_label_sets.filter((ms) => ms.processing_status !== "processing" && ms.processing_status !== "failed").reduce((s, ms) => s + ms.item_count, 0);
+                              const mismatch = totalImported > 0 && totalImported !== item.quantity;
+                              return (
                               <div className="space-y-1">
                                 {item.metrc_label_sets.map((ms) => (
                                   <div key={ms.id} className="flex items-center gap-2 text-xs">
@@ -1084,7 +1087,7 @@ export default function AdminShipmentDetailPage({
                                         <span className="text-amber-600 animate-pulse">Processing...</span>
                                       ) : ms.processing_status === "failed" ? (
                                         <span className="text-destructive">Failed</span>
-                                      ) : `(${ms.item_count} tags)`}
+                                      ) : <span className="font-medium text-foreground">{ms.item_count} tags</span>}
                                     </span>
                                     <Button
                                       variant="ghost"
@@ -1099,10 +1102,30 @@ export default function AdminShipmentDetailPage({
                                       <FileTextIcon className="mr-0.5 size-2.5" />
                                       Print
                                     </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="xs"
+                                      className="h-5 text-[10px] px-1.5 text-destructive hover:text-destructive"
+                                      onClick={async () => {
+                                        try {
+                                          await apiClient.deleteOrderMetrcSet(order.id, ms.id);
+                                          await loadShipment();
+                                          toast.success("METRC set deleted");
+                                        } catch { showError("delete METRC set"); }
+                                      }}
+                                    >
+                                      <Trash2Icon className="size-2.5" />
+                                    </Button>
                                   </div>
                                 ))}
+                                {/* Total verification */}
+                                {item.metrc_label_sets.length > 1 && (
+                                  <div className={cn("text-xs px-1", mismatch ? "text-amber-600 font-medium" : "text-muted-foreground")}>
+                                    Total: {totalImported} / {item.quantity} tags {mismatch ? (totalImported < item.quantity ? "(missing " + (item.quantity - totalImported) + ")" : "(over by " + (totalImported - item.quantity) + ")") : ""}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            ); })()}
                             <div className="flex gap-1">
                               <Button
                                 variant="ghost"
