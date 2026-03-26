@@ -47,7 +47,7 @@ export default function StorefrontPage({
 
         // Map visible menu items to Product-shaped objects with effective pricing
         const menuProducts = (menuData.items || [])
-          .filter((item) => (menuData.is_default || item.visible) && !item.bulk && item.in_stock !== false)
+          .filter((item) => !item.bulk)
           .map((item) => ({
             id: item.product_id,
             name: item.product_name,
