@@ -1114,7 +1114,7 @@ export default function AdminShipmentDetailPage({
                 <div className="flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-[10px]">SAMPLE</Badge>
+                      <Badge className="text-[10px] bg-orange-100 text-orange-700 hover:bg-orange-100">SAMPLE</Badge>
                       <span className="text-sm font-medium">{ms.strain_name}</span>
                       <span className="text-xs text-muted-foreground">{ms.label_name}</span>
                       <span className="text-xs text-muted-foreground">({ms.item_count} tag{ms.item_count !== 1 ? "s" : ""})</span>
@@ -1273,7 +1273,7 @@ export default function AdminShipmentDetailPage({
                       <div className="space-y-1 ml-6">
                         {assignedLabels.map((ms) => (
                           <div key={ms.id} className="flex items-center gap-2 text-xs">
-                            <Badge variant="secondary" className="text-[10px]">SAMPLE</Badge>
+                            <Badge className="text-[10px] bg-orange-100 text-orange-700 hover:bg-orange-100">SAMPLE</Badge>
                             <span>{ms.strain_name}</span>
                             <span className="text-muted-foreground">({ms.item_count} tags)</span>
                             {ms.source_filename && (
