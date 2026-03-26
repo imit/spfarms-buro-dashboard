@@ -93,7 +93,6 @@ function ProductsPage() {
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const isBulk = p.product_type === "bulk_flower";
-      if (typeFilter === "all" && isBulk) return false;
       if (typeFilter === "cannabis" && (!p.cannabis || isBulk)) return false;
       if (typeFilter === "promo" && p.cannabis) return false;
       if (typeFilter === "bulk" && !isBulk) return false;

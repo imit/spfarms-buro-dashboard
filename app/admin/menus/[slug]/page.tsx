@@ -44,6 +44,10 @@ export default function MenuDetailPage({
     "draft"
   );
   const [expiresAt, setExpiresAt] = useState("");
+  const [disableDiscounts, setDisableDiscounts] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
+  const [companyId, setCompanyId] = useState("");
+  const [companies, setCompanies] = useState<{ id: number; name: string }[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   // Product picker state
@@ -67,6 +71,9 @@ export default function MenuDetailPage({
     setAccessType(m.access_type);
     setStatus(m.status);
     setExpiresAt(m.expires_at ? m.expires_at.split("T")[0] : "");
+    setDisableDiscounts(m.disable_discounts ?? false);
+    setShowBulk(m.show_bulk ?? false);
+    setCompanyId(m.company_id ? String(m.company_id) : "");
   }, []);
 
   useEffect(() => {
@@ -87,6 +94,7 @@ export default function MenuDetailPage({
     }
 
     fetchMenu();
+    apiClient.getCompanies({ per_page: 500 }).then((r) => setCompanies(r.data.map((c) => ({ id: c.id, name: c.name })))).catch(() => {});
   }, [isAuthenticated, slug, populateForm]);
 
   async function handleSaveMetadata() {
@@ -98,6 +106,9 @@ export default function MenuDetailPage({
       const data: Parameters<typeof apiClient.updateMenu>[1] = {
         name: name.trim(),
         description: description.trim(),
+        disable_discounts: disableDiscounts,
+        show_bulk: showBulk,
+        company_id: companyId ? Number(companyId) : undefined,
       };
       if (!menu.is_default) {
         data.access_type = accessType;
@@ -223,7 +234,8 @@ export default function MenuDetailPage({
 
   function handleCopyShareUrl() {
     if (!menu?.share_url) return;
-    navigator.clipboard.writeText(menu.share_url);
+    const base = typeof window !== "undefined" ? window.location.origin : "";
+    navigator.clipboard.writeText(`${base}${menu.share_url}`);
     toast.success("Share URL copied to clipboard");
   }
 
@@ -366,6 +378,34 @@ export default function MenuDetailPage({
             </div>
           )}
 
+          {/* Company */}
+          <div className="space-y-2">
+            <Label htmlFor="company_id">Company (optional)</Label>
+            <select
+              id="company_id"
+              value={companyId}
+              onChange={(e) => setCompanyId(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="">No specific company</option>
+              {companies.map((c) => (
+                <option key={c.id} value={String(c.id)}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Menu options */}
+          <div className="space-y-3 pt-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox checked={disableDiscounts} onCheckedChange={(v) => setDisableDiscounts(v === true)} />
+              <span className="text-sm">Disable discounts for orders from this menu</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox checked={showBulk} onCheckedChange={(v) => setShowBulk(v === true)} />
+              <span className="text-sm">Show bulk items on storefront</span>
+            </label>
+          </div>
+
           {/* Share URL — hidden for default menu */}
           {menu.share_url && !menu.is_default && (
             <div className="space-y-2">
@@ -373,7 +413,7 @@ export default function MenuDetailPage({
               <div className="flex items-center gap-2">
                 <div className="flex-1 flex items-center gap-2 rounded-md border border-input bg-muted/50 px-3 py-2 text-sm">
                   <LinkIcon className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{menu.share_url}</span>
+                  <span className="truncate">{typeof window !== "undefined" ? window.location.origin : ""}{menu.share_url}</span>
                 </div>
                 <Button
                   type="button"

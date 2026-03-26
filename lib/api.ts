@@ -450,6 +450,8 @@ export interface Menu {
   access_type: MenuAccessType;
   status: MenuStatus;
   is_default: boolean;
+  disable_discounts: boolean;
+  show_bulk: boolean;
   cover_image_url: string | null;
   expires_at: string | null;
   company_id: number | null;
@@ -2701,6 +2703,8 @@ export class ApiClient {
       access_type: MenuAccessType;
       status: MenuStatus;
       is_default: boolean;
+      disable_discounts: boolean;
+      show_bulk: boolean;
       company_id: number;
       expires_at: string;
     }>
