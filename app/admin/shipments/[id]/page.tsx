@@ -1110,7 +1110,7 @@ export default function AdminShipmentDetailPage({
                                 {item.metrc_label_sets.map((ms, msIdx) => (
                                   <div key={ms.id} className="flex items-center gap-2 text-xs">
                                     <Badge variant="secondary" className="text-[10px]">
-                                      {item.metrc_label_sets.length > 1 ? `${msIdx + 1}/${item.metrc_label_sets.length}` : "METRC"}
+                                      {(item.metrc_label_sets?.length ?? 0) > 1 ? `${msIdx + 1}/${item.metrc_label_sets!.length}` : "METRC"}
                                     </Badge>
                                     <span className="text-muted-foreground">
                                       {ms.source_filename || ms.name}
