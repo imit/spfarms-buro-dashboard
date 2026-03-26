@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 const STATUS_BADGE_COLORS: Record<ShipmentStatus, string> = {
   draft: "bg-slate-100 text-slate-700",
+  processing: "bg-purple-100 text-purple-700",
   loading: "bg-amber-100 text-amber-700",
   in_transit: "bg-blue-100 text-blue-700",
   delivered: "bg-green-100 text-green-700",
@@ -26,6 +27,7 @@ const STATUS_BADGE_COLORS: Record<ShipmentStatus, string> = {
 const TABS: { label: string; value: string }[] = [
   { label: "All", value: "" },
   { label: "Draft", value: "draft" },
+  { label: "Processing", value: "processing" },
   { label: "Loading", value: "loading" },
   { label: "In Transit", value: "in_transit" },
   { label: "Delivered", value: "delivered" },
@@ -145,9 +147,19 @@ export default function AdminShipmentsPage() {
                   }}
                 >
                   <td className="px-4 py-3 font-medium">
-                    <Link href={`/admin/shipments/${shipment.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
-                      {shipment.shipment_number}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/admin/shipments/${shipment.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+                        {shipment.shipment_number}
+                      </Link>
+                      {shipment.nickname && (
+                        <span className="text-sm text-muted-foreground font-normal">{shipment.nickname}</span>
+                      )}
+                      {shipment.is_sample && (
+                        <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border border-purple-300 text-purple-700">
+                          SAMPLE
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <span className={cn(

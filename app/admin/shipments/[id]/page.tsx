@@ -7,10 +7,12 @@ import {
   ArrowLeftIcon, DownloadIcon, ChevronDownIcon, PlusIcon,
   Trash2Icon, PackageIcon, FileTextIcon, TruckIcon,
   CalendarIcon, XIcon, ChevronRightIcon, UploadIcon,
+  TagIcon, BuildingIcon,
 } from "lucide-react";
 import {
   apiClient, type Shipment, type ShipmentStatus, type ShipmentOrderSummary,
   type Order, type SheetLayout, type Label as LabelType,
+  type Company, type SampleMetrcSet, type SampleGroup,
   SHIPMENT_STATUS_LABELS,
 } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
@@ -18,6 +20,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -40,6 +43,7 @@ import { cn } from "@/lib/utils";
 
 const STATUS_BADGE_COLORS: Record<ShipmentStatus, string> = {
   draft: "bg-slate-100 text-slate-700",
+  processing: "bg-purple-100 text-purple-700",
   loading: "bg-amber-100 text-amber-700",
   in_transit: "bg-blue-100 text-blue-700",
   delivered: "bg-green-100 text-green-700",
@@ -70,6 +74,7 @@ export default function AdminShipmentDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [nickname, setNickname] = useState("");
 
   // Status change
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
@@ -110,11 +115,10 @@ export default function AdminShipmentDetailPage({
   const [perSetSheetLayoutId, setPerSetSheetLayoutId] = useState("");
   const [perSetPrinting, setPerSetPrinting] = useState(false);
 
-  // Sample METRC
+  // Sample METRC (multi-file)
   const [showSampleImport, setShowSampleImport] = useState(false);
   const [sampleLabelId, setSampleLabelId] = useState("");
-  const [sampleVariantId, setSampleVariantId] = useState("");
-  const [sampleFile, setSampleFile] = useState<File | null>(null);
+  const [sampleFiles, setSampleFiles] = useState<{ file: File; variantId: string }[]>([]);
   const [sampleImporting, setSampleImporting] = useState(false);
   const [samplePrintSetId, setSamplePrintSetId] = useState<number | null>(null);
   const [samplePrintLayoutId, setSamplePrintLayoutId] = useState("");
@@ -123,11 +127,22 @@ export default function AdminShipmentDetailPage({
   const [batchSampleLayoutId, setBatchSampleLayoutId] = useState("");
   const [batchSamplePrinting, setBatchSamplePrinting] = useState(false);
 
+  // Sample Groups
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [newGroupCompanyId, setNewGroupCompanyId] = useState("");
+  const [newGroupName, setNewGroupName] = useState("");
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [deleteGroupId, setDeleteGroupId] = useState<number | null>(null);
+
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
   const loadShipment = useCallback(async () => {
     try {
       const data = await apiClient.getShipment(Number(id));
       setShipment(data);
       setNotes(data.notes || "");
+      setNickname(data.nickname || "");
     } catch (err) {
       console.error("Failed to load shipment:", err);
     } finally {
@@ -140,6 +155,7 @@ export default function AdminShipmentDetailPage({
     loadShipment();
     apiClient.getSheetLayouts().then(setSheetLayouts).catch(() => {});
     apiClient.getLabels().then(setLabels).catch(() => {});
+    apiClient.getCompanies({ per_page: 500 }).then((r) => setCompanies(r.data)).catch(() => {});
   }, [isAuthenticated, loadShipment]);
 
   const updateStatus = async (newStatus: string) => {
@@ -149,6 +165,17 @@ export default function AdminShipmentDetailPage({
       toast.success("Status updated");
     } catch {
       showError("update the shipment status");
+    }
+  };
+
+  const toggleIsSample = async () => {
+    if (!shipment) return;
+    try {
+      const updated = await apiClient.updateShipment(Number(id), { is_sample: !shipment.is_sample });
+      setShipment(updated);
+      toast.success(updated.is_sample ? "Marked as sample shipment" : "Unmarked as sample shipment");
+    } catch {
+      showError("update the shipment");
     }
   };
 
@@ -461,22 +488,65 @@ export default function AdminShipmentDetailPage({
     }
   };
 
-  // Sample METRC import
+  // Transfer manifest upload
+  const handleUploadManifest = async (orderId: number, file: File) => {
+    try {
+      await apiClient.uploadTransferManifest(orderId, file);
+      await loadShipment();
+      toast.success("Transfer manifest uploaded");
+    } catch {
+      showError("upload transfer manifest");
+    }
+  };
+
+  const handleDeleteManifest = async (orderId: number) => {
+    try {
+      await apiClient.deleteTransferManifest(orderId);
+      await loadShipment();
+      toast.success("Transfer manifest removed");
+    } catch {
+      showError("delete transfer manifest");
+    }
+  };
+
+  // Order item METRC tag
+  const handleSaveItemMetrcTag = async (orderId: number, itemId: number, tag: string) => {
+    try {
+      await apiClient.updateOrderItemMetrcTag(orderId, itemId, tag);
+      await loadShipment();
+    } catch {
+      showError("update METRC tag");
+    }
+  };
+
+  // Sample METRC import (multi-file)
   const handleSampleMetrcImport = async () => {
-    if (!sampleVariantId || !sampleFile) return;
+    if (sampleFiles.length === 0 || sampleFiles.some((f) => !f.variantId)) return;
     setSampleImporting(true);
     try {
-      await apiClient.importShipmentSampleMetrc(Number(id), Number(sampleVariantId), sampleFile);
+      await apiClient.batchImportShipmentSampleMetrc(
+        Number(id),
+        sampleFiles.map((f) => ({ variantId: Number(f.variantId), pdf: f.file }))
+      );
       await loadShipment();
       setShowSampleImport(false);
-      setSampleFile(null);
+      setSampleFiles([]);
       setSampleLabelId("");
-      setSampleVariantId("");
-      toast.success("Sample METRC labels imported");
+      toast.success(`${sampleFiles.length} sample METRC file${sampleFiles.length !== 1 ? "s" : ""} imported`);
     } catch {
       showError("import sample METRC labels");
     } finally {
       setSampleImporting(false);
+    }
+  };
+
+  // Sample METRC tag update
+  const handleSaveSampleMetrcTag = async (setId: number, tagId: string) => {
+    try {
+      await apiClient.updateSampleMetrcTag(Number(id), setId, tagId);
+      await loadShipment();
+    } catch {
+      showError("update sample METRC tag");
     }
   };
 
@@ -533,6 +603,70 @@ export default function AdminShipmentDetailPage({
     }
   };
 
+  // Sample Groups
+  const handleCreateSampleGroup = async () => {
+    if (!newGroupCompanyId) return;
+    setCreatingGroup(true);
+    try {
+      await apiClient.createSampleGroup(Number(id), {
+        company_id: Number(newGroupCompanyId),
+        name: newGroupName || companies.find((c) => c.id === Number(newGroupCompanyId))?.name || "Group",
+      });
+      await loadShipment();
+      setShowCreateGroup(false);
+      setNewGroupCompanyId("");
+      setNewGroupName("");
+      toast.success("Sample group created");
+    } catch {
+      showError("create sample group");
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  const handleDeleteSampleGroup = async () => {
+    if (deleteGroupId === null) return;
+    try {
+      await apiClient.deleteSampleGroup(Number(id), deleteGroupId);
+      await loadShipment();
+      toast.success("Sample group deleted");
+    } catch {
+      showError("delete sample group");
+    } finally {
+      setDeleteGroupId(null);
+    }
+  };
+
+  const handleRemoveGroupManifest = async (groupId: number) => {
+    try {
+      await apiClient.deleteSampleGroupManifest(Number(id), groupId);
+      await loadShipment();
+      toast.success("Manifest removed");
+    } catch {
+      showError("remove manifest");
+    }
+  };
+
+  const handleUploadGroupManifest = async (groupId: number, file: File) => {
+    try {
+      await apiClient.uploadSampleGroupManifest(Number(id), groupId, file);
+      await loadShipment();
+      toast.success("Transfer manifest uploaded");
+    } catch {
+      showError("upload transfer manifest");
+    }
+  };
+
+  const handleAssignLabelsToGroup = async (groupId: number, labelSetIds: number[]) => {
+    try {
+      const updated = await apiClient.assignLabelsToSampleGroup(Number(id), groupId, labelSetIds);
+      setShipment(updated);
+      toast.success("Labels assigned");
+    } catch {
+      showError("assign labels to group");
+    }
+  };
+
   if (!isAuthenticated) return null;
   if (isLoading) return <div className="px-10"><p className="text-muted-foreground">Loading...</p></div>;
   if (!shipment) return <div className="px-10"><p className="text-muted-foreground">Shipment not found.</p></div>;
@@ -550,12 +684,18 @@ export default function AdminShipmentDetailPage({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-2xl font-bold tracking-tight">{shipment.shipment_number}</h2>
+              {shipment.nickname && (
+                <span className="text-lg text-muted-foreground font-medium">{shipment.nickname}</span>
+              )}
               <span className={cn(
                 "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
                 STATUS_BADGE_COLORS[shipment.status]
               )}>
                 {SHIPMENT_STATUS_LABELS[shipment.status]}
               </span>
+              {shipment.is_sample && (
+                <Badge variant="outline" className="text-xs border-purple-300 text-purple-700">SAMPLE</Badge>
+              )}
             </div>
             <p className="text-sm text-muted-foreground">
               {shipment.scheduled_date
@@ -648,18 +788,48 @@ export default function AdminShipmentDetailPage({
           </div>
         )}
 
-        {/* Status change */}
-        <div className="flex flex-wrap items-center gap-2 pt-4 mt-4 border-t">
-          <span className="text-xs text-muted-foreground mr-1">Change status:</span>
-          <select
-            value={shipment.status}
-            onChange={(e) => { if (e.target.value !== shipment.status) setPendingStatus(e.target.value); }}
-            className="flex h-8 rounded-md border border-input bg-transparent px-2.5 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            {STATUSES.map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
+        {/* Nickname */}
+        <div className="flex items-center gap-2 pt-4 mt-4 border-t">
+          <span className="text-xs text-muted-foreground mr-1">Nickname:</span>
+          <Input
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder="e.g. Monday Bay Area run"
+            className="h-8 text-sm max-w-xs"
+            onBlur={async () => {
+              if (nickname !== (shipment.nickname || "")) {
+                try {
+                  const updated = await apiClient.updateShipment(Number(id), { nickname });
+                  setShipment(updated);
+                } catch { /* silent */ }
+              }
+            }}
+            onKeyDown={async (e) => {
+              if (e.key === "Enter") {
+                e.currentTarget.blur();
+              }
+            }}
+          />
+        </div>
+
+        {/* Status change + sample toggle */}
+        <div className="flex flex-wrap items-center gap-4 pt-4 mt-4 border-t">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground mr-1">Change status:</span>
+            <select
+              value={shipment.status}
+              onChange={(e) => { if (e.target.value !== shipment.status) setPendingStatus(e.target.value); }}
+              className="flex h-8 rounded-md border border-input bg-transparent px-2.5 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {STATUSES.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Checkbox checked={shipment.is_sample} onCheckedChange={toggleIsSample} />
+            <span className="text-xs text-muted-foreground">Sample Shipment</span>
+          </label>
         </div>
       </div>
 
@@ -724,6 +894,9 @@ export default function AdminShipmentDetailPage({
                         )}>
                           {order.status}
                         </span>
+                        {order.transfer_manifest_url && (
+                          <Badge variant="outline" className="text-[10px] border-green-300 text-green-700">Manifest</Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground">
                         {order.items.length} item{order.items.length !== 1 ? "s" : ""}
@@ -760,6 +933,45 @@ export default function AdminShipmentDetailPage({
                   {/* Expanded content */}
                   {isExpanded && (
                     <div className="px-3 sm:px-5 pb-4 pt-1 ml-12 space-y-3">
+                      {/* Transfer Manifest */}
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-muted-foreground font-medium">Transfer Manifest:</span>
+                        {order.transfer_manifest_url ? (
+                          <>
+                            <a
+                              href={`${apiBaseUrl}${order.transfer_manifest_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              View
+                            </a>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              className="h-5 text-[10px] px-1.5 text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteManifest(order.id)}
+                            >
+                              Remove
+                            </Button>
+                          </>
+                        ) : (
+                          <label className="cursor-pointer text-blue-600 hover:underline">
+                            Upload
+                            <input
+                              type="file"
+                              accept="application/pdf,image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleUploadManifest(order.id, f);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
+
                       {/* Line items */}
                       <div className="rounded-lg border divide-y">
                         {order.items.map((item) => (
@@ -772,6 +984,16 @@ export default function AdminShipmentDetailPage({
                                 <span className="text-muted-foreground">{item.quantity} x {formatPrice(item.unit_price)}</span>
                                 <span className="ml-2 font-medium">{formatPrice(parseFloat(item.unit_price) * item.quantity)}</span>
                               </div>
+                            </div>
+
+                            {/* METRC Tag */}
+                            <div className="flex items-center gap-2">
+                              <TagIcon className="size-3 text-muted-foreground shrink-0" />
+                              <InlineTagInput
+                                value={item.metrc_tag || ""}
+                                placeholder="METRC tag..."
+                                onSave={(val) => handleSaveItemMetrcTag(order.id, item.id, val)}
+                              />
                             </div>
 
                             {/* METRC section */}
@@ -837,7 +1059,7 @@ export default function AdminShipmentDetailPage({
                 Download All
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => { setShowSampleImport(true); setSampleLabelId(""); setSampleVariantId(""); setSampleFile(null); }}>
+            <Button variant="outline" size="sm" onClick={() => { setShowSampleImport(true); setSampleLabelId(""); setSampleFiles([]); }}>
               <UploadIcon className="mr-1.5 size-3.5" />
               Import
             </Button>
@@ -850,37 +1072,197 @@ export default function AdminShipmentDetailPage({
         ) : (
           <div className="divide-y">
             {shipment.sample_metrc_sets.map((ms) => (
-              <div key={ms.id} className="px-3 sm:px-5 py-3 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-[10px]">SAMPLE</Badge>
-                    <span className="text-sm font-medium">{ms.strain_name}</span>
-                    <span className="text-xs text-muted-foreground">{ms.label_name}</span>
-                    <span className="text-xs text-muted-foreground">({ms.item_count} tag{ms.item_count !== 1 ? "s" : ""})</span>
+              <div key={ms.id} className="px-3 sm:px-5 py-3 space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-[10px]">SAMPLE</Badge>
+                      <span className="text-sm font-medium">{ms.strain_name}</span>
+                      <span className="text-xs text-muted-foreground">{ms.label_name}</span>
+                      <span className="text-xs text-muted-foreground">({ms.item_count} tag{ms.item_count !== 1 ? "s" : ""})</span>
+                      {ms.sample_group_id && (
+                        <Badge variant="outline" className="text-[10px]">
+                          {shipment.sample_groups?.find((g) => g.id === ms.sample_group_id)?.company_name || "Grouped"}
+                        </Badge>
+                      )}
+                    </div>
+                    {ms.source_filename && (
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate" title={ms.source_filename}>
+                        {ms.source_filename}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      className="h-6 text-xs px-2"
+                      onClick={() => { setSamplePrintSetId(ms.id); setSamplePrintLayoutId(""); }}
+                    >
+                      <FileTextIcon className="mr-1 size-3" />
+                      Print
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteSampleMetrcSet(ms.id)}
+                    >
+                      <Trash2Icon className="size-3" />
+                    </Button>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  className="h-6 text-xs px-2"
-                  onClick={() => { setSamplePrintSetId(ms.id); setSamplePrintLayoutId(""); }}
-                >
-                  <FileTextIcon className="mr-1 size-3" />
-                  Print
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => handleDeleteSampleMetrcSet(ms.id)}
-                >
-                  <Trash2Icon className="size-3" />
-                </Button>
+                {/* Tag ID */}
+                <div className="flex items-center gap-2 ml-1">
+                  <TagIcon className="size-3 text-muted-foreground shrink-0" />
+                  <InlineTagInput
+                    value={ms.tag_id || ""}
+                    placeholder="Tag ID..."
+                    onSave={(val) => handleSaveSampleMetrcTag(ms.id, val)}
+                  />
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Sample Groups section (shown when there are sample labels or groups) */}
+      {(shipment.is_sample || (shipment.sample_metrc_sets && shipment.sample_metrc_sets.length > 0) || (shipment.sample_groups && shipment.sample_groups.length > 0)) && (
+        <div className="rounded-xl border bg-card shadow-xs">
+          <div className="px-3 sm:px-5 py-3.5 border-b flex items-center justify-between">
+            <h3 className="font-semibold text-sm">Sample Groups</h3>
+            <Button variant="outline" size="sm" onClick={() => { setShowCreateGroup(true); setNewGroupCompanyId(""); setNewGroupName(""); }}>
+              <PlusIcon className="mr-1.5 size-3.5" />
+              New Group
+            </Button>
+          </div>
+          {(!shipment.sample_groups || shipment.sample_groups.length === 0) ? (
+            <div className="p-6 text-center">
+              <p className="text-sm text-muted-foreground">No sample groups yet. Create a group to organize sample labels by company.</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {shipment.sample_groups.map((group) => {
+                const assignedLabels = shipment.sample_metrc_sets.filter((ms) => ms.sample_group_id === group.id);
+                const unassignedLabels = shipment.sample_metrc_sets.filter((ms) => !ms.sample_group_id);
+
+                return (
+                  <div key={group.id} className="px-3 sm:px-5 py-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <BuildingIcon className="size-4 text-muted-foreground" />
+                        <span className="font-medium text-sm">{group.company_name}</span>
+                        {group.name && group.name !== group.company_name && (
+                          <span className="text-xs text-muted-foreground">({group.name})</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {/* Transfer manifest */}
+                        {group.transfer_manifest_url ? (
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={`${apiBaseUrl}${group.transfer_manifest_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              View Manifest
+                            </a>
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              className="h-5 text-[10px] px-1.5 text-destructive hover:text-destructive"
+                              onClick={() => handleRemoveGroupManifest(group.id)}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        ) : (
+                          <label className="cursor-pointer text-xs text-blue-600 hover:underline">
+                            Upload Manifest
+                            <input
+                              type="file"
+                              accept="application/pdf,image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleUploadGroupManifest(group.id, f);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteGroupId(group.id)}
+                        >
+                          <Trash2Icon className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Assigned labels */}
+                    {assignedLabels.length > 0 && (
+                      <div className="space-y-1 ml-6">
+                        {assignedLabels.map((ms) => (
+                          <div key={ms.id} className="flex items-center gap-2 text-xs">
+                            <Badge variant="secondary" className="text-[10px]">SAMPLE</Badge>
+                            <span>{ms.strain_name}</span>
+                            <span className="text-muted-foreground">({ms.item_count} tags)</span>
+                            {ms.source_filename && (
+                              <span className="text-muted-foreground truncate max-w-[200px]" title={ms.source_filename}>{ms.source_filename}</span>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              className="h-5 text-[10px] px-1.5 text-destructive hover:text-destructive"
+                              onClick={() => handleAssignLabelsToGroup(group.id, assignedLabels.filter((l) => l.id !== ms.id).map((l) => l.id))}
+                            >
+                              Unassign
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Quick assign unassigned labels */}
+                    {unassignedLabels.length > 0 && (
+                      <div className="ml-6">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="xs" className="h-6 text-xs">
+                              <PlusIcon className="mr-1 size-3" />
+                              Assign Label
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-[500px]">
+                            {unassignedLabels.map((ms) => (
+                              <DropdownMenuItem
+                                key={ms.id}
+                                onClick={() => handleAssignLabelsToGroup(group.id, [...assignedLabels.map((l) => l.id), ms.id])}
+                              >
+                                <div className="min-w-0">
+                                  <div className="font-medium">{ms.strain_name} ({ms.item_count} tags)</div>
+                                  {ms.source_filename && (
+                                    <div className="text-xs text-muted-foreground break-all">{ms.source_filename}</div>
+                                  )}
+                                </div>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Notes section */}
       <div className="rounded-xl border bg-card shadow-xs">
@@ -1123,16 +1505,16 @@ export default function AdminShipmentDetailPage({
         </DialogContent>
       </Dialog>
 
-      {/* Sample METRC Import Dialog */}
+      {/* Sample METRC Import Dialog (Multi-file) */}
       <Dialog open={showSampleImport} onOpenChange={setShowSampleImport}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Import Sample METRC Labels</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Select a label design:</p>
-              <Select value={sampleLabelId} onValueChange={(v) => { setSampleLabelId(v); setSampleVariantId(""); }}>
+              <Select value={sampleLabelId} onValueChange={(v) => { setSampleLabelId(v); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select label..." />
                 </SelectTrigger>
@@ -1145,42 +1527,82 @@ export default function AdminShipmentDetailPage({
                 </SelectContent>
               </Select>
             </div>
-            {sampleLabelId && (() => {
-              const selectedLabel = labels.find((l) => l.slug === sampleLabelId);
-              const variants = selectedLabel?.strain_variants ?? [];
-              return variants.length > 0 ? (
+
+            {sampleLabelId && (
+              <>
                 <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Select variant:</p>
-                  <Select value={sampleVariantId} onValueChange={setSampleVariantId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select variant..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {variants.map((v) => (
-                        <SelectItem key={v.id} value={String(v.id)}>
-                          {v.strain_name}{v.is_sample ? " (sample)" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <p className="text-sm text-muted-foreground">Upload PDF files:</p>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    multiple
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      setSampleFiles((prev) => [
+                        ...prev,
+                        ...files.map((f) => ({ file: f, variantId: "" })),
+                      ]);
+                      e.target.value = "";
+                    }}
+                    className="text-sm"
+                  />
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No variants for this label.</p>
-              );
-            })()}
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Upload METRC PDF:</p>
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={(e) => setSampleFile(e.target.files?.[0] ?? null)}
-                className="text-sm"
-              />
-            </div>
+
+                {sampleFiles.length > 0 && (() => {
+                  const selectedLabel = labels.find((l) => l.slug === sampleLabelId);
+                  const variants = selectedLabel?.strain_variants ?? [];
+                  return (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {sampleFiles.map((entry, idx) => (
+                        <div key={idx} className="rounded-lg border p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium truncate flex-1" title={entry.file.name}>
+                              {entry.file.name}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              className="text-destructive hover:text-destructive shrink-0"
+                              onClick={() => setSampleFiles((prev) => prev.filter((_, i) => i !== idx))}
+                            >
+                              <XIcon className="size-3" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {(entry.file.size / 1024).toFixed(1)} KB
+                          </p>
+                          <Select
+                            value={entry.variantId}
+                            onValueChange={(v) => {
+                              setSampleFiles((prev) => prev.map((f, i) => i === idx ? { ...f, variantId: v } : f));
+                            }}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="Select variant..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {variants.map((v) => (
+                                <SelectItem key={v.id} value={String(v.id)}>
+                                  {v.strain_name}{v.is_sample ? " (sample)" : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowSampleImport(false)}>Cancel</Button>
-              <Button onClick={handleSampleMetrcImport} disabled={!sampleVariantId || !sampleFile || sampleImporting}>
-                {sampleImporting ? "Importing..." : "Import"}
+              <Button
+                onClick={handleSampleMetrcImport}
+                disabled={sampleFiles.length === 0 || sampleFiles.some((f) => !f.variantId) || sampleImporting}
+              >
+                {sampleImporting ? "Importing..." : `Import ${sampleFiles.length} File${sampleFiles.length !== 1 ? "s" : ""}`}
               </Button>
             </div>
           </div>
@@ -1250,6 +1672,96 @@ export default function AdminShipmentDetailPage({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Sample Group Confirmation */}
+      <AlertDialog open={deleteGroupId !== null} onOpenChange={(open) => { if (!open) setDeleteGroupId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Sample Group</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this sample group? Labels assigned to it will be unassigned but not deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSampleGroup}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Sample Group Dialog */}
+      <Dialog open={showCreateGroup} onOpenChange={setShowCreateGroup}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Sample Group</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Select a company:</p>
+              <Select value={newGroupCompanyId} onValueChange={setNewGroupCompanyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select company..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Group name (optional):</p>
+              <Input
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="e.g. Downtown location"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCreateGroup(false)}>Cancel</Button>
+              <Button onClick={handleCreateSampleGroup} disabled={!newGroupCompanyId || creatingGroup}>
+                {creatingGroup ? "Creating..." : "Create"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Inline editable tag input component
+function InlineTagInput({ value, placeholder, onSave }: { value: string; placeholder: string; onSave: (val: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  const save = () => {
+    setEditing(false);
+    if (draft !== value) onSave(draft);
+  };
+
+  if (editing) {
+    return (
+      <Input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
+        placeholder={placeholder}
+        className="h-6 text-xs w-48"
+        autoFocus
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={() => { setDraft(value); setEditing(true); }}
+      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+    >
+      {value || <span className="italic">{placeholder}</span>}
+    </button>
   );
 }

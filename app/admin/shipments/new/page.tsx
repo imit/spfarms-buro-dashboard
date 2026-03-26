@@ -24,6 +24,7 @@ function formatPrice(amount: string | number | null) {
 export default function NewShipmentPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const [nickname, setNickname] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
@@ -71,6 +72,7 @@ export default function NewShipmentPage() {
     setCreating(true);
     try {
       const shipment = await apiClient.createShipment({
+        nickname: nickname || undefined,
         scheduled_date: scheduledDate || undefined,
         notes: notes || undefined,
         order_ids: selectedOrderIds.length > 0 ? selectedOrderIds : undefined,
@@ -103,6 +105,16 @@ export default function NewShipmentPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="nickname">Nickname</Label>
+          <Input
+            id="nickname"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder='e.g. "Monday Bay Area run"'
+          />
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="scheduled_date">Scheduled Date</Label>
           <Input

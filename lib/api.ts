@@ -1447,10 +1447,11 @@ export interface GalleryFile {
 
 // ---- Shipments ----
 
-export type ShipmentStatus = "draft" | "loading" | "in_transit" | "delivered" | "cancelled";
+export type ShipmentStatus = "draft" | "loading" | "in_transit" | "delivered" | "cancelled" | "processing";
 
 export const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
   draft: "Draft",
+  processing: "Processing",
   loading: "Loading",
   in_transit: "In Transit",
   delivered: "Delivered",
@@ -1462,6 +1463,7 @@ export interface ShipmentOrderItem {
   product_name: string;
   quantity: number;
   unit_price: string;
+  metrc_tag?: string | null;
   metrc_label_sets?: { id: number; name: string; item_count: number; label_id: number; label_slug: string; label_name: string }[];
 }
 
@@ -1476,19 +1478,48 @@ export interface ShipmentOrderSummary {
   payment_status: string;
   desired_delivery_date: string | null;
   position: number;
+  transfer_manifest_url?: string | null;
+}
+
+export interface SampleMetrcSet {
+  id: number;
+  name: string;
+  item_count: number;
+  label_id: number;
+  label_slug: string;
+  label_name: string;
+  strain_id: number | null;
+  strain_name: string | null;
+  variant_id: number;
+  is_sample: boolean;
+  tag_id?: string | null;
+  sample_group_id?: number | null;
+  source_filename?: string | null;
+}
+
+export interface SampleGroup {
+  id: number;
+  name: string;
+  company_id: number;
+  company_name: string;
+  transfer_manifest_url?: string | null;
+  metrc_label_set_ids: number[];
 }
 
 export interface Shipment {
   id: number;
   shipment_number: string;
+  nickname: string | null;
   status: ShipmentStatus;
   scheduled_date: string | null;
   departed_at: string | null;
   completed_at: string | null;
   notes: string | null;
+  is_sample: boolean;
   driver: { id: number; full_name: string | null; email: string } | null;
   orders: ShipmentOrderSummary[];
-  sample_metrc_sets: { id: number; name: string; item_count: number; label_id: number; label_slug: string; label_name: string; strain_id: number | null; strain_name: string | null }[];
+  sample_metrc_sets: SampleMetrcSet[];
+  sample_groups: SampleGroup[];
   totals: { order_count: number; total_value: number; total_items: number };
   created_at: string;
   updated_at: string;
@@ -5143,7 +5174,7 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
-  async createShipment(data: { scheduled_date?: string; notes?: string; order_ids?: number[] }): Promise<Shipment> {
+  async createShipment(data: { scheduled_date?: string; notes?: string; nickname?: string; order_ids?: number[] }): Promise<Shipment> {
     const res = await this.request<JsonApiResponse<Shipment>>(
       "/api/v1/shipments",
       {
@@ -5156,7 +5187,7 @@ export class ApiClient {
 
   async updateShipment(
     id: number,
-    data: { status?: string; notes?: string; scheduled_date?: string; user_id?: number | null }
+    data: { status?: string; notes?: string; nickname?: string; scheduled_date?: string; user_id?: number | null; is_sample?: boolean }
   ): Promise<Shipment> {
     const res = await this.request<JsonApiResponse<Shipment>>(
       `/api/v1/shipments/${id}`,
@@ -5333,6 +5364,169 @@ export class ApiClient {
       body: JSON.stringify({ metrc_label_set_id: metrcLabelSetId }),
     });
     if (!res.ok) throw new Error("Failed to delete sample METRC set");
+  }
+
+  // Batch import multiple sample METRC PDFs
+  async batchImportShipmentSampleMetrc(
+    shipmentId: number,
+    files: { variantId: number; pdf: File }[]
+  ): Promise<unknown> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/batch_import_sample_metrc`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const form = new FormData();
+    files.forEach((entry, i) => {
+      form.append(`files[${i}][variant_id]`, String(entry.variantId));
+      form.append(`files[${i}][pdf]`, entry.pdf);
+    });
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+      body: form,
+    });
+    if (!res.ok) throw new Error("Failed to batch import sample METRC labels");
+    return res.json();
+  }
+
+  // Update tag_id on a sample METRC label set
+  async updateSampleMetrcTag(shipmentId: number, metrcLabelSetId: number, tagId: string): Promise<void> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/update_sample_metrc_tag`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ metrc_label_set_id: metrcLabelSetId, tag_id: tagId }),
+    });
+    if (!res.ok) throw new Error("Failed to update sample METRC tag");
+  }
+
+  // Upload transfer manifest for an order
+  async uploadTransferManifest(orderId: number, file: File): Promise<void> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/upload_transfer_manifest`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+      body: form,
+    });
+    if (!res.ok) throw new Error("Failed to upload transfer manifest");
+  }
+
+  // Delete transfer manifest for an order
+  async deleteTransferManifest(orderId: number): Promise<void> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/delete_transfer_manifest`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to delete transfer manifest");
+  }
+
+  // Update metrc_tag on an order item
+  async updateOrderItemMetrcTag(orderId: number, orderItemId: number, metrcTag: string): Promise<void> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/update_item_metrc_tag`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ order_item_id: orderItemId, metrc_tag: metrcTag }),
+    });
+    if (!res.ok) throw new Error("Failed to update order item METRC tag");
+  }
+
+  // Sample Groups
+  async createSampleGroup(shipmentId: number, data: { company_id: number; name: string }): Promise<SampleGroup> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/create_sample_group`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to create sample group");
+    const json = await res.json();
+    return json.data;
+  }
+
+  async deleteSampleGroup(shipmentId: number, sampleGroupId: number): Promise<void> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/delete_sample_group`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ sample_group_id: sampleGroupId }),
+    });
+    if (!res.ok) throw new Error("Failed to delete sample group");
+  }
+
+  async uploadSampleGroupManifest(shipmentId: number, sampleGroupId: number, file: File): Promise<SampleGroup> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/upload_sample_group_manifest`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const form = new FormData();
+    form.append("sample_group_id", String(sampleGroupId));
+    form.append("file", file);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+      body: form,
+    });
+    if (!res.ok) throw new Error("Failed to upload sample group manifest");
+    const json = await res.json();
+    return json.data;
+  }
+
+  async deleteSampleGroupManifest(shipmentId: number, sampleGroupId: number): Promise<void> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/delete_sample_group_manifest`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ sample_group_id: sampleGroupId }),
+    });
+    if (!res.ok) throw new Error("Failed to delete sample group manifest");
+  }
+
+  async assignLabelsToSampleGroup(shipmentId: number, sampleGroupId: number, metrcLabelSetIds: number[]): Promise<Shipment> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/assign_labels_to_sample_group`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ sample_group_id: sampleGroupId, metrc_label_set_ids: metrcLabelSetIds }),
+    });
+    if (!res.ok) throw new Error("Failed to assign labels to sample group");
+    const json = await res.json();
+    return { ...json.data.attributes, id: Number(json.data.id) };
   }
 }
 
