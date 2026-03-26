@@ -134,6 +134,9 @@ export default function AdminShipmentDetailPage({
   const [newGroupName, setNewGroupName] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [deleteGroupId, setDeleteGroupId] = useState<number | null>(null);
+  const [printGroupId, setPrintGroupId] = useState<number | null>(null);
+  const [printGroupLayoutId, setPrintGroupLayoutId] = useState("");
+  const [printingGroup, setPrintingGroup] = useState(false);
 
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -657,6 +660,26 @@ export default function AdminShipmentDetailPage({
     }
   };
 
+  const handlePrintGroupLabels = async () => {
+    if (!printGroupId || !printGroupLayoutId) return;
+    setPrintingGroup(true);
+    try {
+      const blob = await apiClient.printSampleGroupLabels(Number(id), printGroupId, printGroupLayoutId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sample-group-labels.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setPrintGroupId(null);
+      toast.success("PDF downloaded");
+    } catch {
+      showError("download group labels");
+    } finally {
+      setPrintingGroup(false);
+    }
+  };
+
   const handleAssignLabelsToGroup = async (groupId: number, labelSetIds: number[]) => {
     try {
       const updated = await apiClient.assignLabelsToSampleGroup(Number(id), groupId, labelSetIds);
@@ -1158,6 +1181,17 @@ export default function AdminShipmentDetailPage({
                         )}
                       </div>
                       <div className="flex items-center gap-2">
+                        {assignedLabels.length > 0 && (
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            className="h-6 text-xs"
+                            onClick={() => { setPrintGroupId(group.id); setPrintGroupLayoutId(""); }}
+                          >
+                            <DownloadIcon className="mr-1 size-3" />
+                            Download All
+                          </Button>
+                        )}
                         {/* Transfer manifest */}
                         {group.transfer_manifest_url ? (
                           <div className="flex items-center gap-2">
@@ -1667,6 +1701,38 @@ export default function AdminShipmentDetailPage({
               <Button variant="outline" onClick={() => setSamplePrintSetId(null)}>Cancel</Button>
               <Button onClick={handleSampleMetrcPrint} disabled={!samplePrintLayoutId || samplePrinting}>
                 {samplePrinting ? "Generating PDF..." : "Print"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print Sample Group Labels Dialog */}
+      <Dialog open={printGroupId !== null} onOpenChange={(open) => { if (!open) setPrintGroupId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Download Group Labels</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Select a sheet layout:</p>
+              <Select value={printGroupLayoutId} onValueChange={setPrintGroupLayoutId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select sheet layout..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sheetLayouts.map((layout) => (
+                    <SelectItem key={layout.id} value={layout.slug}>
+                      {layout.name} ({layout.columns}x{layout.rows})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPrintGroupId(null)}>Cancel</Button>
+              <Button onClick={handlePrintGroupLabels} disabled={!printGroupLayoutId || printingGroup}>
+                {printingGroup ? "Generating PDF..." : "Download"}
               </Button>
             </div>
           </div>

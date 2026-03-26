@@ -5497,6 +5497,22 @@ export class ApiClient {
     return json.data;
   }
 
+  async printSampleGroupLabels(shipmentId: number, sampleGroupId: number, sheetLayoutId: string): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/print_sample_group_labels`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ sample_group_id: sampleGroupId, sheet_layout_id: sheetLayoutId }),
+    });
+    if (!res.ok) throw new Error("Failed to print sample group labels");
+    return res.blob();
+  }
+
   async deleteSampleGroupManifest(shipmentId: number, sampleGroupId: number): Promise<void> {
     const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/delete_sample_group_manifest`;
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
