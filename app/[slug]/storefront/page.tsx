@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { apiClient, type Product, type Strain, type Cart, type Company } from "@/lib/api";
+import { apiClient, type Product, type Strain, type Cart, type Company, type Menu } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { ProductCard } from "@/components/storefront/product-card";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ export default function StorefrontPage({
   const [company, setCompany] = useState<Company | null>(null);
   const [strainMap, setStrainMap] = useState<Record<number, Strain>>({});
   const [cart, setCart] = useState<Cart | null>(null);
+  const [menu, setMenu] = useState<Menu | null>(null);
 
   const fetchCart = useCallback(async (cId: number) => {
     try {
@@ -37,14 +38,36 @@ export default function StorefrontPage({
 
     async function load() {
       try {
-        const [productData, company, strains] = await Promise.all([
-          apiClient.getProducts(),
+        const [menuData, company, strains] = await Promise.all([
+          apiClient.resolveMenuForCompany(slug),
           apiClient.getCompany(slug),
           apiClient.getStrains(),
         ]);
-        setProducts(
-          productData.filter((p) => p.active && p.status === "active" && p.product_type !== "bulk_flower")
-        );
+        setMenu(menuData);
+
+        // Map visible menu items to Product-shaped objects with effective pricing
+        const menuProducts = (menuData.items || [])
+          .filter((item) => item.visible && !item.bulk && item.in_stock !== false)
+          .map((item) => ({
+            id: item.product_id,
+            name: item.product_name,
+            slug: item.product_slug,
+            product_type: item.product_type,
+            default_price: item.effective_price != null ? String(item.effective_price) : null,
+            price_tbd: item.price_tbd,
+            thumbnail_url: item.thumbnail_url,
+            strain_id: item.strain_id,
+            strain_name: item.strain_name,
+            unit_weight: item.unit_weight,
+            minimum_order_quantity: item.minimum_order_quantity,
+            coming_soon: item.coming_soon,
+            best_seller: item.best_seller,
+            cannabis: item.cannabis,
+            thc_content: item.thc_content,
+            cbd_content: item.cbd_content,
+            in_stock: item.in_stock,
+          } as Product));
+        setProducts(menuProducts);
         setCompany(company);
 
         const map: Record<number, Strain> = {};
@@ -75,7 +98,7 @@ export default function StorefrontPage({
   const handleAddToCart = async (productId: number, quantity: number) => {
     if (!company) return;
     try {
-      const updated = await apiClient.addToCart(company.id, productId, quantity);
+      const updated = await apiClient.addToCart(company.id, productId, quantity, menu?.id);
       setCart(updated);
       window.dispatchEvent(new CustomEvent("cart:updated"));
       const product = products.find((p) => p.id === productId);

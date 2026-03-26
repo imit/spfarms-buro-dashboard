@@ -212,6 +212,8 @@ export interface Company {
   comments_count: number;
   orders_count: number;
   last_activity_at: string | null;
+  default_menu_id: number | null;
+  default_menu_slug: string | null;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -404,6 +406,58 @@ export interface Product {
   metrc_tag: string | null;
   webpage_url: string | null;
   metrc_last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---- Menus ----
+
+export type MenuAccessType = "company_member_only" | "anyone_with_link";
+export type MenuStatus = "draft" | "active" | "archived";
+
+export interface MenuItem {
+  id: number;
+  product_id: number;
+  product_name: string;
+  product_slug: string;
+  product_type: ProductType;
+  override_price: number | null;
+  effective_price: number | null;
+  default_price: number | null;
+  price_tbd: boolean;
+  position: number;
+  visible: boolean;
+  allocation_qty: number | null;
+  thumbnail_url: string | null;
+  strain_name: string | null;
+  strain_id: number | null;
+  in_stock: boolean;
+  unit_weight: string | null;
+  minimum_order_quantity: number;
+  bulk: boolean;
+  coming_soon: boolean;
+  best_seller: boolean;
+  cannabis: boolean;
+  thc_content: string | null;
+  cbd_content: string | null;
+}
+
+export interface Menu {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  access_type: MenuAccessType;
+  status: MenuStatus;
+  is_default: boolean;
+  cover_image_url: string | null;
+  expires_at: string | null;
+  company_id: number | null;
+  company_name: string | null;
+  created_by_name: string | null;
+  item_count: number;
+  items?: MenuItem[];
+  share_url?: string;
   created_at: string;
   updated_at: string;
 }
@@ -708,6 +762,7 @@ export interface CartItem {
   product_slug: string;
   product_type: ProductType;
   unit_price: string | null;
+  menu_id: number | null;
   thumbnail_url: string | null;
   strain_name: string | null;
   unit_weight: string | null;
@@ -2570,6 +2625,151 @@ export class ApiClient {
     });
   }
 
+  // ---- Menus ----
+
+  async getMenus(): Promise<Menu[]> {
+    const res = await this.request<JsonApiCollectionResponse<Menu>>(
+      "/api/v1/menus"
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getMenu(slug: string): Promise<Menu> {
+    const res = await this.request<JsonApiResponse<Menu>>(
+      `/api/v1/menus/${slug}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createMenu(data: {
+    name: string;
+    description?: string;
+    access_type?: MenuAccessType;
+    status?: MenuStatus;
+    is_default?: boolean;
+    company_id?: number;
+    expires_at?: string;
+  }): Promise<Menu> {
+    const res = await this.request<JsonApiResponse<Menu>>("/api/v1/menus", {
+      method: "POST",
+      body: JSON.stringify({ menu: data }),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateMenu(
+    slug: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      access_type: MenuAccessType;
+      status: MenuStatus;
+      is_default: boolean;
+      company_id: number;
+      expires_at: string;
+    }>
+  ): Promise<Menu> {
+    const res = await this.request<JsonApiResponse<Menu>>(
+      `/api/v1/menus/${slug}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ menu: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteMenu(slug: string): Promise<void> {
+    await this.request(`/api/v1/menus/${slug}`, { method: "DELETE" });
+  }
+
+  async duplicateMenu(slug: string): Promise<Menu> {
+    const res = await this.request<JsonApiResponse<Menu>>(
+      `/api/v1/menus/${slug}/duplicate`,
+      { method: "POST" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async addMenuItem(
+    menuSlug: string,
+    data: { product_id: number; override_price?: number; position?: number }
+  ): Promise<Menu> {
+    const res = await this.request<JsonApiResponse<Menu>>(
+      `/api/v1/menus/${menuSlug}/items`,
+      {
+        method: "POST",
+        body: JSON.stringify({ menu_item: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async batchAddMenuItems(
+    menuSlug: string,
+    items: { product_id: number; override_price?: number; position?: number }[]
+  ): Promise<Menu> {
+    const res = await this.request<JsonApiResponse<Menu>>(
+      `/api/v1/menus/${menuSlug}/items/batch_add`,
+      {
+        method: "POST",
+        body: JSON.stringify({ items }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateMenuItem(
+    menuSlug: string,
+    itemId: number,
+    data: { override_price?: number | null; position?: number; visible?: boolean; allocation_qty?: number | null }
+  ): Promise<Menu> {
+    const res = await this.request<JsonApiResponse<Menu>>(
+      `/api/v1/menus/${menuSlug}/items/${itemId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ menu_item: data }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async removeMenuItem(menuSlug: string, itemId: number): Promise<Menu> {
+    const res = await this.request<JsonApiResponse<Menu>>(
+      `/api/v1/menus/${menuSlug}/items/${itemId}`,
+      { method: "DELETE" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async reorderMenuItems(
+    menuSlug: string,
+    itemIds: number[]
+  ): Promise<Menu> {
+    const res = await this.request<JsonApiResponse<Menu>>(
+      `/api/v1/menus/${menuSlug}/items/reorder`,
+      {
+        method: "POST",
+        body: JSON.stringify({ item_ids: itemIds }),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async getPublicMenu(slug: string): Promise<Menu> {
+    const res = await this.request<JsonApiResponse<Menu>>(
+      `/api/v1/public/menus/${slug}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async resolveMenuForCompany(companySlug: string): Promise<Menu> {
+    const res = await this.request<JsonApiResponse<Menu>>(
+      `/api/v1/menus/resolve?company_slug=${companySlug}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async sendBulkFlowerList(
     companySlug: string,
     customMessage?: string
@@ -3319,13 +3519,14 @@ export class ApiClient {
   async addToCart(
     companyId: number,
     productId: number,
-    quantity: number = 1
+    quantity: number = 1,
+    menuId?: number
   ): Promise<Cart> {
     const res = await this.request<JsonApiResponse<Cart>>(
       `/api/v1/cart/items?company_id=${companyId}`,
       {
         method: "POST",
-        body: JSON.stringify({ product_id: productId, quantity }),
+        body: JSON.stringify({ product_id: productId, quantity, menu_id: menuId }),
       }
     );
     return { ...res.data.attributes, id: Number(res.data.id) };

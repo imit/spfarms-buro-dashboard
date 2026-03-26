@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, Settings2Icon, CircleHelpIcon, SearchIcon, BoxIcon, UserPlusIcon, ClipboardListIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, PackageCheckIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, UsersIcon, Settings2Icon, BoxIcon, UserPlusIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon, FolderIcon, BuildingIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -28,145 +28,146 @@ interface NavItem {
   url: string
   icon: React.ReactNode
   resource?: Resource
-  children?: { title: string; url: string }[]
+  children?: { title: string; url: string; resource?: Resource }[]
 }
 
-const navOps: NavItem[] = [
-  {
-    title: "Strains",
-    url: "/admin/strains",
-    icon: <ChartBarIcon />,
-    resource: "strains",
-  },
-  {
-    title: "Grow",
-    url: "/admin/grow",
-    icon: <SproutIcon />,
-    resource: "grow",
-    children: [
-      { title: "Overview", url: "/admin/grow" },
-      { title: "Batches", url: "/admin/grow/batches" },
-      { title: "Harvests", url: "/admin/grow/harvests" },
-      { title: "METRC Tags", url: "/admin/grow/tags" },
-      { title: "Activity", url: "/admin/grow/activity" },
-      { title: "Feed", url: "/admin/grow/feed" },
-    ],
-  },
-  {
-    title: "Samples",
-    url: "/admin/samples",
-    icon: <FlaskConicalIcon />,
-    resource: "samples",
-  },
-  {
-    title: "Labels",
-    url: "/admin/projects",
-    icon: <FolderIcon />,
-    resource: "projects",
-  },
-  {
-    title: "Products",
-    url: "/admin/products",
-    icon: <BoxIcon />,
-    resource: "products",
-  },
-  {
-    title: "Bulk Flower",
-    url: "/admin/bulk-flower",
-    icon: <LeafIcon />,
-    resource: "products",
-  },
-  {
-    title: "Metrc",
-    url: "/admin/metrc",
-    icon: <ActivityIcon />,
-    resource: "grow",
-    children: [
-      { title: "Explorer", url: "/admin/metrc" },
-      { title: "Create Packages", url: "/admin/metrc/create-packages" },
-    ],
-  },
-]
-
-const navSales: NavItem[] = [
+const navPeopleCompanies: NavItem[] = [
   {
     title: "Companies",
     url: "/admin/companies",
-    icon: <ListIcon />,
+    icon: <BuildingIcon className="text-blue-500" />,
     resource: "companies",
   },
   {
     title: "Users",
     url: "/admin/users",
-    icon: <UsersIcon />,
+    icon: <UsersIcon className="text-indigo-500" />,
     resource: "users",
+  },
+]
+
+const navCommerce: NavItem[] = [
+  {
+    title: "Products",
+    url: "/admin/products",
+    icon: <BoxIcon className="text-amber-600" />,
+    resource: "products",
+  },
+  {
+    title: "Menus",
+    url: "/admin/menus",
+    icon: <StoreIcon className="text-violet-500" />,
+    resource: "products",
   },
   {
     title: "Orders",
     url: "/admin/orders",
-    icon: <ClipboardListIcon />,
+    icon: <ListIcon className="text-sky-500" />,
     resource: "orders_list",
   },
   {
     title: "Payments",
     url: "/admin/payments",
-    icon: <DollarSignIcon />,
+    icon: <DollarSignIcon className="text-emerald-500" />,
     resource: "payments",
-  },
-  {
-    title: "Shipments",
-    url: "/admin/shipments",
-    icon: <TruckIcon />,
-    resource: "shipments",
-  },
-  {
-    title: "Fulfilment",
-    url: "/admin/fulfilment",
-    icon: <PackageCheckIcon />,
-    resource: "fulfilment",
   },
   {
     title: "Carts",
     url: "/admin/carts",
-    icon: <ShoppingCartIcon />,
+    icon: <ShoppingCartIcon className="text-orange-500" />,
     resource: "carts",
   },
   {
-    title: "Notifications",
-    url: "/admin/notifications",
-    icon: <BellIcon />,
-    resource: "notifications",
+    title: "Shipments",
+    url: "/admin/shipments",
+    icon: <TruckIcon className="text-cyan-600" />,
+    resource: "shipments",
   },
   {
-    title: "Support Tickets",
-    url: "/admin/support-tickets",
-    icon: <TicketIcon />,
-    resource: "support_tickets",
+    title: "Bulk Flower",
+    url: "/admin/bulk-flower",
+    icon: <LeafIcon className="text-green-600" />,
+    resource: "products",
+  },
+  {
+    title: "Store Preview",
+    url: "/admin/store-preview",
+    icon: <StoreIcon className="text-pink-500" />,
   },
 ]
 
-const navSecondary: NavItem[] = [
+const navGrow: NavItem[] = [
   {
-    title: "Audit Log",
+    title: "Strains",
+    url: "/admin/strains",
+    icon: <SproutIcon className="text-lime-600" />,
+    resource: "strains",
+  },
+  {
+    title: "Overview",
+    url: "/admin/grow",
+    icon: <SproutIcon className="text-green-600" />,
+    resource: "grow",
+  },
+  {
+    title: "Batches",
+    url: "/admin/grow/batches",
+    icon: <SproutIcon className="text-emerald-600" />,
+    resource: "grow",
+  },
+  {
+    title: "Harvests",
+    url: "/admin/grow/harvests",
+    icon: <SproutIcon className="text-teal-600" />,
+    resource: "grow",
+  },
+  {
+    title: "Activity",
+    url: "/admin/grow/activity",
+    icon: <SproutIcon className="text-green-500" />,
+    resource: "grow",
+  },
+  {
+    title: "Feed",
+    url: "/admin/grow/feed",
+    icon: <SproutIcon className="text-lime-500" />,
+    resource: "grow",
+  },
+]
+
+const navMetrc: NavItem[] = [
+  {
+    title: "Samples",
+    url: "/admin/samples",
+    icon: <FlaskConicalIcon className="text-purple-500" />,
+    resource: "samples",
+  },
+  {
+    title: "METRC Tags",
+    url: "/admin/grow/tags",
+    icon: <ActivityIcon className="text-rose-500" />,
+    resource: "grow",
+  },
+  {
+    title: "Explorer",
+    url: "/admin/metrc",
+    icon: <ActivityIcon className="text-red-500" />,
+    resource: "grow",
+  },
+  {
+    title: "Create Packages",
+    url: "/admin/metrc/create-packages",
+    icon: <ActivityIcon className="text-orange-600" />,
+    resource: "grow",
+  },
+]
+
+const navSettings: NavItem[] = [
+  {
+    title: "Audit Logs",
     url: "/admin/audit-log",
-    icon: <ShieldAlertIcon />,
+    icon: <ShieldAlertIcon className="text-amber-500" />,
     resource: "audit_log",
-  },
-  {
-    title: "Settings",
-    url: "/admin/settings",
-    icon: <Settings2Icon />,
-    resource: "settings",
-  },
-  {
-    title: "Get Help",
-    url: "#",
-    icon: <CircleHelpIcon />,
-  },
-  {
-    title: "Search",
-    url: "#",
-    icon: <SearchIcon />,
   },
 ]
 
@@ -178,10 +179,37 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, logout } = useAuth()
   const role = user?.role as UserRole | undefined
 
-  const filteredOps = filterByAccess(navOps, role)
-  const filteredSales = filterByAccess(navSales, role)
-  const filteredSecondary = filterByAccess(navSecondary, role)
+  const filteredPeopleCompanies = filterByAccess(navPeopleCompanies, role)
+  const filteredCommerce = filterByAccess(navCommerce, role)
+  const filteredGrow = filterByAccess(navGrow, role)
+  const filteredMetrc = filterByAccess(navMetrc, role)
+  const filteredSettings = filterByAccess(navSettings, role)
   const showQuickOnboard = canAccess("quick_onboard", role)
+
+  // Top-level items
+  const topItems: NavItem[] = [
+    { title: "Dashboard", url: "/admin", icon: <LayoutDashboardIcon className="text-blue-600" /> },
+  ]
+  if (canAccess("root_dashboard", role)) {
+    topItems.push({ title: "Root Dashboard", url: "/admin/root", icon: <ShieldIcon className="text-red-600" /> })
+  }
+
+  const workspaceItems: NavItem[] = []
+  if (canAccess("projects", role)) {
+    workspaceItems.push({ title: "Labels", url: "/admin/projects", icon: <FolderIcon className="text-yellow-600" /> })
+  }
+  if (canAccess("posts", role)) {
+    workspaceItems.push({ title: "Tasks", url: "/admin/posts", icon: <MessageSquareIcon className="text-sky-500" /> })
+  }
+  if (canAccess("gallery", role)) {
+    workspaceItems.push({ title: "Gallery", url: "/admin/gallery", icon: <ImageIcon className="text-pink-500" /> })
+  }
+  if (canAccess("notifications", role)) {
+    workspaceItems.push({ title: "Notifications", url: "/admin/notifications", icon: <BellIcon className="text-amber-500" /> })
+  }
+  if (canAccess("support_tickets", role)) {
+    workspaceItems.push({ title: "Support Tickets", url: "/admin/support-tickets", icon: <TicketIcon className="text-violet-500" /> })
+  }
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -195,9 +223,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain label="Dashboard" items={[{ title: "Dashboard", url: "/admin", icon: <LayoutDashboardIcon /> }, ...(canAccess("root_dashboard", role) ? [{ title: "Root Dashboard", url: "/admin/root", icon: <ShieldIcon /> }] : []), ...(canAccess("posts", role) ? [{ title: "Tasks", url: "/admin/posts", icon: <MessageSquareIcon /> }] : []), ...(canAccess("gallery", role) ? [{ title: "Gallery", url: "/admin/gallery", icon: <ImageIcon /> }] : []), { title: "Store Preview", url: "/admin/store-preview", icon: <StoreIcon /> }]} />
-        {filteredOps.length > 0 && <NavMain label="Ops" items={filteredOps} />}
-        {filteredSales.length > 0 && <NavMain label="Sales" items={filteredSales} />}
+        <NavMain items={topItems} />
+        {filteredPeopleCompanies.length > 0 && <NavMain label="People & Companies" items={filteredPeopleCompanies} />}
+        {filteredCommerce.length > 0 && <NavMain label="Commerce" items={filteredCommerce} />}
+        {filteredGrow.length > 0 && <NavMain label="Grow" items={filteredGrow} />}
+        {filteredMetrc.length > 0 && <NavMain label="Metrc" items={filteredMetrc} />}
+        {workspaceItems.length > 0 && <NavMain label="Workspace" items={workspaceItems} />}
         {showQuickOnboard && (
           <SidebarGroup>
             <SidebarGroupContent>
@@ -212,7 +243,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-        <NavSecondary items={filteredSecondary} className="mt-auto" />
+        <NavSecondary items={[
+          ...(canAccess("settings", role) ? [{ title: "Settings", url: "/admin/settings", icon: <Settings2Icon className="text-gray-500" /> }] : []),
+          ...filteredSettings,
+        ]} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser

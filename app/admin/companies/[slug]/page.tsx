@@ -11,6 +11,7 @@ import {
   apiClient,
   type Cart,
   type Company,
+  type Menu,
   type DiscountRecord,
   type LeadStatus,
   type Location,
@@ -80,6 +81,7 @@ import {
   RefreshCwIcon,
   SendIcon,
   ShoppingCartIcon,
+  StoreIcon,
   TagIcon,
   Trash2Icon,
   UserIcon,
@@ -169,6 +171,8 @@ export default function CompanyDetailPage({
   const [locationForm, setLocationForm] = useState({ name: "", address: "", city: "", state: "", zip_code: "", region: "" as string, phone_number: "", license_number: "" });
   const [locationSubmitting, setLocationSubmitting] = useState(false);
   const [deletingLocationId, setDeletingLocationId] = useState<number | null>(null);
+  const [menus, setMenus] = useState<Menu[]>([]);
+  const [assigningMenu, setAssigningMenu] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -184,14 +188,16 @@ export default function CompanyDetailPage({
         const data = await apiClient.getCompany(slug);
         setCompany(data);
         try {
-          const [cartData, discountsData, ordersData] = await Promise.all([
+          const [cartData, discountsData, ordersData, menusData] = await Promise.all([
             apiClient.getCart(data.id),
             apiClient.getDiscounts(),
             apiClient.getOrders({ company_id: data.id }),
+            apiClient.getMenus(),
           ]);
           setCart(cartData);
           setAllDiscounts(discountsData);
           setOrders(ordersData);
+          setMenus(menusData.filter((m) => m.status === "active"));
         } catch {
           // Cart may not exist yet
         }
@@ -873,6 +879,75 @@ export default function CompanyDetailPage({
                     })}
                   </div>
                 )}
+              </div>
+
+              {/* Assigned Menu */}
+              <div className="rounded-xl border bg-card p-5 shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <StoreIcon className="size-4" />
+                    Storefront Menu
+                  </h3>
+                  {company.default_menu_id && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      disabled={assigningMenu}
+                      onClick={async () => {
+                        setAssigningMenu(true);
+                        try {
+                          const updated = await apiClient.updateCompany(company.slug, { default_menu_id: null } as Record<string, unknown>);
+                          setCompany(updated);
+                          toast.success("Reset to default storefront menu");
+                        } catch { showError("reset menu"); }
+                        finally { setAssigningMenu(false); }
+                      }}
+                    >
+                      Reset to default
+                    </Button>
+                  )}
+                </div>
+                <Separator className="mb-3" />
+                <p className="text-sm text-muted-foreground mb-3">
+                  {company.default_menu_id
+                    ? <>This company sees a custom menu: <Link href={`/admin/menus/${company.default_menu_slug}`} className="text-primary hover:underline font-medium">{menus.find(m => m.id === company.default_menu_id)?.name || company.default_menu_slug}</Link></>
+                    : "This company sees the default storefront. Assign a custom menu to show different products or pricing."
+                  }
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {menus
+                    .filter((m) => !m.is_default)
+                    .map((m) => (
+                      <Button
+                        key={m.id}
+                        variant={company.default_menu_id === m.id ? "default" : "outline"}
+                        size="sm"
+                        disabled={assigningMenu}
+                        onClick={async () => {
+                          if (company.default_menu_id === m.id) return;
+                          setAssigningMenu(true);
+                          try {
+                            const updated = await apiClient.updateCompany(company.slug, { default_menu_id: m.id } as Record<string, unknown>);
+                            setCompany(updated);
+                            toast.success(`Assigned "${m.name}" menu`);
+                          } catch { showError("assign menu"); }
+                          finally { setAssigningMenu(false); }
+                        }}
+                      >
+                        {m.name}
+                        {m.item_count != null && (
+                          <span className="ml-1.5 text-xs opacity-60">({m.item_count})</span>
+                        )}
+                      </Button>
+                    ))}
+                  {menus.filter(m => !m.is_default).length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      No custom menus yet.{" "}
+                      <Link href="/admin/menus/new" className="text-primary hover:underline">Create one</Link>
+                    </p>
+                  )}
+                </div>
               </div>
             </>
           )}
