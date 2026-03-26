@@ -3,16 +3,18 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { apiClient, Menu, MenuItem } from "@/lib/api"
+import { apiClient, type Menu, type MenuItem } from "@/lib/api"
+import { Logo } from "@/components/shared/logo"
+import { StorefrontFooter } from "@/components/storefront/storefront-footer"
 
-function formatPrice(cents: number | null): string {
-  if (cents === null) return "TBD"
-  return `$${(cents / 100).toFixed(2)}`
+function formatPrice(price: number | null): string {
+  if (price === null) return "TBD"
+  return `$${price.toFixed(2)}`
 }
 
 function MenuItemCard({ item }: { item: MenuItem }) {
   return (
-    <div className="rounded-lg border bg-white shadow-sm overflow-hidden transition-shadow hover:shadow-md">
+    <div className="rounded-2xl border bg-white shadow-sm overflow-hidden transition-shadow hover:shadow-md">
       {item.thumbnail_url ? (
         <div className="aspect-square bg-gray-100">
           <img
@@ -22,20 +24,9 @@ function MenuItemCard({ item }: { item: MenuItem }) {
           />
         </div>
       ) : (
-        <div className="aspect-square bg-gray-100 flex items-center justify-center text-gray-400">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-12 w-12"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-            />
+        <div className="aspect-square bg-gray-100 flex items-center justify-center text-gray-300">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
         </div>
       )}
@@ -44,30 +35,24 @@ function MenuItemCard({ item }: { item: MenuItem }) {
           {item.product_name}
         </h3>
         {item.strain_name && (
-          <p className="text-xs text-gray-500">{item.strain_name}</p>
+          <p className="text-xs text-muted-foreground">{item.strain_name}</p>
         )}
         <div className="flex items-center gap-2 pt-1">
           <span className="font-semibold text-sm">
             {item.price_tbd ? "Price TBD" : formatPrice(item.effective_price)}
           </span>
           {item.unit_weight && (
-            <span className="text-xs text-gray-400">/ {item.unit_weight}</span>
+            <span className="text-xs text-muted-foreground">/ {item.unit_weight}</span>
           )}
         </div>
         {!item.in_stock && (
-          <span className="inline-block text-xs text-red-600 font-medium">
-            Out of stock
-          </span>
+          <span className="inline-block text-xs text-red-600 font-medium">Out of stock</span>
         )}
         {item.coming_soon && (
-          <span className="inline-block text-xs text-amber-600 font-medium">
-            Coming soon
-          </span>
+          <span className="inline-block text-xs text-amber-600 font-medium">Coming soon</span>
         )}
         {item.best_seller && (
-          <span className="inline-block text-xs text-green-600 font-medium">
-            Best seller
-          </span>
+          <span className="inline-block text-xs text-green-600 font-medium">Best seller</span>
         )}
       </div>
     </div>
@@ -84,27 +69,23 @@ export default function PublicMenuPage() {
 
   useEffect(() => {
     if (!menuSlug) return
-
     setLoading(true)
     setError(null)
-
     apiClient
       .getPublicMenu(menuSlug)
       .then((data) => setMenu(data))
       .catch((err) => {
-        setError(
-          err?.message || "Unable to load this menu. It may not exist or has been removed."
-        )
+        setError(err?.message || "Unable to load this menu.")
       })
       .finally(() => setLoading(false))
   }, [menuSlug])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FFFBF9" }}>
         <div className="text-center space-y-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-800 mx-auto" />
-          <p className="text-sm text-gray-500">Loading menu...</p>
+          <p className="text-sm text-muted-foreground">Loading menu...</p>
         </div>
       </div>
     )
@@ -112,16 +93,11 @@ export default function PublicMenuPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FFFBF9" }}>
         <div className="text-center space-y-4 max-w-md px-6">
-          <h1 className="text-xl font-semibold text-gray-900">
-            Menu Unavailable
-          </h1>
-          <p className="text-sm text-gray-500">{error}</p>
-          <Link
-            href="/"
-            className="inline-block text-sm font-medium text-blue-600 hover:text-blue-800 underline"
-          >
+          <h1 className="text-xl font-semibold">Menu Unavailable</h1>
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <Link href="/" className="inline-block text-sm font-medium text-blue-600 hover:underline">
             Go to homepage
           </Link>
         </div>
@@ -131,68 +107,52 @@ export default function PublicMenuPage() {
 
   if (!menu) return null
 
-  if (menu.access_type === "company_member_only") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center space-y-4 max-w-md px-6">
-          <div className="mx-auto h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-8 w-8 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
-          </div>
-          <h1 className="text-xl font-semibold text-gray-900">
-            This menu requires authentication
-          </h1>
-          <p className="text-sm text-gray-500">
-            Only authorized company members can view this menu. Please log in to
-            continue.
-          </p>
-          <Link
-            href="/login"
-            className="inline-block rounded-md bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-800 transition-colors"
-          >
-            Log in
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
   const visibleItems = (menu.items || []).filter((item) => item.visible)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            {menu.name}
-          </h1>
-          {menu.description && (
-            <p className="mt-2 text-gray-600 max-w-2xl">{menu.description}</p>
-          )}
-          {menu.company_name && (
-            <p className="mt-1 text-sm text-gray-400">
-              by {menu.company_name}
-            </p>
-          )}
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#FFFBF9", color: "#431F13" }}>
+      {/* Header — matches ShopHeader style */}
+      <header className="border-b" style={{ backgroundColor: "#FFFBF9" }}>
+        <div className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-12 py-4 flex items-center justify-between">
+          <Link href="/" className="shrink-0">
+            <div className="w-36">
+              <Logo />
+            </div>
+          </Link>
+          <div className="flex items-center gap-3">
+            {menu.company_name && (
+              <span className="text-sm text-muted-foreground">{menu.company_name}</span>
+            )}
+            <Link
+              href="/wholesale/register"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+              style={{ backgroundColor: "#431F13" }}
+            >
+              Register
+            </Link>
+            <Link
+              href="/login"
+              className="rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-black/5"
+              style={{ borderColor: "#431F13", color: "#431F13" }}
+            >
+              Log in
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* Menu content */}
+      <main className="flex-1 mx-auto max-w-7xl px-6 py-8 sm:px-10 lg:px-12 w-full">
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold tracking-tight mb-1">{menu.name}</h1>
+          {menu.description && (
+            <p className="text-lg text-muted-foreground max-w-2xl">{menu.description}</p>
+          )}
+        </div>
+
         {visibleItems.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-gray-500">This menu has no items yet.</p>
+            <p className="text-muted-foreground">This menu has no items yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -201,15 +161,33 @@ export default function PublicMenuPage() {
             ))}
           </div>
         )}
+
+        {/* Order CTA */}
+        <div className="mt-16 rounded-2xl border p-8 sm:p-10 text-center space-y-3" style={{ backgroundColor: "#FFF8F0" }}>
+          <h2 className="text-xl font-bold">Want to place an order?</h2>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            Register as a wholesale partner to start ordering from this menu.
+          </p>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Link
+              href="/wholesale/register"
+              className="rounded-lg px-6 py-2.5 text-sm font-medium text-white transition-colors"
+              style={{ backgroundColor: "#431F13" }}
+            >
+              Register
+            </Link>
+            <Link
+              href="/login"
+              className="rounded-lg border px-6 py-2.5 text-sm font-medium transition-colors hover:bg-black/5"
+              style={{ borderColor: "#431F13", color: "#431F13" }}
+            >
+              Log in
+            </Link>
+          </div>
+        </div>
       </main>
 
-      <footer className="border-t bg-white mt-auto">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-          <p className="text-xs text-gray-400 text-center">
-            Powered by SPFarms
-          </p>
-        </div>
-      </footer>
+      <StorefrontFooter />
     </div>
   )
 }

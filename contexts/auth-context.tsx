@@ -19,6 +19,7 @@ const PUBLIC_ROUTES = [
   "/auth/verify",
   "/wholesale",
   "/bulk",
+  "/m",
 ];
 const POSTHOG_EXCLUDED_EMAILS = ["imitkit@gmail.com"];
 
