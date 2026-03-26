@@ -181,7 +181,9 @@ export default function AdminOrderDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `invoice-${order?.order_number || id}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
       showError("download the invoice");
@@ -195,7 +197,9 @@ export default function AdminOrderDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `delivery-agreement-${order?.order_number || id}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
       showError("download the delivery agreement");
@@ -209,7 +213,9 @@ export default function AdminOrderDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `payment-terms-${order?.order_number || id}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
       showError("download the payment terms");
@@ -397,7 +403,9 @@ export default function AdminOrderDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `${order.order_number}-metrc-set-${metrcPrintSetId}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setMetrcPrintSetId(null);
       toast.success("PDF downloaded");
@@ -428,7 +436,9 @@ export default function AdminOrderDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `${order.order_number}-all-metrc-labels.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setShowPrintAllMetrc(false);
       toast.success("PDF downloaded");

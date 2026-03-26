@@ -294,7 +294,9 @@ export default function AdminShipmentDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `all-documents-${shipment?.shipment_number || id}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success("All documents downloaded");
     } catch {
@@ -309,7 +311,9 @@ export default function AdminShipmentDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `invoices-${shipment?.shipment_number || id}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
       showError("download batch invoices");
@@ -323,7 +327,9 @@ export default function AdminShipmentDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `delivery-agreements-${shipment?.shipment_number || id}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
       showError("download batch delivery agreements");
@@ -337,7 +343,9 @@ export default function AdminShipmentDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `payment-terms-${shipment?.shipment_number || id}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
       showError("download batch payment terms");
@@ -353,7 +361,9 @@ export default function AdminShipmentDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `${shipment?.shipment_number || id}-all-metrc-labels.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setShowMetrcDialog(false);
       toast.success("PDF downloaded");
@@ -377,7 +387,9 @@ export default function AdminShipmentDetailPage({
             const a = document.createElement("a");
             a.href = url;
             a.download = `${item.product_name}-set${msIdx + 1}-${ms.item_count}tags.pdf`;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
           }
         }
@@ -399,7 +411,9 @@ export default function AdminShipmentDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `invoice-${orderNumber}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
       showError("download the invoice");
@@ -413,7 +427,9 @@ export default function AdminShipmentDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `delivery-agreement-${orderNumber}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
       showError("download the delivery agreement");
@@ -427,7 +443,9 @@ export default function AdminShipmentDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `payment-terms-${orderNumber}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
       showError("download the payment terms");
@@ -498,8 +516,10 @@ export default function AdminShipmentDetailPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `metrc-set-${metrcPrintSetId}.pdf`;
+      a.download = `metrc-labels-${metrcPrintSetId}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setMetrcPrintSetId(null);
       setMetrcPrintOrderId(null);
@@ -602,7 +622,9 @@ export default function AdminShipmentDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `sample-metrc-set-${samplePrintSetId}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setSamplePrintSetId(null);
       toast.success("PDF downloaded");
@@ -623,7 +645,9 @@ export default function AdminShipmentDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `${shipment?.shipment_number || id}-all-sample-labels.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setShowBatchSampleDialog(false);
       toast.success("PDF downloaded");
@@ -708,7 +732,9 @@ export default function AdminShipmentDetailPage({
       const a = document.createElement("a");
       a.href = url;
       a.download = `sample-group-labels.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setPrintGroupId(null);
       toast.success("PDF downloaded");
