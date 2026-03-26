@@ -5508,6 +5508,25 @@ export class ApiClient {
     return res;
   }
 
+  async batchImportOrderMetrc(orderId: number, orderItemId: number, labelId: string, pdfs: File[]): Promise<unknown> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/batch_import_metrc`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const form = new FormData();
+    form.append("order_item_id", String(orderItemId));
+    form.append("label_id", labelId);
+    pdfs.forEach((pdf, i) => {
+      form.append(`pdfs[${i}]`, pdf);
+    });
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+      body: form,
+    });
+    if (!res.ok) throw new Error("Failed to batch import METRC labels");
+    return res.json();
+  }
+
   async updateOrderTransferId(orderId: number, transferId: string): Promise<void> {
     const url = `${this.baseUrl}/api/v1/orders/${orderId}/update_transfer_id`;
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;

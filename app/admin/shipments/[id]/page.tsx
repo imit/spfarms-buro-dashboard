@@ -102,11 +102,11 @@ export default function AdminShipmentDetailPage({
   const [metrcSheetLayoutId, setMetrcSheetLayoutId] = useState("");
   const [metrcPrinting, setMetrcPrinting] = useState(false);
 
-  // Per-order METRC import
+  // Per-order METRC import (multi-file)
   const [metrcImportItemId, setMetrcImportItemId] = useState<number | null>(null);
   const [metrcImportOrderId, setMetrcImportOrderId] = useState<number | null>(null);
   const [metrcLabelId, setMetrcLabelId] = useState("");
-  const [metrcFile, setMetrcFile] = useState<File | null>(null);
+  const [metrcFiles, setMetrcFiles] = useState<File[]>([]);
   const [metrcImporting, setMetrcImporting] = useState(false);
 
   // Per-set METRC print
@@ -364,6 +364,33 @@ export default function AdminShipmentDetailPage({
     }
   };
 
+  // Download each METRC set as separate PDFs
+  const downloadEachMetrcLabel = async () => {
+    if (!metrcSheetLayoutId || !shipment) return;
+    setMetrcPrinting(true);
+    try {
+      for (const order of shipment.orders) {
+        for (const item of order.items) {
+          for (const ms of (item.metrc_label_sets ?? []).filter((ms) => ms.processing_status !== "processing")) {
+            const blob = await apiClient.printOrderMetrcLabels(order.id, ms.id, metrcSheetLayoutId);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `metrc-${item.product_name}-${ms.id}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }
+        }
+      }
+      setShowMetrcDialog(false);
+      toast.success("PDFs downloaded");
+    } catch {
+      showError("download METRC labels");
+    } finally {
+      setMetrcPrinting(false);
+    }
+  };
+
   // Per-order PDF downloads
   const downloadOrderInvoice = async (orderId: number, orderNumber: string) => {
     try {
@@ -484,18 +511,18 @@ export default function AdminShipmentDetailPage({
     }
   };
 
-  // METRC import for a specific order item
+  // METRC import for a specific order item (multi-file)
   const handleMetrcImport = async () => {
-    if (!metrcImportItemId || !metrcImportOrderId || !metrcLabelId || !metrcFile) return;
+    if (!metrcImportItemId || !metrcImportOrderId || !metrcLabelId || metrcFiles.length === 0) return;
     setMetrcImporting(true);
     try {
-      await apiClient.importOrderMetrc(metrcImportOrderId, metrcImportItemId, metrcLabelId, metrcFile);
+      await apiClient.batchImportOrderMetrc(metrcImportOrderId, metrcImportItemId, metrcLabelId, metrcFiles);
       await loadShipment();
       setMetrcImportItemId(null);
       setMetrcImportOrderId(null);
-      setMetrcFile(null);
+      setMetrcFiles([]);
       setMetrcLabelId("");
-      toast.success("METRC labels imported");
+      toast.success(`${metrcFiles.length} METRC file${metrcFiles.length !== 1 ? "s" : ""} imported`);
     } catch {
       showError("import METRC labels");
     } finally {
@@ -1085,7 +1112,7 @@ export default function AdminShipmentDetailPage({
                                   setMetrcImportItemId(item.id);
                                   setMetrcImportOrderId(order.id);
                                   setMetrcLabelId("");
-                                  setMetrcFile(null);
+                                  setMetrcFiles([]);
                                 }}
                               >
                                 <UploadIcon className="mr-0.5 size-2.5" />
@@ -1520,8 +1547,11 @@ export default function AdminShipmentDetailPage({
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowMetrcDialog(false)}>Cancel</Button>
+              <Button variant="outline" onClick={downloadEachMetrcLabel} disabled={!metrcSheetLayoutId || metrcPrinting}>
+                {metrcPrinting ? "Generating..." : "Download Each"}
+              </Button>
               <Button onClick={downloadBatchMetrcLabels} disabled={!metrcSheetLayoutId || metrcPrinting}>
-                {metrcPrinting ? "Generating PDF..." : "Print"}
+                {metrcPrinting ? "Generating PDF..." : "Combined"}
               </Button>
             </div>
           </div>
@@ -1560,9 +1590,9 @@ export default function AdminShipmentDetailPage({
         </DialogContent>
       </Dialog>
 
-      {/* METRC Import Dialog */}
+      {/* METRC Import Dialog (Multi-file) */}
       <Dialog open={metrcImportItemId !== null} onOpenChange={(open) => { if (!open) { setMetrcImportItemId(null); setMetrcImportOrderId(null); } }}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Import METRC Labels</DialogTitle>
           </DialogHeader>
@@ -1583,18 +1613,61 @@ export default function AdminShipmentDetailPage({
               </Select>
             </div>
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Upload METRC PDF:</p>
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={(e) => setMetrcFile(e.target.files?.[0] ?? null)}
-                className="text-sm"
-              />
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Upload METRC PDFs:</p>
+                <label className="cursor-pointer">
+                  <Button variant="outline" size="sm" asChild>
+                    <span>
+                      <UploadIcon className="mr-1.5 size-3.5" />
+                      Add Files
+                    </span>
+                  </Button>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      setMetrcFiles((prev) => [...prev, ...files]);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+              {metrcFiles.length > 0 && (
+                <div className="rounded-lg border max-h-48 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <tbody className="divide-y">
+                      {metrcFiles.map((file, idx) => (
+                        <tr key={idx} className="hover:bg-muted/30">
+                          <td className="px-3 py-1.5">
+                            <p className="font-mono text-xs truncate max-w-[300px]" title={file.name}>{file.name}</p>
+                          </td>
+                          <td className="px-1 py-1.5 w-8">
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              className="text-muted-foreground hover:text-destructive"
+                              onClick={() => setMetrcFiles((prev) => prev.filter((_, i) => i !== idx))}
+                            >
+                              <XIcon className="size-3" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {metrcFiles.length > 0 && (
+                <p className="text-xs text-muted-foreground">{metrcFiles.length} file{metrcFiles.length !== 1 ? "s" : ""} selected</p>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => { setMetrcImportItemId(null); setMetrcImportOrderId(null); }}>Cancel</Button>
-              <Button onClick={handleMetrcImport} disabled={!metrcLabelId || !metrcFile || metrcImporting}>
-                {metrcImporting ? "Importing..." : "Import"}
+              <Button onClick={handleMetrcImport} disabled={!metrcLabelId || metrcFiles.length === 0 || metrcImporting}>
+                {metrcImporting ? "Importing..." : `Import ${metrcFiles.length} File${metrcFiles.length !== 1 ? "s" : ""}`}
               </Button>
             </div>
           </div>
