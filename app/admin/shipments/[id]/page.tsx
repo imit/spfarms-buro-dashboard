@@ -161,6 +161,18 @@ export default function AdminShipmentDetailPage({
     apiClient.getCompanies({ per_page: 500 }).then((r) => setCompanies(r.data)).catch(() => {});
   }, [isAuthenticated, loadShipment]);
 
+  // Auto-poll when any METRC sets are still processing
+  useEffect(() => {
+    if (!shipment) return;
+    const hasProcessing =
+      shipment.sample_metrc_sets?.some((ms) => ms.processing_status === "processing") ||
+      shipment.orders?.some((o) => o.items?.some((i) => i.metrc_label_sets?.some((ms) => ms.processing_status === "processing")));
+    if (!hasProcessing) return;
+
+    const interval = setInterval(() => { loadShipment(); }, 3000);
+    return () => clearInterval(interval);
+  }, [shipment, loadShipment]);
+
   const updateStatus = async (newStatus: string) => {
     try {
       const updated = await apiClient.updateShipment(Number(id), { status: newStatus });
@@ -1040,7 +1052,13 @@ export default function AdminShipmentDetailPage({
                                 {item.metrc_label_sets.map((ms) => (
                                   <div key={ms.id} className="flex items-center gap-2 text-xs">
                                     <Badge variant="secondary" className="text-[10px]">METRC</Badge>
-                                    <span className="text-muted-foreground">{ms.name} ({ms.item_count} tags)</span>
+                                    <span className="text-muted-foreground">
+                                      {ms.name} {ms.processing_status === "processing" ? (
+                                        <span className="text-amber-600 animate-pulse">Processing...</span>
+                                      ) : ms.processing_status === "failed" ? (
+                                        <span className="text-destructive">Failed</span>
+                                      ) : `(${ms.item_count} tags)`}
+                                    </span>
                                     <Button
                                       variant="ghost"
                                       size="xs"
@@ -1117,7 +1135,13 @@ export default function AdminShipmentDetailPage({
                       <Badge className="text-[10px] bg-orange-100 text-orange-700 hover:bg-orange-100">SAMPLE</Badge>
                       <span className="text-sm font-medium">{ms.strain_name}</span>
                       <span className="text-xs text-muted-foreground">{ms.label_name}</span>
-                      <span className="text-xs text-muted-foreground">({ms.item_count} tag{ms.item_count !== 1 ? "s" : ""})</span>
+                      {ms.processing_status === "processing" ? (
+                        <span className="text-xs text-amber-600 animate-pulse">Processing...</span>
+                      ) : ms.processing_status === "failed" ? (
+                        <span className="text-xs text-destructive">Failed</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">({ms.item_count} tag{ms.item_count !== 1 ? "s" : ""})</span>
+                      )}
                       {ms.sample_group_id && (
                         <Badge variant="outline" className="text-[10px]">
                           {shipment.sample_groups?.find((g) => g.id === ms.sample_group_id)?.company_name || "Grouped"}

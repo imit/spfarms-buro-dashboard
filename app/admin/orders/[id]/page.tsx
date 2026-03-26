@@ -134,6 +134,23 @@ export default function AdminOrderDetailPage({
     apiClient.getSheetLayouts().then(setSheetLayouts).catch(() => {});
   }, [isAuthenticated, id]);
 
+  // Auto-poll when any METRC sets are still processing
+  useEffect(() => {
+    if (!order) return;
+    const hasProcessing = order.items?.some((i) =>
+      i.metrc_label_sets?.some((ms) => ms.processing_status === "processing")
+    );
+    if (!hasProcessing) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await apiClient.getOrder(Number(id));
+        setOrder(data);
+      } catch { /* silent */ }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [order, id]);
+
   const updateStatus = async (newStatus: string, sendNotification = true) => {
     try {
       const updated = await apiClient.updateOrder(Number(id), { status: newStatus }, sendNotification);
@@ -732,7 +749,13 @@ export default function AdminOrderDetailPage({
                           <div key={ms.id} className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1">
                             <FileTextIcon className="size-3 shrink-0" />
                             <span className="truncate">{ms.label_name}</span>
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{ms.item_count} labels</Badge>
+                            {ms.processing_status === "processing" ? (
+                              <span className="text-[10px] text-amber-600 animate-pulse font-medium">Processing...</span>
+                            ) : ms.processing_status === "failed" ? (
+                              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Failed</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{ms.item_count} labels</Badge>
+                            )}
                             <div className="ml-auto flex items-center gap-1">
                               <Button
                                 variant="ghost" size="sm" className="h-5 text-[10px] px-1.5"

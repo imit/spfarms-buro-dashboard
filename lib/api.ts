@@ -927,6 +927,7 @@ export interface OrderItemMetrcSet {
   id: number;
   name: string;
   item_count: number;
+  processing_status?: string;
   label_id: number;
   label_slug: string;
   label_name: string;
@@ -1464,7 +1465,7 @@ export interface ShipmentOrderItem {
   quantity: number;
   unit_price: string;
   metrc_tag?: string | null;
-  metrc_label_sets?: { id: number; name: string; item_count: number; label_id: number; label_slug: string; label_name: string }[];
+  metrc_label_sets?: { id: number; name: string; item_count: number; processing_status?: string; label_id: number; label_slug: string; label_name: string }[];
 }
 
 export interface ShipmentOrderSummary {
@@ -1493,6 +1494,7 @@ export interface SampleMetrcSet {
   strain_name: string | null;
   variant_id: number;
   is_sample: boolean;
+  processing_status?: string;
   tag_id?: string | null;
   sample_group_id?: number | null;
   source_filename?: string | null;
