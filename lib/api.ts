@@ -1479,6 +1479,7 @@ export interface ShipmentOrderSummary {
   desired_delivery_date: string | null;
   position: number;
   transfer_manifest_url?: string | null;
+  transfer_id?: string | null;
 }
 
 export interface SampleMetrcSet {
@@ -1503,6 +1504,7 @@ export interface SampleGroup {
   company_id: number;
   company_name: string;
   transfer_manifest_url?: string | null;
+  transfer_id?: string | null;
   metrc_label_set_ids: number[];
 }
 
@@ -5495,6 +5497,36 @@ export class ApiClient {
     if (!res.ok) throw new Error("Failed to upload sample group manifest");
     const json = await res.json();
     return json.data;
+  }
+
+  async updateOrderTransferId(orderId: number, transferId: string): Promise<void> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/update_transfer_id`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ transfer_id: transferId }),
+    });
+    if (!res.ok) throw new Error("Failed to update transfer ID");
+  }
+
+  async updateSampleGroupTransferId(shipmentId: number, sampleGroupId: number, transferId: string): Promise<void> {
+    const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/update_sample_group`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ sample_group_id: sampleGroupId, transfer_id: transferId }),
+    });
+    if (!res.ok) throw new Error("Failed to update transfer ID");
   }
 
   async printSampleGroupLabels(shipmentId: number, sampleGroupId: number, sheetLayoutId: string): Promise<Blob> {

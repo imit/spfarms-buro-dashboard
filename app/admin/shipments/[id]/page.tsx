@@ -956,43 +956,58 @@ export default function AdminShipmentDetailPage({
                   {/* Expanded content */}
                   {isExpanded && (
                     <div className="px-3 sm:px-5 pb-4 pt-1 ml-12 space-y-3">
-                      {/* Transfer Manifest */}
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-muted-foreground font-medium">Transfer Manifest:</span>
-                        {order.transfer_manifest_url ? (
-                          <>
-                            <a
-                              href={`${apiBaseUrl}${order.transfer_manifest_url}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline"
-                            >
-                              View
-                            </a>
-                            <Button
-                              variant="ghost"
-                              size="xs"
-                              className="h-5 text-[10px] px-1.5 text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteManifest(order.id)}
-                            >
-                              Remove
-                            </Button>
-                          </>
-                        ) : (
-                          <label className="cursor-pointer text-blue-600 hover:underline">
-                            Upload
-                            <input
-                              type="file"
-                              accept="application/pdf,image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                if (f) handleUploadManifest(order.id, f);
-                                e.target.value = "";
-                              }}
-                            />
-                          </label>
-                        )}
+                      {/* Transfer Manifest + Transfer ID */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-muted-foreground font-medium">Transfer Manifest:</span>
+                          {order.transfer_manifest_url ? (
+                            <>
+                              <a
+                                href={`${apiBaseUrl}${order.transfer_manifest_url}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                              >
+                                View
+                              </a>
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                className="h-5 text-[10px] px-1.5 text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteManifest(order.id)}
+                              >
+                                Remove
+                              </Button>
+                            </>
+                          ) : (
+                            <label className="cursor-pointer text-blue-600 hover:underline">
+                              Upload
+                              <input
+                                type="file"
+                                accept="application/pdf,image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) handleUploadManifest(order.id, f);
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-muted-foreground font-medium">Transfer ID:</span>
+                          <InlineTagInput
+                            value={order.transfer_id || ""}
+                            placeholder="Enter transfer ID..."
+                            onSave={async (val) => {
+                              try {
+                                await apiClient.updateOrderTransferId(order.id, val);
+                                await loadShipment();
+                              } catch { showError("update transfer ID"); }
+                            }}
+                          />
+                        </div>
                       </div>
 
                       {/* Line items */}
@@ -1236,6 +1251,21 @@ export default function AdminShipmentDetailPage({
                           <Trash2Icon className="size-3" />
                         </Button>
                       </div>
+                    </div>
+
+                    {/* Transfer ID */}
+                    <div className="flex items-center gap-2 text-xs ml-6">
+                      <span className="text-muted-foreground font-medium">Transfer ID:</span>
+                      <InlineTagInput
+                        value={group.transfer_id || ""}
+                        placeholder="Enter transfer ID..."
+                        onSave={async (val) => {
+                          try {
+                            await apiClient.updateSampleGroupTransferId(Number(id), group.id, val);
+                            await loadShipment();
+                          } catch { showError("update transfer ID"); }
+                        }}
+                      />
                     </div>
 
                     {/* Assigned labels */}
