@@ -931,6 +931,7 @@ export interface OrderItemMetrcSet {
   label_id: number;
   label_slug: string;
   label_name: string;
+  source_filename?: string | null;
   created_at: string;
 }
 
@@ -1465,7 +1466,7 @@ export interface ShipmentOrderItem {
   quantity: number;
   unit_price: string;
   metrc_tag?: string | null;
-  metrc_label_sets?: { id: number; name: string; item_count: number; processing_status?: string; label_id: number; label_slug: string; label_name: string }[];
+  metrc_label_sets?: { id: number; name: string; item_count: number; processing_status?: string; label_id: number; label_slug: string; label_name: string; source_filename?: string | null }[];
 }
 
 export interface ShipmentOrderSummary {

@@ -1085,7 +1085,9 @@ export default function AdminShipmentDetailPage({
                                       {item.metrc_label_sets.length > 1 ? `${msIdx + 1}/${item.metrc_label_sets.length}` : "METRC"}
                                     </Badge>
                                     <span className="text-muted-foreground">
-                                      {ms.name} {ms.processing_status === "processing" ? (
+                                      {ms.source_filename || ms.name}
+                                      {" "}
+                                      {ms.processing_status === "processing" ? (
                                         <span className="text-amber-600 animate-pulse">Processing...</span>
                                       ) : ms.processing_status === "failed" ? (
                                         <span className="text-destructive">Failed</span>
