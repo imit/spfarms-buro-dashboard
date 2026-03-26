@@ -5501,6 +5501,13 @@ export class ApiClient {
     return json.data;
   }
 
+  async getDirections(origin: string, destination: string): Promise<{ summary: string; duration: string; distance: string; steps: string[]; text: string }> {
+    const res = await this.request<{ summary: string; duration: string; distance: string; steps: string[]; text: string }>(
+      `/api/v1/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
+    );
+    return res;
+  }
+
   async updateOrderTransferId(orderId: number, transferId: string): Promise<void> {
     const url = `${this.baseUrl}/api/v1/orders/${orderId}/update_transfer_id`;
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;

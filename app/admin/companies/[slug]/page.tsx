@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -111,7 +111,7 @@ const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
 
 const LEAD_STATUSES = Object.entries(LEAD_STATUS_LABELS) as [LeadStatus, string][];
 
-type Tab = "overview" | "members" | "orders" | "emails";
+type Tab = "overview" | "members" | "orders" | "transfer" | "emails";
 
 function timeAgo(dateStr: string | null | undefined): string {
   if (!dateStr) return "Never";
@@ -506,6 +506,7 @@ export default function CompanyDetailPage({
     { key: "overview", label: "Overview" },
     { key: "members", label: "Members", count: company.members?.length || 0 },
     { key: "orders", label: "Orders", count: orders.length },
+    { key: "transfer", label: "Transfer Info" },
     { key: "emails", label: "Emails & Cart" },
   ];
 
@@ -1308,6 +1309,11 @@ export default function CompanyDetailPage({
             </div>
           )}
 
+          {/* ===== TRANSFER INFO TAB ===== */}
+          {activeTab === "transfer" && (
+            <TransferInfoTab company={company} orders={orders} />
+          )}
+
           {/* ===== EMAILS TAB ===== */}
           {activeTab === "emails" && (
             <div className="space-y-6">
@@ -1631,5 +1637,197 @@ function LocationFormDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const ORIGIN_ADDRESS = "54400 NY-30, Roxbury, NY 12474";
+
+function TransferInfoTab({ company, orders }: { company: Company; orders: Order[] }) {
+  const unfulfilledOrders = orders.filter((o) =>
+    o.status !== "cancelled" && o.status !== "delivered" && o.status !== "fulfilled" && o.status !== "payment_received"
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border bg-card shadow-xs">
+        <div className="px-5 py-3.5 border-b">
+          <h3 className="font-semibold text-sm">Transfer Manifest Quick Reference</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Copy info below to fill Metrc transfer forms</p>
+        </div>
+        <div className="divide-y">
+          <CopyRow label="Company License" value={company.license_number || "Not set"} />
+
+          {company.locations.map((loc, i) => {
+            const dest = [loc.address, loc.city, loc.state, loc.zip_code].filter(Boolean).join(", ");
+            return (
+              <div key={loc.id} className="divide-y">
+                {company.locations.length > 1 && (
+                  <div className="px-5 pt-3 pb-1">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      {loc.name || `Location ${i + 1}`} — {loc.city || ""}
+                    </span>
+                  </div>
+                )}
+                <CopyRow
+                  label="Destination License"
+                  value={loc.license_number || "Not set"}
+                  sublabel={dest || undefined}
+                />
+                <DirectionsRow origin={ORIGIN_ADDRESS} destination={dest} />
+              </div>
+            );
+          })}
+          {company.locations.length === 0 && (
+            <div className="px-5 py-4 text-sm text-muted-foreground">No locations on file.</div>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card shadow-xs">
+        <div className="px-5 py-3.5 border-b">
+          <h3 className="font-semibold text-sm">Open Orders</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Use order number as Invoice Number on the transfer</p>
+        </div>
+        {unfulfilledOrders.length === 0 ? (
+          <div className="px-5 py-6 text-center text-sm text-muted-foreground">No open orders.</div>
+        ) : (
+          <div className="divide-y">
+            {unfulfilledOrders.map((o) => (
+              <CopyRow
+                key={o.id}
+                label={o.order_number}
+                value={o.order_number}
+                sublabel={`${o.status} · ${o.items.length} items · $${parseFloat(o.total || "0").toFixed(2)}`}
+                linkTo={`/admin/orders/${o.id}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DirectionsRow({ origin, destination }: { origin: string; destination: string }) {
+  const [directions, setDirections] = useState<{ summary: string; duration: string; distance: string; steps: string[]; text: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!destination) return;
+    let cancelled = false;
+    setLoading(true);
+    apiClient.getDirections(origin, destination)
+      .then((data) => { if (!cancelled) setDirections(data); })
+      .catch(() => { if (!cancelled) setError(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [origin, destination]);
+
+  const mapsUrl = `https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(destination)}`;
+
+  const copy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  if (!destination) {
+    return (
+      <div className="px-5 py-3">
+        <span className="text-xs text-muted-foreground font-medium">Planned Route</span>
+        <p className="text-sm text-muted-foreground mt-0.5">No destination address</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="px-5 py-3">
+        <span className="text-xs text-muted-foreground font-medium">Planned Route</span>
+        <p className="text-sm text-muted-foreground mt-1 animate-pulse">Loading directions...</p>
+      </div>
+    );
+  }
+
+  if (error || !directions) {
+    return (
+      <div className="px-5 py-3 group">
+        <span className="text-xs text-muted-foreground font-medium">Planned Route</span>
+        <p className="text-sm text-muted-foreground mt-1">
+          Could not load directions.{" "}
+          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            Open in Google Maps
+          </a>
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-5 py-3 hover:bg-muted/30 group space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground font-medium">Planned Route</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{directions.distance} · {directions.duration}</span>
+          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+            Map
+          </a>
+        </div>
+      </div>
+      {/* Route summary — one-liner for the Metrc "Planned Route" field */}
+      <div className="flex items-center gap-2">
+        <p className="text-sm font-mono select-all flex-1">via {directions.summary}</p>
+        <button
+          onClick={() => copy(`via ${directions.summary}`)}
+          className="shrink-0 text-xs text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 rounded border"
+        >
+          {copied ? "Copied!" : "Copy"}
+        </button>
+      </div>
+      {/* Full step-by-step directions */}
+      <details className="text-xs text-muted-foreground">
+        <summary className="cursor-pointer hover:text-foreground">Step-by-step directions</summary>
+        <ol className="mt-2 space-y-1 list-decimal list-inside">
+          {directions.steps.map((step, i) => (
+            <li key={i}>{step}</li>
+          ))}
+        </ol>
+      </details>
+    </div>
+  );
+}
+
+function CopyRow({ label, value, sublabel, linkTo }: { label: string; value: string; sublabel?: string; linkTo?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="px-5 py-3 flex items-center gap-3 hover:bg-muted/30 group">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-medium">{label}</span>
+          {sublabel && <span className="text-xs text-muted-foreground">({sublabel})</span>}
+        </div>
+        <p className="text-sm font-mono mt-0.5 select-all">{value}</p>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        {linkTo && (
+          <Link href={linkTo} className="text-xs text-blue-600 hover:underline mr-1">View</Link>
+        )}
+        <button
+          onClick={copy}
+          className="text-xs text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 rounded border"
+        >
+          {copied ? "Copied!" : "Copy"}
+        </button>
+      </div>
+    </div>
   );
 }
