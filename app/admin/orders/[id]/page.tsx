@@ -396,7 +396,7 @@ export default function AdminOrderDetailPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `metrc-labels-${order.order_number}.pdf`;
+      a.download = `${order.order_number}-metrc-set-${metrcPrintSetId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setMetrcPrintSetId(null);
@@ -427,7 +427,7 @@ export default function AdminOrderDetailPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `metrc-all-labels-${order.order_number}.pdf`;
+      a.download = `${order.order_number}-all-metrc-labels.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setShowPrintAllMetrc(false);
@@ -444,18 +444,21 @@ export default function AdminOrderDetailPage({
     if (!order || !printAllSheetLayoutId) return;
     setPrintAllPrinting(true);
     try {
-      const allSets = order.items.flatMap((item) =>
-        (item.metrc_label_sets ?? []).filter((ms) => ms.processing_status !== "processing").map((ms) => ({
+      const allSets = order.items.flatMap((item) => {
+        const sets = (item.metrc_label_sets ?? []).filter((ms) => ms.processing_status !== "processing");
+        return sets.map((ms, idx) => ({
           ...ms,
           productName: item.product_name,
-        }))
-      );
+          setIndex: idx + 1,
+          setTotal: sets.length,
+        }));
+      });
       for (const ms of allSets) {
         const blob = await apiClient.printOrderMetrcLabels(order.id, ms.id, printAllSheetLayoutId);
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `metrc-${ms.productName}-${ms.id}.pdf`;
+        a.download = `${order.order_number}-${ms.productName}${ms.setTotal > 1 ? `-set${ms.setIndex}of${ms.setTotal}` : ""}-${ms.item_count}tags.pdf`;
         a.click();
         URL.revokeObjectURL(url);
       }
@@ -774,9 +777,12 @@ export default function AdminOrderDetailPage({
                     const mismatch = totalMetrc !== item.quantity;
                     return (
                       <div className="ml-13 sm:ml-16 space-y-1">
-                        {item.metrc_label_sets!.map((ms) => (
+                        {item.metrc_label_sets!.map((ms, msIdx) => (
                           <div key={ms.id} className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1">
                             <FileTextIcon className="size-3 shrink-0" />
+                            {item.metrc_label_sets!.length > 1 && (
+                              <span className="font-medium text-foreground">{msIdx + 1}/{item.metrc_label_sets!.length}</span>
+                            )}
                             <span className="truncate">{ms.label_name}</span>
                             {ms.processing_status === "processing" ? (
                               <span className="text-[10px] text-amber-600 animate-pulse font-medium">Processing...</span>

@@ -352,7 +352,7 @@ export default function AdminShipmentDetailPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `metrc-labels-${shipment?.shipment_number || id}.pdf`;
+      a.download = `${shipment?.shipment_number || id}-all-metrc-labels.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setShowMetrcDialog(false);
@@ -376,7 +376,7 @@ export default function AdminShipmentDetailPage({
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `metrc-${item.product_name}-${ms.id}.pdf`;
+            a.download = `${item.product_name}-set${msIdx + 1}-${ms.item_count}tags.pdf`;
             a.click();
             URL.revokeObjectURL(url);
           }
@@ -498,7 +498,7 @@ export default function AdminShipmentDetailPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `metrc-labels.pdf`;
+      a.download = `metrc-set-${metrcPrintSetId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setMetrcPrintSetId(null);
@@ -601,7 +601,7 @@ export default function AdminShipmentDetailPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `sample-metrc-labels.pdf`;
+      a.download = `sample-metrc-set-${samplePrintSetId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setSamplePrintSetId(null);
@@ -622,7 +622,7 @@ export default function AdminShipmentDetailPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `sample-metrc-labels-${shipment?.shipment_number || id}.pdf`;
+      a.download = `${shipment?.shipment_number || id}-all-sample-labels.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setShowBatchSampleDialog(false);
@@ -1079,9 +1079,11 @@ export default function AdminShipmentDetailPage({
                               const mismatch = totalImported > 0 && totalImported !== item.quantity;
                               return (
                               <div className="space-y-1">
-                                {item.metrc_label_sets.map((ms) => (
+                                {item.metrc_label_sets.map((ms, msIdx) => (
                                   <div key={ms.id} className="flex items-center gap-2 text-xs">
-                                    <Badge variant="secondary" className="text-[10px]">METRC</Badge>
+                                    <Badge variant="secondary" className="text-[10px]">
+                                      {item.metrc_label_sets.length > 1 ? `${msIdx + 1}/${item.metrc_label_sets.length}` : "METRC"}
+                                    </Badge>
                                     <span className="text-muted-foreground">
                                       {ms.name} {ms.processing_status === "processing" ? (
                                         <span className="text-amber-600 animate-pulse">Processing...</span>
