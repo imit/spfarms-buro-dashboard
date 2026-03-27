@@ -5513,6 +5513,32 @@ export class ApiClient {
     return res;
   }
 
+  async requestMetrcPrint(orderId: number, metrcLabelSetId: number, sheetLayoutId: string): Promise<{ id: number; print_status: string }> {
+    const res = await this.request<{ data: { id: number; print_status: string } }>(
+      `/api/v1/orders/${orderId}/request_metrc_print`,
+      { method: "POST", body: JSON.stringify({ metrc_label_set_id: metrcLabelSetId, sheet_layout_id: sheetLayoutId }) }
+    );
+    return res.data;
+  }
+
+  async getMetrcPrintStatus(orderId: number, metrcLabelSetId: number): Promise<{ id: number; print_status: string }> {
+    const res = await this.request<{ data: { id: number; print_status: string } }>(
+      `/api/v1/orders/${orderId}/metrc_print_status?metrc_label_set_id=${metrcLabelSetId}`
+    );
+    return res.data;
+  }
+
+  async downloadMetrcPrint(orderId: number, metrcLabelSetId: number): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/download_metrc_print?metrc_label_set_id=${metrcLabelSetId}`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Print not ready");
+    return res.blob();
+  }
+
   async batchImportOrderMetrc(orderId: number, orderItemId: number, labelId: string, pdfs: File[]): Promise<unknown> {
     const url = `${this.baseUrl}/api/v1/orders/${orderId}/batch_import_metrc`;
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;

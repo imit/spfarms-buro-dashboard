@@ -397,18 +397,31 @@ export default function AdminOrderDetailPage({
   const handleMetrcPrint = async () => {
     if (!order || !metrcPrintSetId || !metrcSheetLayoutId) return;
     setMetrcPrinting(true);
+    const setId = metrcPrintSetId;
+    setMetrcPrintSetId(null);
+    toast.info("Generating PDF...");
     try {
-      const blob = await apiClient.printOrderMetrcLabels(order.id, metrcPrintSetId, metrcSheetLayoutId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${order.order_number}-metrc-set-${metrcPrintSetId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setMetrcPrintSetId(null);
-      toast.success("PDF downloaded");
+      await apiClient.requestMetrcPrint(order.id, setId, metrcSheetLayoutId);
+      let status = "generating";
+      while (status === "generating") {
+        await new Promise((r) => setTimeout(r, 3000));
+        const res = await apiClient.getMetrcPrintStatus(order.id, setId);
+        status = res.print_status;
+      }
+      if (status === "done") {
+        const blob = await apiClient.downloadMetrcPrint(order.id, setId);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${order.order_number}-metrc-set-${setId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("PDF downloaded");
+      } else {
+        toast.error("Failed to generate PDF");
+      }
     } catch {
       showError("print METRC labels");
     } finally {
@@ -449,10 +462,12 @@ export default function AdminOrderDetailPage({
     }
   };
 
-  // Download each METRC set as a separate PDF
+  // Download each METRC set as a separate PDF (async)
   const handlePrintEachMetrc = async () => {
     if (!order || !printAllSheetLayoutId) return;
     setPrintAllPrinting(true);
+    setShowPrintAllMetrc(false);
+    toast.info("Generating PDFs in background...");
     try {
       const allSets = order.items.flatMap((item) => {
         const sets = (item.metrc_label_sets ?? []).filter((ms) => ms.processing_status !== "processing");
@@ -463,16 +478,32 @@ export default function AdminOrderDetailPage({
           setTotal: sets.length,
         }));
       });
+      // Request all prints
       for (const ms of allSets) {
-        const blob = await apiClient.printOrderMetrcLabels(order.id, ms.id, printAllSheetLayoutId);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${order.order_number}-${ms.productName}${ms.setTotal > 1 ? `-set${ms.setIndex}of${ms.setTotal}` : ""}-${ms.item_count}tags.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
+        await apiClient.requestMetrcPrint(order.id, ms.id, printAllSheetLayoutId);
       }
-      setShowPrintAllMetrc(false);
+      // Poll and download each
+      for (const ms of allSets) {
+        let status = "generating";
+        while (status === "generating") {
+          await new Promise((r) => setTimeout(r, 3000));
+          const res = await apiClient.getMetrcPrintStatus(order.id, ms.id);
+          status = res.print_status;
+        }
+        if (status === "done") {
+          const blob = await apiClient.downloadMetrcPrint(order.id, ms.id);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${order.order_number}-${ms.productName}${ms.setTotal > 1 ? `-set${ms.setIndex}of${ms.setTotal}` : ""}-${ms.item_count}tags.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } else {
+          toast.error(`Failed: ${ms.productName}`);
+        }
+      }
       toast.success(`${allSets.length} PDFs downloaded`);
     } catch {
       showError("print METRC labels");

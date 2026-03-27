@@ -378,26 +378,52 @@ export default function AdminShipmentDetailPage({
   const downloadEachMetrcLabel = async () => {
     if (!metrcSheetLayoutId || !shipment) return;
     setMetrcPrinting(true);
+    toast.info("Generating PDFs in background...");
+    setShowMetrcDialog(false);
+
     try {
+      // Collect all sets to print
+      const printJobs: { orderId: number; setId: number; productName: string; setIdx: number; setTotal: number; itemCount: number }[] = [];
       for (const order of shipment.orders) {
         for (const item of order.items) {
           const sets = (item.metrc_label_sets ?? []).filter((ms) => ms.processing_status !== "processing");
-          for (let msIdx = 0; msIdx < sets.length; msIdx++) {
-            const ms = sets[msIdx];
-            const blob = await apiClient.printOrderMetrcLabels(order.id, ms.id, metrcSheetLayoutId);
+          sets.forEach((ms, idx) => {
+            printJobs.push({ orderId: order.id, setId: ms.id, productName: item.product_name, setIdx: idx, setTotal: sets.length, itemCount: ms.item_count });
+          });
+        }
+      }
+
+      // Request all prints
+      for (const job of printJobs) {
+        await apiClient.requestMetrcPrint(job.orderId, job.setId, metrcSheetLayoutId);
+      }
+
+      // Poll until all done
+      const poll = async () => {
+        for (const job of printJobs) {
+          let status = "generating";
+          while (status === "generating") {
+            await new Promise((r) => setTimeout(r, 3000));
+            const res = await apiClient.getMetrcPrintStatus(job.orderId, job.setId);
+            status = res.print_status;
+          }
+          if (status === "done") {
+            const blob = await apiClient.downloadMetrcPrint(job.orderId, job.setId);
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `${item.product_name}${sets.length > 1 ? `-set${msIdx + 1}of${sets.length}` : ""}-${ms.item_count}tags.pdf`;
+            a.download = `${job.productName}${job.setTotal > 1 ? `-set${job.setIdx + 1}of${job.setTotal}` : ""}-${job.itemCount}tags.pdf`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+          } else {
+            toast.error(`Failed to generate PDF for ${job.productName}`);
           }
         }
-      }
-      setShowMetrcDialog(false);
-      toast.success("PDFs downloaded");
+        toast.success(`${printJobs.length} PDFs downloaded`);
+      };
+      await poll();
     } catch {
       showError("download METRC labels");
     } finally {
@@ -513,19 +539,34 @@ export default function AdminShipmentDetailPage({
   const handlePerSetMetrcPrint = async () => {
     if (!metrcPrintSetId || !metrcPrintOrderId || !perSetSheetLayoutId) return;
     setPerSetPrinting(true);
+    const setId = metrcPrintSetId;
+    const orderId = metrcPrintOrderId;
+    setMetrcPrintSetId(null);
+    setMetrcPrintOrderId(null);
+    toast.info("Generating PDF...");
     try {
-      const blob = await apiClient.printOrderMetrcLabels(metrcPrintOrderId, metrcPrintSetId, perSetSheetLayoutId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `metrc-labels-${metrcPrintSetId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setMetrcPrintSetId(null);
-      setMetrcPrintOrderId(null);
-      toast.success("PDF downloaded");
+      await apiClient.requestMetrcPrint(orderId, setId, perSetSheetLayoutId);
+      // Poll
+      let status = "generating";
+      while (status === "generating") {
+        await new Promise((r) => setTimeout(r, 3000));
+        const res = await apiClient.getMetrcPrintStatus(orderId, setId);
+        status = res.print_status;
+      }
+      if (status === "done") {
+        const blob = await apiClient.downloadMetrcPrint(orderId, setId);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `metrc-labels-${setId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("PDF downloaded");
+      } else {
+        toast.error("Failed to generate PDF");
+      }
     } catch {
       showError("print METRC labels");
     } finally {
