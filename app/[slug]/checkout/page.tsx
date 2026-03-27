@@ -57,6 +57,7 @@ export default function CheckoutPage({
   const [preview, setPreview] = useState<CheckoutPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [discountsDisabled, setDiscountsDisabled] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Checkout form fields
@@ -93,7 +94,16 @@ export default function CheckoutPage({
           apiClient.getPaymentTerms(),
         ]);
         setCompany(companyData);
-        setPaymentTerms(terms);
+
+        // Check if company's menu disables discounts
+        let noDiscounts = false;
+        try {
+          const menuData = await apiClient.resolveMenuForCompany(slug);
+          noDiscounts = menuData.disable_discounts ?? false;
+          setDiscountsDisabled(noDiscounts);
+        } catch { /* menu may not exist */ }
+
+        setPaymentTerms(noDiscounts ? [] : terms);
 
         const cartData = await apiClient.getCart(companyData.id);
         setCart(cartData);
@@ -239,7 +249,7 @@ export default function CheckoutPage({
     isPreorder ? i.coming_soon : !i.coming_soon
   ) ?? [];
   const isBulkOnly = !isPreorder && checkoutItems.length > 0 && checkoutItems.every((i) => i.bulk);
-  const skipPaymentTerms = isPreorder || isBulkOnly;
+  const skipPaymentTerms = isPreorder || isBulkOnly || discountsDisabled;
   const selectedTerm = paymentTerms.find((t) => t.id === selectedPaymentTermId);
   const needsAgreement = !skipPaymentTerms && selectedTerm && selectedTerm.days > 0;
 
