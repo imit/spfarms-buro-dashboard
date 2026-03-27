@@ -39,6 +39,8 @@ interface OrderLineItem {
   product_name: string;
   thumbnail_url: string | null;
   quantity: number;
+  unit_price: string;
+  default_price: string;
 }
 
 export default function NewManualOrderPage() {
@@ -98,6 +100,7 @@ export default function NewManualOrderPage() {
 
   function addItem(product: Product) {
     if (items.some((i) => i.product_id === product.id)) return;
+    const price = product.default_price || "0";
     setItems((prev) => [
       ...prev,
       {
@@ -105,6 +108,8 @@ export default function NewManualOrderPage() {
         product_name: product.name,
         thumbnail_url: product.thumbnail_url,
         quantity: 1,
+        unit_price: price,
+        default_price: price,
       },
     ]);
     setProductSearch("");
@@ -112,8 +117,8 @@ export default function NewManualOrderPage() {
 
   function updateItem(
     productId: number,
-    field: "quantity",
-    value: number
+    field: "quantity" | "unit_price",
+    value: string | number
   ) {
     setItems((prev) =>
       prev.map((i) => (i.product_id === productId ? { ...i, [field]: value } : i))
@@ -144,6 +149,7 @@ export default function NewManualOrderPage() {
         items: items.map((i) => ({
           product_id: i.product_id,
           quantity: i.quantity,
+          unit_price: i.unit_price,
         })),
       });
       router.push(`/admin/orders/${order.id}`);
@@ -383,46 +389,73 @@ export default function NewManualOrderPage() {
         {/* Line items table */}
         {items.length > 0 && (
           <div className="rounded-md border divide-y">
-            <div className="grid grid-cols-[1fr,80px,40px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/30">
+            <div className="grid grid-cols-[1fr,100px,80px,80px,40px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/30">
               <span>Product</span>
+              <span>Price</span>
               <span>Qty</span>
+              <span>Total</span>
               <span />
             </div>
-            {items.map((item) => (
-              <div
-                key={item.product_id}
-                className="grid grid-cols-[1fr,80px,40px] gap-2 px-3 py-2 items-center text-sm"
-              >
-                <span className="flex items-center gap-2 font-medium truncate">
-                  {item.thumbnail_url ? (
-                    <img src={item.thumbnail_url} alt="" className="size-7 rounded object-cover shrink-0" />
-                  ) : (
-                    <div className="size-7 rounded bg-muted shrink-0" />
-                  )}
-                  <span className="truncate">{item.product_name}</span>
-                </span>
-                <Input
-                  type="number"
-                  min={1}
-                  value={item.quantity}
-                  onChange={(e) =>
-                    updateItem(
-                      item.product_id,
-                      "quantity",
-                      parseInt(e.target.value) || 1
-                    )
-                  }
-                  className="h-8 text-sm"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => removeItem(item.product_id)}
+            {items.map((item) => {
+              const lineTotal = (parseFloat(item.unit_price) || 0) * item.quantity;
+              return (
+                <div
+                  key={item.product_id}
+                  className="grid grid-cols-[1fr,100px,80px,80px,40px] gap-2 px-3 py-2 items-center text-sm"
                 >
-                  <Trash2Icon className="size-3.5 text-muted-foreground" />
-                </Button>
-              </div>
-            ))}
+                  <span className="flex items-center gap-2 font-medium truncate">
+                    {item.thumbnail_url ? (
+                      <img src={item.thumbnail_url} alt="" className="size-7 rounded object-cover shrink-0" />
+                    ) : (
+                      <div className="size-7 rounded bg-muted shrink-0" />
+                    )}
+                    <span className="truncate">{item.product_name}</span>
+                  </span>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={item.unit_price}
+                      onChange={(e) => updateItem(item.product_id, "unit_price", e.target.value)}
+                      className="h-8 text-sm pl-5"
+                    />
+                  </div>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={item.quantity}
+                    onChange={(e) =>
+                      updateItem(
+                        item.product_id,
+                        "quantity",
+                        parseInt(e.target.value) || 1
+                      )
+                    }
+                    className="h-8 text-sm"
+                  />
+                  <span className="text-sm font-medium">${lineTotal.toFixed(2)}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => removeItem(item.product_id)}
+                  >
+                    <Trash2Icon className="size-3.5 text-muted-foreground" />
+                  </Button>
+                </div>
+              );
+            })}
+            {/* Subtotal */}
+            <div className="grid grid-cols-[1fr,100px,80px,80px,40px] gap-2 px-3 py-2 items-center text-sm bg-muted/30">
+              <span />
+              <span />
+              <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
+              <span className="font-semibold">
+                ${items.reduce((sum, i) => sum + (parseFloat(i.unit_price) || 0) * i.quantity, 0).toFixed(2)}
+              </span>
+              <span />
+            </div>
           </div>
         )}
 
