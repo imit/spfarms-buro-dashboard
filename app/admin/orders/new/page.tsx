@@ -149,7 +149,7 @@ export default function NewManualOrderPage() {
         items: items.map((i) => ({
           product_id: i.product_id,
           quantity: i.quantity,
-          unit_price: i.unit_price,
+          unit_price: parseFloat(i.unit_price) || 0,
         })),
       });
       router.push(`/admin/orders/${order.id}`);
