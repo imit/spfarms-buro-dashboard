@@ -79,6 +79,9 @@ export default function AdminOrderDetailPage({
   const [sendingAgreement, setSendingAgreement] = useState(false);
   const [sendingLicenseReminder, setSendingLicenseReminder] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"bank_info" | "agreement" | "license_reminder" | null>(null);
+  const [showForwardDialog, setShowForwardDialog] = useState(false);
+  const [forwardEmail, setForwardEmail] = useState("");
+  const [forwardingSending, setForwardingSending] = useState(false);
   const [timelineKey, setTimelineKey] = useState(0);
   const [editingContacts, setEditingContacts] = useState(false);
   const [contactDrafts, setContactDrafts] = useState<{ full_name: string; email: string; phone_number: string }[]>([]);
@@ -376,6 +379,18 @@ export default function AdminOrderDetailPage({
     try { const data = await apiClient.getOrderComments(Number(id)); setComments(data); } catch {}
   };
 
+  const handleForwardOrder = async () => {
+    if (!order || !forwardEmail) return;
+    setForwardingSending(true);
+    try {
+      await apiClient.resendOrderEmail(order.id, forwardEmail);
+      setShowForwardDialog(false);
+      toast.success(`Order sent to ${forwardEmail}`);
+      setTimelineKey((k) => k + 1);
+    } catch { showError("send the order email"); }
+    finally { setForwardingSending(false); }
+  };
+
   const handleMetrcImport = async () => {
     if (!order || !metrcImportItemId || !metrcLabelId || metrcFiles.length === 0) return;
     setMetrcImporting(true);
@@ -569,6 +584,10 @@ export default function AdminOrderDetailPage({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => { setShowForwardDialog(true); setForwardEmail(""); }}>
+                <SendIcon className="mr-2 size-4" />
+                Forward Order
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setConfirmAction("bank_info")} disabled={sendingBankInfo}>
                 <BanknoteIcon className="mr-2 size-4" />
                 {sendingBankInfo ? "Sending..." : "Bank Info"}
@@ -1367,6 +1386,40 @@ export default function AdminOrderDetailPage({
                 disabled={!metrcSheetLayoutId || metrcPrinting}
               >
                 {metrcPrinting ? "Generating PDF..." : "Print"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Forward Order Dialog */}
+      <Dialog open={showForwardDialog} onOpenChange={setShowForwardDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Forward Order</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Send the order details and agreement link to another email address.
+          </p>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Email Address</Label>
+              <Input
+                type="email"
+                placeholder="email@example.com"
+                value={forwardEmail}
+                onChange={(e) => setForwardEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && forwardEmail) handleForwardOrder(); }}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowForwardDialog(false)}>Cancel</Button>
+              <Button
+                onClick={handleForwardOrder}
+                disabled={!forwardEmail || forwardingSending}
+              >
+                <SendIcon className="mr-1.5 size-4" />
+                {forwardingSending ? "Sending..." : "Send"}
               </Button>
             </div>
           </div>

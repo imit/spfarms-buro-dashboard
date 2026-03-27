@@ -5513,6 +5513,13 @@ export class ApiClient {
     return res;
   }
 
+  async resendOrderEmail(orderId: number, email: string): Promise<void> {
+    await this.request(
+      `/api/v1/orders/${orderId}/resend_order_email`,
+      { method: "POST", body: JSON.stringify({ email }) }
+    );
+  }
+
   async requestMetrcPrint(orderId: number, metrcLabelSetId: number, sheetLayoutId: string): Promise<{ id: number; print_status: string }> {
     const res = await this.request<{ data: { id: number; print_status: string } }>(
       `/api/v1/orders/${orderId}/request_metrc_print`,
