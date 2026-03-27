@@ -934,6 +934,8 @@ export interface OrderItemMetrcSet {
   label_slug: string;
   label_name: string;
   source_filename?: string | null;
+  default_variant_id?: number | null;
+  default_variant_name?: string | null;
   created_at: string;
 }
 
@@ -1468,7 +1470,7 @@ export interface ShipmentOrderItem {
   quantity: number;
   unit_price: string;
   metrc_tag?: string | null;
-  metrc_label_sets?: { id: number; name: string; item_count: number; processing_status?: string; label_id: number; label_slug: string; label_name: string; source_filename?: string | null }[];
+  metrc_label_sets?: { id: number; name: string; item_count: number; processing_status?: string; label_id: number; label_slug: string; label_name: string; source_filename?: string | null; default_variant_id?: number | null; default_variant_name?: string | null }[];
 }
 
 export interface ShipmentOrderSummary {
@@ -5520,10 +5522,10 @@ export class ApiClient {
     );
   }
 
-  async requestMetrcPrint(orderId: number, metrcLabelSetId: number, sheetLayoutId: string): Promise<{ id: number; print_status: string }> {
+  async requestMetrcPrint(orderId: number, metrcLabelSetId: number, sheetLayoutId: string, variantId?: number): Promise<{ id: number; print_status: string }> {
     const res = await this.request<{ data: { id: number; print_status: string } }>(
       `/api/v1/orders/${orderId}/request_metrc_print`,
-      { method: "POST", body: JSON.stringify({ metrc_label_set_id: metrcLabelSetId, sheet_layout_id: sheetLayoutId }) }
+      { method: "POST", body: JSON.stringify({ metrc_label_set_id: metrcLabelSetId, sheet_layout_id: sheetLayoutId, variant_id: variantId }) }
     );
     return res.data;
   }

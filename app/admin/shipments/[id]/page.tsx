@@ -113,6 +113,7 @@ export default function AdminShipmentDetailPage({
   const [metrcPrintSetId, setMetrcPrintSetId] = useState<number | null>(null);
   const [metrcPrintOrderId, setMetrcPrintOrderId] = useState<number | null>(null);
   const [perSetSheetLayoutId, setPerSetSheetLayoutId] = useState("");
+  const [perSetVariantId, setPerSetVariantId] = useState("");
   const [perSetPrinting, setPerSetPrinting] = useState(false);
 
   // Sample METRC (multi-file)
@@ -545,7 +546,7 @@ export default function AdminShipmentDetailPage({
     setMetrcPrintOrderId(null);
     toast.info("Generating PDF...");
     try {
-      await apiClient.requestMetrcPrint(orderId, setId, perSetSheetLayoutId);
+      await apiClient.requestMetrcPrint(orderId, setId, perSetSheetLayoutId, perSetVariantId ? Number(perSetVariantId) : undefined);
       // Poll
       let status = "generating";
       while (status === "generating") {
@@ -1155,6 +1156,9 @@ export default function AdminShipmentDetailPage({
                                     </Badge>
                                     <span className="text-muted-foreground">
                                       {ms.source_filename || ms.name}
+                                      {ms.default_variant_name && (
+                                        <span className="text-[10px] text-muted-foreground ml-1">[{ms.default_variant_name}]</span>
+                                      )}
                                       {" "}
                                       {ms.processing_status === "processing" ? (
                                         <span className="text-amber-600 animate-pulse">Processing...</span>
@@ -1170,6 +1174,7 @@ export default function AdminShipmentDetailPage({
                                         setMetrcPrintSetId(ms.id);
                                         setMetrcPrintOrderId(order.id);
                                         setPerSetSheetLayoutId("");
+                                        setPerSetVariantId(ms.default_variant_id ? String(ms.default_variant_id) : "");
                                       }}
                                     >
                                       <FileTextIcon className="mr-0.5 size-2.5" />
@@ -1676,6 +1681,30 @@ export default function AdminShipmentDetailPage({
                 </SelectContent>
               </Select>
             </div>
+            {/* Variant override */}
+            {(() => {
+              const currentSet = shipment?.orders.flatMap((o) => o.items.flatMap((i) => i.metrc_label_sets ?? [])).find((ms) => ms.id === metrcPrintSetId);
+              const labelForSet = labels.find((l) => l.id === currentSet?.label_id);
+              const variants = labelForSet?.strain_variants ?? [];
+              if (variants.length === 0) return null;
+              return (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Label variant:</p>
+                  <Select value={perSetVariantId} onValueChange={setPerSetVariantId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Auto-detect..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {variants.map((v) => (
+                        <SelectItem key={v.id} value={String(v.id)}>
+                          {v.strain_name}{v.is_sample ? " (sample)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })()}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => { setMetrcPrintSetId(null); setMetrcPrintOrderId(null); }}>Cancel</Button>
               <Button onClick={handlePerSetMetrcPrint} disabled={!perSetSheetLayoutId || perSetPrinting}>
