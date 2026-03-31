@@ -22,6 +22,7 @@ import {
   XIcon,
   ImageIcon,
   MapPinIcon,
+  SkullIcon,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -56,6 +57,8 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
   const [showMoveDialog, setShowMoveDialog] = useState(false)
   const [showPhaseDialog, setShowPhaseDialog] = useState(false)
   const [showObserveDialog, setShowObserveDialog] = useState(false)
+  const [showDestroyDialog, setShowDestroyDialog] = useState(false)
+  const [destroyReason, setDestroyReason] = useState("")
   const [noteText, setNoteText] = useState("")
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
@@ -192,6 +195,9 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
           <Button variant="outline" size="sm" onClick={() => setShowObserveDialog(true)}>
             <CameraIcon className="mr-1 h-3.5 w-3.5" /> Add Observation
           </Button>
+          <Button variant="destructive" size="sm" onClick={() => setShowDestroyDialog(true)}>
+            <SkullIcon className="mr-1 h-3.5 w-3.5" /> Mark Dead / Damaged
+          </Button>
         </div>
       )}
 
@@ -303,6 +309,61 @@ export default function PlantDetailPage({ params }: { params: Promise<{ id: stri
                 </SelectContent>
               </Select>
             </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {showDestroyDialog && (
+        <Dialog open={showDestroyDialog} onOpenChange={setShowDestroyDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Mark Plant as Dead / Damaged</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <p className="text-muted-foreground text-sm">
+                This will remove <span className="font-medium text-foreground">{plant.strain?.name}</span> ({plant.plant_uid}) from the active grow room. This cannot be undone.
+              </p>
+              <div>
+                <Label>Reason</Label>
+                <Select value={destroyReason} onValueChange={setDestroyReason}>
+                  <SelectTrigger><SelectValue placeholder="Select reason..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Dead">Dead</SelectItem>
+                    <SelectItem value="Damaged">Damaged</SelectItem>
+                    <SelectItem value="Disease">Disease</SelectItem>
+                    <SelectItem value="Pest damage">Pest damage</SelectItem>
+                    <SelectItem value="Mold">Mold</SelectItem>
+                    <SelectItem value="Male plant">Male plant</SelectItem>
+                    <SelectItem value="Hermaphrodite">Hermaphrodite</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDestroyDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={!destroyReason || isSubmitting}
+                onClick={async () => {
+                  setIsSubmitting(true)
+                  try {
+                    await apiClient.destroyPlant(plant.id, destroyReason)
+                    toast.success("Plant marked as " + destroyReason.toLowerCase())
+                    setShowDestroyDialog(false)
+                    load()
+                  } catch (err) {
+                    showError("complete the action", err)
+                  } finally {
+                    setIsSubmitting(false)
+                  }
+                }}
+              >
+                {isSubmitting ? "Removing..." : "Confirm"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
