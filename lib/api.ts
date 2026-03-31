@@ -316,6 +316,9 @@ export interface Strain {
   title_image_url: string | null;
   coas_count: number;
   current_coa: Coa | null;
+  parent_strain_id: number | null;
+  phenotype_count: number;
+  phenotype_names: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -2619,6 +2622,17 @@ export class ApiClient {
     await this.request(`/api/v1/strains/${id}`, {
       method: "DELETE",
     });
+  }
+
+  async mergeStrains(parentId: number, childStrainIds: number[]): Promise<Strain & { merged_count: number }> {
+    const res = await this.request<JsonApiResponse<Strain> & { merged_count: number }>(
+      `/api/v1/strains/${parentId}/merge`,
+      {
+        method: "POST",
+        body: JSON.stringify({ strain_ids: childStrainIds }),
+      }
+    );
+    return { ...res.data.attributes, merged_count: res.merged_count };
   }
 
   // Products
