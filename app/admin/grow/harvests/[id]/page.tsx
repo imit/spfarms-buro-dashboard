@@ -13,6 +13,7 @@ import { StrainAvatar } from "@/components/grow/strain-avatar"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ErrorAlert } from "@/components/ui/error-alert"
 import { ArrowLeftIcon, TagIcon, ScaleIcon, DropletIcon, TrashIcon, WindIcon, CheckCircleIcon, PlusIcon, ScissorsIcon, PackageIcon, Flower as FlowerIcon, ShieldCheckIcon } from "lucide-react"
+import { HarvestMetrcSync } from "@/components/grow/harvest-metrc-sync"
 import Link from "next/link"
 
 function gToLbs(grams: number): string {
@@ -959,6 +960,19 @@ export default function HarvestDetailPage() {
           <p className="text-sm text-muted-foreground">{harvest.notes}</p>
         </div>
       )}
+
+      {/* Metrc Sync */}
+      <HarvestMetrcSync
+        harvest={harvest}
+        onSyncComplete={async () => {
+          const [h, evts] = await Promise.all([
+            apiClient.getHarvest(harvest.id),
+            apiClient.getHarvestAuditEvents(harvest.id),
+          ])
+          setHarvest(h)
+          setAuditEvents(evts)
+        }}
+      />
 
       {/* Activity Log */}
       {auditEvents.length > 0 && (

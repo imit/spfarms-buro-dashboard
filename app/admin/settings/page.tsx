@@ -8,6 +8,7 @@ import {
   TrashIcon,
   CheckIcon,
   XIcon,
+  ArrowLeftIcon,
 } from "lucide-react";
 import {
   apiClient,
@@ -51,6 +52,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
+import Link from "next/link";
 
 export default function SettingsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -687,6 +689,17 @@ export default function SettingsPage() {
           </p>
         )}
       </div>
+
+      {/* Metrc Integration */}
+      <Link href="/admin/settings/metrc" className="block rounded-lg border p-5 hover:bg-muted/50 transition-colors">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold">Metrc Integration</h3>
+            <p className="text-sm text-muted-foreground">API keys, environment, and facility licenses</p>
+          </div>
+          <ArrowLeftIcon className="size-4 rotate-180 text-muted-foreground" />
+        </div>
+      </Link>
 
       {/* Payment Terms */}
       <div className="rounded-lg border">

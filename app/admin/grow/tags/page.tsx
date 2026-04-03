@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TagImportDialog } from "@/components/grow/tag-import-dialog"
-import { ArrowLeftIcon, PlusIcon, TagIcon, BanIcon, Trash2Icon } from "lucide-react"
+import { ArrowLeftIcon, PlusIcon, TagIcon, BanIcon, Trash2Icon, CloudDownloadIcon, LoaderIcon } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { showError } from "@/lib/errors"
@@ -85,6 +85,31 @@ export default function MetrcTagsPage() {
     }
   }
 
+  const [syncing, setSyncing] = useState(false)
+
+  const handleSyncFromMetrc = async () => {
+    let defaultLicense = "SF-SBX-NY-3-18601"
+    try {
+      const s = await apiClient.getSettings()
+      const f = s.facilities?.find((f) => f.metrc_license_number)
+      if (f?.metrc_license_number) defaultLicense = f.metrc_license_number
+    } catch { /* use default */ }
+    const license = prompt("Enter Metrc license number:", defaultLicense)
+    if (!license) return
+    setSyncing(true)
+    try {
+      const res = await apiClient.syncMetrcTags({ license })
+      toast.success(
+        `Synced from Metrc: ${res.plant_tags.created} plant tags, ${res.package_tags.created} package tags imported (${res.plant_tags.skipped + res.package_tags.skipped} already existed)`
+      )
+      load()
+    } catch (err) {
+      showError("sync tags from Metrc", err)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   if (authLoading || !isAuthenticated) return null
   if (isLoading) return <div className="p-6"><p className="text-muted-foreground">Loading...</p></div>
 
@@ -102,9 +127,15 @@ export default function MetrcTagsPage() {
             <p className="text-muted-foreground text-sm">Manage your METRC tracking tags</p>
           </div>
         </div>
-        <Button onClick={() => setShowImport(true)}>
-          <PlusIcon className="mr-2 h-4 w-4" /> Import Tags
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSyncFromMetrc} disabled={syncing}>
+            {syncing ? <LoaderIcon className="mr-2 h-4 w-4 animate-spin" /> : <CloudDownloadIcon className="mr-2 h-4 w-4" />}
+            Sync from Metrc
+          </Button>
+          <Button onClick={() => setShowImport(true)}>
+            <PlusIcon className="mr-2 h-4 w-4" /> Import Tags
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
