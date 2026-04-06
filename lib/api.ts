@@ -834,7 +834,7 @@ export interface AppSettings {
   metrc_sandbox_user_key: string;
   metrc_production_vendor_key: string;
   metrc_production_user_key: string;
-  facilities: { id: number; name: string; facility_type: string | null; license_number: string | null; metrc_license_number: string | null }[];
+  facilities: { id: number; name: string; facility_type: string | null; environment: string; license_number: string | null; metrc_license_number: string | null }[];
 }
 
 export interface DeliveryFeeRecord {
@@ -1747,6 +1747,8 @@ export type AuditEventType =
   | "harvest_trimming_finished"
   | "harvest_curing_finished"
   | "harvest_admin_reviewed"
+  | "harvest_metrc_sync"
+  | "harvest_metrc_preflight"
   | "batch_created"
   | "note_added"
   | "user_created"
@@ -1790,6 +1792,8 @@ export const AUDIT_EVENT_LABELS: Record<AuditEventType, string> = {
   harvest_trimming_finished: "Trimming Finished",
   harvest_curing_finished: "Curing Finished",
   harvest_admin_reviewed: "Admin Reviewed",
+  harvest_metrc_sync: "Metrc Sync",
+  harvest_metrc_preflight: "Metrc Preflight",
   batch_created: "Batch Created",
   note_added: "Note Added",
   user_created: "User Created",
@@ -1954,6 +1958,41 @@ export interface MetrcPreflightReport {
     sync_statuses: Record<string, number>;
   }[];
   actions_needed: string[];
+  metrc_preview: {
+    harvest: {
+      name: string;
+      harvest_date: string;
+      drying_location: string;
+      plant_count: number;
+      strains: {
+        name: string;
+        plant_count: number;
+        wet_weight_grams: number;
+        item_name: string;
+        batch_name: string;
+      }[];
+    };
+  };
+}
+
+export interface MetrcTestingSample {
+  strain: string;
+  grams: number;
+  batch_id: string;
+  test_type: "rnd" | "potency";
+}
+
+export interface MetrcTestingResult {
+  success: boolean;
+  packages: {
+    strain: string;
+    test_type: string;
+    grams: number;
+    batch_id: string;
+    bulk_tag: string;
+    testing_tag: string;
+  }[];
+  errors: string[];
 }
 
 export interface MetrcSyncResult {
@@ -4363,7 +4402,7 @@ export class ApiClient {
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
 
-  async createFacility(data: { name: string; facility_type: string; metrc_license_number?: string }): Promise<Facility> {
+  async createFacility(data: { name: string; facility_type: string; metrc_license_number?: string; environment?: string }): Promise<Facility> {
     const res = await this.request<JsonApiResponse<Facility>>("/api/v1/facilities", {
       method: "POST",
       body: JSON.stringify({ facility: data }),
@@ -4680,6 +4719,24 @@ export class ApiClient {
     return res.data;
   }
 
+  async metrcCreateTestingPackages(
+    id: number,
+    opts: { license: string; metrc_env?: string; samples: MetrcTestingSample[] }
+  ): Promise<MetrcTestingResult> {
+    const res = await this.request<{ data: MetrcTestingResult }>(
+      `/api/v1/facility/harvests/${id}/metrc_testing_packages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          license: opts.license,
+          metrc_env: opts.metrc_env,
+          samples: opts.samples,
+        }),
+      }
+    );
+    return res.data;
+  }
+
   // ---- Plants ----
 
   async getPlants(opts?: {
@@ -4871,13 +4928,18 @@ export class ApiClient {
 
   // ---- METRC Tags ----
 
-  async getMetrcTags(opts?: { status?: string; tag_type?: string }): Promise<MetrcTag[]> {
+  async getMetrcTags(opts?: { status?: string; tag_type?: string; page?: number; per_page?: number }): Promise<{ tags: MetrcTag[]; meta: { total: number; page: number; per_page: number; total_pages: number } }> {
     const params = new URLSearchParams();
     if (opts?.status) params.set("status", opts.status);
     if (opts?.tag_type) params.set("tag_type", opts.tag_type);
+    if (opts?.page) params.set("page", String(opts.page));
+    if (opts?.per_page) params.set("per_page", String(opts.per_page));
     const query = params.toString() ? `?${params.toString()}` : "";
-    const res = await this.request<JsonApiCollectionResponse<MetrcTag>>(`/api/v1/metrc_tags${query}`);
-    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+    const res = await this.request<JsonApiCollectionResponse<MetrcTag> & { meta: { total: number; page: number; per_page: number; total_pages: number } }>(`/api/v1/metrc_tags${query}`);
+    return {
+      tags: res.data.map((d) => ({ ...d.attributes, id: Number(d.id) })),
+      meta: res.meta,
+    };
   }
 
   async importMetrcTags(

@@ -134,6 +134,9 @@ function EnvKeyEditor({
 }
 
 export function MetrcSettingsSection({ settings, onUpdate }: MetrcSettingsSectionProps) {
+  const activeEnv = settings?.metrc_default_env || "sandbox"
+  const envFacilities = (settings?.facilities || []).filter((f) => f.environment === activeEnv)
+
   // Facility license editing
   const [editingFacility, setEditingFacility] = useState<number | null>(null)
   const [licenseValue, setLicenseValue] = useState("")
@@ -168,6 +171,7 @@ export function MetrcSettingsSection({ settings, onUpdate }: MetrcSettingsSectio
         name: newFacilityName.trim(),
         facility_type: newFacilityType,
         metrc_license_number: newFacilityLicense.trim() || undefined,
+        environment: activeEnv,
       })
       toast.success(`Facility "${newFacilityName}" created`)
       setShowAddFacility(false)
@@ -273,16 +277,29 @@ export function MetrcSettingsSection({ settings, onUpdate }: MetrcSettingsSectio
           </div>
         </div>
 
-        {/* Facility Licenses */}
+        {/* Facility Licenses — filtered by current environment */}
         <div className="space-y-3 pt-2 border-t">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Facility Licenses</label>
+            <label className="text-sm font-medium">
+              Facility Licenses
+              <Badge variant="outline" className={`ml-2 text-[10px] ${
+                activeEnv === "production" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
+              }`}>
+                {activeEnv === "production" ? "Production" : "Sandbox"}
+              </Badge>
+            </label>
             <Button size="sm" variant="outline" onClick={() => setShowAddFacility(true)} className="h-7 text-xs">
               <PlusIcon className="mr-1 size-3" /> Add Facility
             </Button>
           </div>
 
-          {settings?.facilities?.map((f) => (
+          {envFacilities.length === 0 && !showAddFacility && (
+            <p className="text-sm text-muted-foreground">
+              No facilities for {activeEnv}. Click Add Facility to create one.
+            </p>
+          )}
+
+          {envFacilities.map((f) => (
             <div key={f.id} className="flex items-center gap-3 text-sm rounded-md border p-2.5">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -378,9 +395,6 @@ export function MetrcSettingsSection({ settings, onUpdate }: MetrcSettingsSectio
             </div>
           )}
 
-          {(!settings?.facilities || settings.facilities.length === 0) && !showAddFacility && (
-            <p className="text-sm text-muted-foreground">No facilities configured yet.</p>
-          )}
         </div>
       </div>
     </div>

@@ -11,12 +11,12 @@ import {
   type MetrcTagStatus,
 } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TagImportDialog } from "@/components/grow/tag-import-dialog"
-import { ArrowLeftIcon, PlusIcon, TagIcon, BanIcon, Trash2Icon, CloudDownloadIcon, LoaderIcon } from "lucide-react"
+import { ArrowLeftIcon, PlusIcon, TagIcon, BanIcon, Trash2Icon, CloudDownloadIcon, LoaderIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { showError } from "@/lib/errors"
@@ -38,17 +38,30 @@ export default function MetrcTagsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showImport, setShowImport] = useState(false)
 
+  // Pagination
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const perPage = 50
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/")
   }, [isAuthenticated, authLoading, router])
 
-  const load = async () => {
+  const load = async (p = page) => {
     try {
-      const [t, s] = await Promise.all([
-        apiClient.getMetrcTags(statusFilter !== "all" ? { status: statusFilter } : undefined),
+      const [res, s] = await Promise.all([
+        apiClient.getMetrcTags({
+          ...(statusFilter !== "all" ? { status: statusFilter } : {}),
+          page: p,
+          per_page: perPage,
+        }),
         apiClient.getMetrcTagStats(),
       ])
-      setTags(t)
+      setTags(res.tags)
+      setTotal(res.meta.total)
+      setTotalPages(res.meta.total_pages)
+      setPage(res.meta.page)
       setStats(s)
     } catch {
       // ignore
@@ -59,7 +72,8 @@ export default function MetrcTagsPage() {
 
   useEffect(() => {
     if (!isAuthenticated) return
-    load()
+    setPage(1)
+    load(1)
   }, [isAuthenticated, statusFilter])
 
   const handleVoid = async (tag: MetrcTag) => {
@@ -140,7 +154,7 @@ export default function MetrcTagsPage() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-5">
           <Card>
             <CardContent className="py-4 text-center">
               <p className="text-2xl font-bold text-green-600">{stats.available}</p>
@@ -165,10 +179,16 @@ export default function MetrcTagsPage() {
               <p className="text-muted-foreground text-xs">Voided</p>
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="py-4 text-center">
+              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-muted-foreground text-xs">Total</p>
+            </CardContent>
+          </Card>
         </div>
       )}
 
-      {/* Filter */}
+      {/* Filter + count */}
       <div className="flex items-center gap-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40">
@@ -181,7 +201,7 @@ export default function MetrcTagsPage() {
             ))}
           </SelectContent>
         </Select>
-        <p className="text-muted-foreground text-sm">{tags.length} tags</p>
+        <p className="text-muted-foreground text-sm">{total} tags</p>
       </div>
 
       {/* Table */}
@@ -202,6 +222,7 @@ export default function MetrcTagsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Tag</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Plant</TableHead>
                 <TableHead>Assigned By</TableHead>
@@ -213,6 +234,11 @@ export default function MetrcTagsPage() {
               {tags.map((tag) => (
                 <TableRow key={tag.id}>
                   <TableCell className="font-mono text-xs">{tag.tag}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-[10px]">
+                      {tag.tag_type === "plant_tag" ? "Plant" : "Package"}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={STATUS_COLORS[tag.status]}>
                       {METRC_TAG_STATUS_LABELS[tag.status]}
@@ -268,10 +294,60 @@ export default function MetrcTagsPage() {
         </div>
       )}
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Page {page} of {totalPages} ({total} tags)
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => load(page - 1)}
+            >
+              <ChevronLeftIcon className="size-4" />
+            </Button>
+            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+              let p: number
+              if (totalPages <= 7) {
+                p = i + 1
+              } else if (page <= 4) {
+                p = i + 1
+              } else if (page >= totalPages - 3) {
+                p = totalPages - 6 + i
+              } else {
+                p = page - 3 + i
+              }
+              return (
+                <Button
+                  key={p}
+                  variant={p === page ? "default" : "outline"}
+                  size="sm"
+                  className="w-8"
+                  onClick={() => load(p)}
+                >
+                  {p}
+                </Button>
+              )
+            })}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => load(page + 1)}
+            >
+              <ChevronRightIcon className="size-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       <TagImportDialog
         open={showImport}
         onOpenChange={setShowImport}
-        onImported={load}
+        onImported={() => load(1)}
       />
     </div>
   )

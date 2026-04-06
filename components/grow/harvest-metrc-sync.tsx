@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { apiClient, type Harvest, type MetrcPreflightReport, type MetrcSyncResult, type AppSettings } from "@/lib/api"
+import { apiClient, type Harvest, type MetrcPreflightReport, type MetrcSyncResult, type MetrcTestingSample, type MetrcTestingResult, type AppSettings } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ErrorAlert } from "@/components/ui/error-alert"
-import { CloudUploadIcon, SearchIcon, CheckCircle2Icon, AlertTriangleIcon, LoaderIcon } from "lucide-react"
+import { CloudUploadIcon, SearchIcon, CheckCircle2Icon, AlertTriangleIcon, LoaderIcon, FlaskConicalIcon, Trash2Icon } from "lucide-react"
 
 const SYNC_STATUS_COLORS: Record<string, string> = {
   not_synced: "bg-gray-100 text-gray-600",
@@ -31,12 +31,18 @@ export function HarvestMetrcSync({ harvest, onSyncComplete }: HarvestMetrcSyncPr
   const [loading, setLoading] = useState(false)
   const [settingsLoaded, setSettingsLoaded] = useState(false)
 
+  // Testing packages
+  const [testingSamples, setTestingSamples] = useState<MetrcTestingSample[]>([])
+  const [creatingTests, setCreatingTests] = useState(false)
+  const [testingResult, setTestingResult] = useState<MetrcTestingResult | null>(null)
+
   useEffect(() => {
     apiClient.getSettings().then((s) => {
       setSettings(s)
-      if (s.metrc_default_env) setMetrcEnv(s.metrc_default_env as "sandbox" | "production")
-      // Auto-pick first facility license
-      const facility = s.facilities?.find((f) => f.metrc_license_number)
+      const env = (s.metrc_default_env || "sandbox") as "sandbox" | "production"
+      setMetrcEnv(env)
+      // Auto-pick first facility license for current env
+      const facility = s.facilities?.find((f) => f.metrc_license_number && f.environment === env)
       if (facility?.metrc_license_number && !license) setLicense(facility.metrc_license_number)
       setSettingsLoaded(true)
     }).catch(() => setSettingsLoaded(true))
@@ -90,13 +96,13 @@ export function HarvestMetrcSync({ harvest, onSyncComplete }: HarvestMetrcSyncPr
         <div className="flex items-end gap-3 flex-wrap">
           <div className="space-y-1 flex-1 min-w-[200px]">
             <Label className="text-xs">License Number</Label>
-            {settings?.facilities && settings.facilities.some((f) => f.metrc_license_number) ? (
+            {settings?.facilities && settings.facilities.some((f) => f.metrc_license_number && f.environment === metrcEnv) ? (
               <Select value={license} onValueChange={setLicense}>
                 <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="Select facility license" />
                 </SelectTrigger>
                 <SelectContent>
-                  {settings.facilities.filter((f) => f.metrc_license_number).map((f) => (
+                  {settings.facilities.filter((f) => f.metrc_license_number && f.environment === metrcEnv).map((f) => (
                     <SelectItem key={f.id} value={f.metrc_license_number!}>
                       {f.name} — {f.metrc_license_number}
                     </SelectItem>
@@ -117,7 +123,7 @@ export function HarvestMetrcSync({ harvest, onSyncComplete }: HarvestMetrcSyncPr
             <div className="flex h-8 rounded-md border overflow-hidden">
               <button
                 type="button"
-                onClick={() => setMetrcEnv("sandbox")}
+                onClick={() => { setMetrcEnv("sandbox"); setLicense(""); setPreflight(null); setSyncResult(null) }}
                 className={`px-3 text-xs font-medium transition-colors ${
                   metrcEnv === "sandbox"
                     ? "bg-amber-500 text-white"
@@ -128,7 +134,7 @@ export function HarvestMetrcSync({ harvest, onSyncComplete }: HarvestMetrcSyncPr
               </button>
               <button
                 type="button"
-                onClick={() => setMetrcEnv("production")}
+                onClick={() => { setMetrcEnv("production"); setLicense(""); setPreflight(null); setSyncResult(null) }}
                 className={`px-3 text-xs font-medium transition-colors ${
                   metrcEnv === "production"
                     ? "bg-blue-600 text-white"
@@ -220,6 +226,53 @@ export function HarvestMetrcSync({ harvest, onSyncComplete }: HarvestMetrcSyncPr
               </div>
             )}
 
+            {/* Metrc Preview */}
+            {preflight.metrc_preview && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Metrc Preview</p>
+                <div className="rounded-md border bg-background p-3 space-y-3">
+                  {/* Harvest card */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-1 self-stretch rounded-full bg-green-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">{preflight.metrc_preview.harvest.name}</p>
+                      <div className="flex gap-4 text-xs text-muted-foreground mt-0.5">
+                        <span>{preflight.metrc_preview.harvest.harvest_date}</span>
+                        <span>{preflight.metrc_preview.harvest.plant_count} plants</span>
+                        <span>{preflight.metrc_preview.harvest.drying_location}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Strain breakdown */}
+                  <div className="grid gap-2">
+                    {preflight.metrc_preview.harvest.strains.map((s) => (
+                      <div key={s.name} className="rounded border p-2.5 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{s.name}</span>
+                          <Badge variant="outline" className="text-[10px]">{s.plant_count} plants</Badge>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-[11px] text-muted-foreground mt-1">
+                          <div>
+                            <span className="block text-[10px] uppercase tracking-wide">Batch</span>
+                            <span className="font-mono">{s.batch_name}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[10px] uppercase tracking-wide">Item</span>
+                            <span>{s.item_name}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[10px] uppercase tracking-wide">Wet Weight</span>
+                            <span>{s.wet_weight_grams}g</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Sync button */}
             <Button
               onClick={runSync}
@@ -270,6 +323,22 @@ export function HarvestMetrcSync({ harvest, onSyncComplete }: HarvestMetrcSyncPr
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Testing Packages link */}
+        {harvest.metrc_id && (
+          <div className="pt-3 border-t">
+            <a
+              href={`/admin/grow/harvests/${harvest.id}/testing-packages`}
+              className="flex items-center justify-between rounded-md border p-3 hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <FlaskConicalIcon className="size-4" />
+                <span className="text-sm font-medium">Create Lab Testing Packages</span>
+              </div>
+              <span className="text-xs text-muted-foreground">R&D, Potency samples →</span>
+            </a>
           </div>
         )}
 
