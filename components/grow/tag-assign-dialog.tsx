@@ -34,11 +34,11 @@ export function TagAssignDialog({
   useEffect(() => {
     if (!open) return
     async function load() {
-      const tags = await apiClient.getMetrcTags({ status: "available", tag_type: "plant_tag" })
-      setAvailableTags(tags)
+      const res = await apiClient.getMetrcTags({ status: "available", tag_type: "plant_tag" })
+      setAvailableTags(res.tags)
       // Auto-suggest first available tag
-      if (tags.length > 0) {
-        setSelectedTag(tags[0].tag)
+      if (res.tags.length > 0) {
+        setSelectedTag(res.tags[0].tag)
       }
     }
     load()
