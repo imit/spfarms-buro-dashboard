@@ -18,9 +18,10 @@ import {
 import { LayoutDashboardIcon, ListIcon, UsersIcon, Settings2Icon, BoxIcon, UserPlusIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon, FolderIcon, BuildingIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/auth-context"
 import { canAccess, type Resource } from "@/lib/roles"
-import type { UserRole } from "@/lib/api"
+import { apiClient, type AppSettings, type UserRole } from "@/lib/api"
 import Link from "next/link"
 
 interface NavItem {
@@ -176,8 +177,17 @@ function filterByAccess(items: NavItem[], role: UserRole | undefined) {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, logout } = useAuth()
+  const { user, logout, isAuthenticated } = useAuth()
   const role = user?.role as UserRole | undefined
+  const [metrcSettings, setMetrcSettings] = React.useState<AppSettings | null>(null)
+
+  React.useEffect(() => {
+    if (!isAuthenticated) return
+    apiClient.getSettings().then(setMetrcSettings).catch(() => {})
+  }, [isAuthenticated])
+
+  const metrcEnv = metrcSettings?.metrc_default_env || "sandbox"
+  const activeLicense = metrcSettings?.facilities?.find((f) => f.metrc_license_number)?.metrc_license_number
 
   const filteredPeopleCompanies = filterByAccess(navPeopleCompanies, role)
   const filteredCommerce = filterByAccess(navCommerce, role)
@@ -216,9 +226,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="w-30 ml-1 mb-4">
+            <div className="w-30 ml-1 mb-2">
               <Logo />
             </div>
+            {activeLicense && (
+              <div className="ml-1 mb-3 space-y-1">
+                <p className="text-[10px] font-mono text-muted-foreground truncate">{activeLicense}</p>
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] cursor-pointer select-none ${
+                    metrcEnv === "production"
+                      ? "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
+                      : "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
+                  }`}
+                  onClick={async () => {
+                    const newEnv = metrcEnv === "sandbox" ? "production" : "sandbox"
+                    const confirmed = newEnv === "production"
+                      ? confirm("Switch to PRODUCTION Metrc environment?")
+                      : true
+                    if (!confirmed) return
+                    try {
+                      await apiClient.updateSettings({ metrc_default_env: newEnv })
+                      setMetrcSettings((prev) => prev ? { ...prev, metrc_default_env: newEnv } : prev)
+                    } catch { /* ignore */ }
+                  }}
+                >
+                  METRC: {metrcEnv === "production" ? "PRODUCTION" : "SANDBOX"}
+                </Badge>
+              </div>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

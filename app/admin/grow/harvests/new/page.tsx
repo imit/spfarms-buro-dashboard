@@ -191,7 +191,7 @@ export default function NewHarvestPage() {
               <span className="text-xs font-medium text-muted-foreground flex-1">Plant</span>
               <span className="text-xs font-medium text-muted-foreground w-24">Room</span>
               <span className="text-xs font-medium text-muted-foreground w-24">Tray</span>
-              <span className="text-xs font-medium text-muted-foreground w-28">METRC Tag</span>
+              <span className="text-xs font-medium text-muted-foreground w-36">METRC Tag</span>
             </div>
             <div className="divide-y max-h-[400px] overflow-y-auto">
               {filteredPlants.map((plant) => (
@@ -212,11 +212,11 @@ export default function NewHarvestPage() {
                   </div>
                   <span className="text-xs text-muted-foreground w-24 truncate">{plant.room?.name || "—"}</span>
                   <span className="text-xs text-muted-foreground w-24 truncate">{plant.rack?.name || "—"} / {plant.tray?.name || "—"}</span>
-                  <span className="text-xs text-muted-foreground w-28 font-mono truncate">
+                  <span className="text-xs w-36 font-mono truncate">
                     {plant.metrc_label ? (
-                      <><TagIcon className="inline h-3 w-3 mr-0.5" />{plant.metrc_label.slice(-8)}</>
+                      <span className="text-muted-foreground"><TagIcon className="inline h-3 w-3 mr-0.5" />{plant.metrc_label}</span>
                     ) : (
-                      <span className="text-muted-foreground/50">—</span>
+                      <span className="text-red-500 font-sans">No tag</span>
                     )}
                   </span>
                 </label>
@@ -306,6 +306,18 @@ export default function NewHarvestPage() {
               These plants will be marked as harvested and their tray slots will be freed.
             </p>
           </div>
+
+          {/* No tag warning */}
+          {selectedPlants.some((p) => !p.metrc_label) && (
+            <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-800 p-4 space-y-1">
+              <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                {selectedPlants.filter((p) => !p.metrc_label).length} plant{selectedPlants.filter((p) => !p.metrc_label).length !== 1 ? "s" : ""} without METRC tags
+              </p>
+              <p className="text-xs text-red-600 dark:text-red-400/80">
+                These plants will be skipped during Metrc sync. Assign tags before syncing to keep compliance.
+              </p>
+            </div>
+          )}
 
           {error && <ErrorAlert message={error} />}
 

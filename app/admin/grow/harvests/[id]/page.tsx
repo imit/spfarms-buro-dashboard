@@ -13,6 +13,7 @@ import { StrainAvatar } from "@/components/grow/strain-avatar"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ErrorAlert } from "@/components/ui/error-alert"
 import { ArrowLeftIcon, TagIcon, ScaleIcon, DropletIcon, TrashIcon, WindIcon, CheckCircleIcon, PlusIcon, ScissorsIcon, PackageIcon, Flower as FlowerIcon, ShieldCheckIcon } from "lucide-react"
+import { HarvestMetrcSync } from "@/components/grow/harvest-metrc-sync"
 import Link from "next/link"
 
 function gToLbs(grams: number): string {
@@ -939,10 +940,12 @@ export default function HarvestDetailPage() {
                 <span className="text-sm font-medium">{hp.strain_name}</span>
                 <span className="text-muted-foreground text-xs ml-2">{hp.plant_uid}</span>
               </div>
-              {hp.metrc_label && (
+              {hp.metrc_label ? (
                 <span className="text-xs text-muted-foreground font-mono">
-                  <TagIcon className="inline h-3 w-3 mr-0.5" />{hp.metrc_label.slice(-8)}
+                  <TagIcon className="inline h-3 w-3 mr-0.5" />{hp.metrc_label}
                 </span>
+              ) : (
+                <span className="text-xs text-red-500">No tag</span>
               )}
               {hp.wet_weight_grams != null && (
                 <span className="text-xs text-muted-foreground tabular-nums">{hp.wet_weight_grams}g</span>
@@ -959,6 +962,19 @@ export default function HarvestDetailPage() {
           <p className="text-sm text-muted-foreground">{harvest.notes}</p>
         </div>
       )}
+
+      {/* Metrc Sync */}
+      <HarvestMetrcSync
+        harvest={harvest}
+        onSyncComplete={async () => {
+          const [h, evts] = await Promise.all([
+            apiClient.getHarvest(harvest.id),
+            apiClient.getHarvestAuditEvents(harvest.id),
+          ])
+          setHarvest(h)
+          setAuditEvents(evts)
+        }}
+      />
 
       {/* Activity Log */}
       {auditEvents.length > 0 && (

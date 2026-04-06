@@ -19,6 +19,7 @@ import {
   Trash2Icon,
   MailIcon,
   BoxIcon,
+  CloudUploadIcon,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -37,6 +38,8 @@ const EVENT_CONFIG: Record<AuditEventType, { icon: React.ReactNode; color: strin
   harvest_trimming_finished:     { icon: <CheckCircleIcon className="h-4 w-4" />,  color: "text-violet-600",  bg: "bg-violet-100 dark:bg-violet-900/30" },
   harvest_curing_finished:       { icon: <PackageIcon className="h-4 w-4" />,      color: "text-pink-500",    bg: "bg-pink-100 dark:bg-pink-900/30" },
   harvest_admin_reviewed:        { icon: <ShieldCheckIcon className="h-4 w-4" />, color: "text-indigo-500",  bg: "bg-indigo-100 dark:bg-indigo-900/30" },
+  harvest_metrc_sync:            { icon: <CloudUploadIcon className="h-4 w-4" />, color: "text-emerald-500", bg: "bg-emerald-100 dark:bg-emerald-900/30" },
+  harvest_metrc_preflight:       { icon: <CloudUploadIcon className="h-4 w-4" />, color: "text-gray-500",    bg: "bg-gray-100 dark:bg-gray-900/30" },
   batch_created:                 { icon: <LayersIcon className="h-4 w-4" />,        color: "text-emerald-500", bg: "bg-emerald-100 dark:bg-emerald-900/30" },
   note_added:                    { icon: <StickyNoteIcon className="h-4 w-4" />,    color: "text-yellow-500",  bg: "bg-yellow-100 dark:bg-yellow-900/30" },
   user_created:                  { icon: <UserPlusIcon className="h-4 w-4" />,      color: "text-green-500",   bg: "bg-green-100 dark:bg-green-900/30" },
@@ -115,6 +118,10 @@ function formatEventDetail(event: AuditEventData): string {
       return m.curing_days ? `${m.curing_days} days` : ""
     case "harvest_admin_reviewed":
       return m.reviewed_by ? `Reviewed by ${m.reviewed_by}` : ""
+    case "harvest_metrc_sync":
+      return `${m.step}: ${m.action} (${m.environment})`
+    case "harvest_metrc_preflight":
+      return `Preflight check (${m.environment})`
     case "batch_created":
       return `${m.batch_type} batch, ${m.initial_count} ${m.strain_name}`
     default:
