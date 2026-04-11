@@ -25,7 +25,7 @@ export function LoginForm() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [mode, setMode] = useState<LoginMode>("password")
+  const [mode, setMode] = useState<LoginMode>("magic_link")
   const [mounted, setMounted] = useState(false)
   const { login } = useAuth()
 
@@ -36,7 +36,7 @@ export function LoginForm() {
     setMounted(true)
   }, [])
 
-  // Auto-focus: password if email is remembered, email otherwise
+  // Auto-focus: password if in password mode with saved email, email otherwise
   useEffect(() => {
     if (!mounted) return
     if (savedEmail && mode === "password") {
@@ -123,10 +123,10 @@ export function LoginForm() {
             </p>
             <button
               type="button"
-              onClick={() => { setSuccess(""); toggleMode(); }}
+              onClick={() => { setSuccess(""); }}
               className="text-sm text-green-600 underline hover:text-green-800 mt-2"
             >
-              Back to password login
+              Try again
             </button>
           </div>
         ) : (
@@ -166,13 +166,6 @@ export function LoginForm() {
                     {showPassword ? <EyeOffIcon className="size-5" /> : <EyeIcon className="size-5" />}
                   </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={toggleMode}
-                  className="text-sm text-[#050403]/50 hover:text-[#050403] transition-colors text-left -mt-1"
-                >
-                  Forgot password or don&apos;t have one? <span className="underline font-medium">Use a magic link</span>
-                </button>
               </>
             )}
 
@@ -183,21 +176,21 @@ export function LoginForm() {
               style={{ backgroundColor: "#48A848" }}
             >
               {isLoading
-                ? (mode === "password" ? "Logging in..." : "Sending link...")
-                : (mode === "password" ? "Login" : "Send login link")}
+                ? (mode === "magic_link" ? "Sending link..." : "Logging in...")
+                : (mode === "magic_link" ? "Send login link" : "Login")}
             </Button>
 
-            {mode === "magic_link" && (
-              <div className="text-center mt-2">
-                <button
-                  type="button"
-                  onClick={toggleMode}
-                  className="text-sm text-[#050403]/50 hover:text-[#050403] transition-colors"
-                >
-                  Back to <span className="underline font-medium">password login</span>
-                </button>
-              </div>
-            )}
+            <div className="text-center mt-2">
+              <button
+                type="button"
+                onClick={toggleMode}
+                className="text-sm text-[#050403]/50 hover:text-[#050403] transition-colors"
+              >
+                {mode === "magic_link"
+                  ? <>Have a password? <span className="underline font-medium">Login with password</span></>
+                  : <>Back to <span className="underline font-medium">magic link login</span></>}
+              </button>
+            </div>
           </>
         )}
       </form>
