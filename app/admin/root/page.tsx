@@ -263,13 +263,28 @@ export default function RootDashboardPage() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           icon={<DollarSignIcon className="size-5" />}
-          label="Total Revenue"
+          label="Total Revenue (Paid)"
           value={formatCurrency(stats.total_revenue)}
           href="/admin/orders"
         />
+        <StatCard
+          icon={<TrendingUpIcon className="size-5" />}
+          label="Expected Revenue"
+          value={formatCurrency(stats.expected_revenue)}
+          sub="All confirmed orders (paid + unpaid)"
+          href="/admin/orders"
+        />
+        <StatCard
+          icon={<DollarSignIcon className="size-5" />}
+          label="COD Revenue"
+          value={formatCurrency(stats.cod_revenue)}
+          sub="Cash on delivery (paid)"
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           icon={<ShoppingCartIcon className="size-5" />}
           label="Total Orders"

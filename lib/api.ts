@@ -1315,6 +1315,8 @@ export interface RootDashboardTicket {
 
 export interface RootDashboardStats {
   total_revenue: number;
+  expected_revenue: number;
+  cod_revenue: number;
   total_orders: number;
   orders_today: number;
   revenue_today: number;
