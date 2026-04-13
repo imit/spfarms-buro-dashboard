@@ -34,8 +34,10 @@ export function ProductCard({
 }) {
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
+  const outOfStock = !product.in_stock;
 
   const handleAdd = async () => {
+    if (outOfStock) return;
     setAdding(true);
     try {
       await onAddToCart(product.id, quantity);
@@ -179,20 +181,28 @@ export function ProductCard({
       {/* Qty + Add button — order 5 on desktop, hidden on mobile/compact */}
       {!compact && (
         <div className="hidden sm:flex gap-2 order-5">
-          <input
-            type="number"
-            min={1}
-            value={quantity}
-            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-            className="w-16 rounded-lg border text-center text-base font-mono py-2.5 bg-background"
-          />
-          <button
-            onClick={handleAdd}
-            disabled={adding}
-            className="flex-1 rounded-lg bg-primary hover:bg-primary/80 text-primary-foreground text-base font-medium py-2.5 transition-colors disabled:opacity-50"
-          >
-            {adding ? "Adding..." : "Add"}
-          </button>
+          {outOfStock ? (
+            <div className="flex-1 rounded-lg border border-red-200 bg-red-50 text-red-600 text-base font-medium py-2.5 text-center">
+              Out of Stock
+            </div>
+          ) : (
+            <>
+              <input
+                type="number"
+                min={1}
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-16 rounded-lg border text-center text-base font-mono py-2.5 bg-background"
+              />
+              <button
+                onClick={handleAdd}
+                disabled={adding}
+                className="flex-1 rounded-lg bg-primary hover:bg-primary/80 text-primary-foreground text-base font-medium py-2.5 transition-colors disabled:opacity-50"
+              >
+                {adding ? "Adding..." : "Add"}
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -242,20 +252,28 @@ export function ProductCard({
           </div>
 
           <div className="flex gap-2">
-            <input
-              type="number"
-              min={1}
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-12 rounded-lg border text-center text-sm font-mono py-2 bg-background"
-            />
-            <button
-              onClick={handleAdd}
-              disabled={adding}
-              className="flex-1 rounded-lg bg-primary hover:bg-primary/80 text-primary-foreground text-sm font-medium py-2 transition-colors disabled:opacity-50"
-            >
-              {adding ? "Adding..." : "Add"}
-            </button>
+            {outOfStock ? (
+              <div className="flex-1 rounded-lg border border-red-200 bg-red-50 text-red-600 text-sm font-medium py-2 text-center">
+                Out of Stock
+              </div>
+            ) : (
+              <>
+                <input
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-12 rounded-lg border text-center text-sm font-mono py-2 bg-background"
+                />
+                <button
+                  onClick={handleAdd}
+                  disabled={adding}
+                  className="flex-1 rounded-lg bg-primary hover:bg-primary/80 text-primary-foreground text-sm font-medium py-2 transition-colors disabled:opacity-50"
+                >
+                  {adding ? "Adding..." : "Add"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

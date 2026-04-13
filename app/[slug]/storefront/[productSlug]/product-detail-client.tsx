@@ -339,21 +339,29 @@ export default function ProductDetailClient({
               )}
             </div>
             <div className="flex gap-2">
-              <input
-                type="number"
-                min={1}
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-16 rounded-xl border text-center text-lg font-mono py-3 bg-background"
-              />
-              <button
-                onClick={handleAddToCart}
-                disabled={adding}
-                className="relative overflow-hidden rounded-xl bg-primary hover:bg-primary/80 text-primary-foreground text-xl font-medium px-20 py-4 transition-colors disabled:opacity-50"
-              >
-                <span className="absolute inset-0 animate-[shimmer_3s_ease-in-out_infinite] bg-linear-to-r from-transparent via-white/30 to-transparent" />
-                {adding ? "Adding..." : "Add"}
-              </button>
+              {!product.in_stock ? (
+                <div className="flex-1 rounded-xl border border-red-200 bg-red-50 text-red-600 text-xl font-medium py-4 text-center">
+                  Out of Stock
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="number"
+                    min={1}
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-16 rounded-xl border text-center text-lg font-mono py-3 bg-background"
+                  />
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={adding}
+                    className="relative overflow-hidden rounded-xl bg-primary hover:bg-primary/80 text-primary-foreground text-xl font-medium px-20 py-4 transition-colors disabled:opacity-50"
+                  >
+                    <span className="absolute inset-0 animate-[shimmer_3s_ease-in-out_infinite] bg-linear-to-r from-transparent via-white/30 to-transparent" />
+                    {adding ? "Adding..." : "Add"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -589,21 +597,29 @@ export default function ProductDetailClient({
             )}
           </div>
           <div className="flex gap-2">
-            <input
-              type="number"
-              min={1}
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-14 rounded-xl border text-center text-base font-mono py-2.5 bg-background"
-            />
-            <button
-              onClick={handleAddToCart}
-              disabled={adding}
-              className="relative overflow-hidden rounded-xl bg-primary hover:bg-primary/80 text-primary-foreground text-lg font-medium px-10 py-2.5 transition-colors disabled:opacity-50"
-            >
-              <span className="absolute inset-0 animate-[shimmer_3s_ease-in-out_infinite] bg-linear-to-r from-transparent via-white/30 to-transparent" />
-              {adding ? "Adding..." : "Add"}
-            </button>
+            {!product.in_stock ? (
+              <div className="flex-1 rounded-xl border border-red-200 bg-red-50 text-red-600 text-lg font-medium py-2.5 text-center">
+                Out of Stock
+              </div>
+            ) : (
+              <>
+                <input
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-14 rounded-xl border text-center text-base font-mono py-2.5 bg-background"
+                />
+                <button
+                  onClick={handleAddToCart}
+                  disabled={adding}
+                  className="relative overflow-hidden rounded-xl bg-primary hover:bg-primary/80 text-primary-foreground text-lg font-medium px-10 py-2.5 transition-colors disabled:opacity-50"
+                >
+                  <span className="absolute inset-0 animate-[shimmer_3s_ease-in-out_infinite] bg-linear-to-r from-transparent via-white/30 to-transparent" />
+                  {adding ? "Adding..." : "Add"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
