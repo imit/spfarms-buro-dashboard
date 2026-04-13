@@ -65,6 +65,7 @@ interface PaymentTermOption {
 interface AgreementData {
   requires_payment_term_selection: boolean;
   payment_terms?: PaymentTermOption[];
+  disable_payment_term_discount?: boolean;
   order: {
     subtotal: string;
     tax_amount: string | null;
@@ -153,7 +154,8 @@ export default function OrderDetailPage({
 
   // Compute estimated total with selected term discount
   const subtotalNum = parseFloat(order?.subtotal || "0") || 0;
-  const discountPct = selectedTerm
+  const discountDisabled = agreementData?.disable_payment_term_discount ?? false;
+  const discountPct = !discountDisabled && selectedTerm
     ? parseFloat(selectedTerm.discount_percentage) || 0
     : 0;
   const termDiscount = (subtotalNum * discountPct) / 100;
@@ -465,8 +467,9 @@ export default function OrderDetailPage({
             <div className="space-y-2">
               {paymentTerms.map((term) => {
                 const isSelected = selectedTermId === term.id;
-                const discount =
-                  parseFloat(term.discount_percentage) || 0;
+                const discount = discountDisabled
+                  ? 0
+                  : parseFloat(term.discount_percentage) || 0;
                 return (
                   <button
                     key={term.id}
