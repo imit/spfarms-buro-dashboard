@@ -304,6 +304,19 @@ export default function AdminOrderDetailPage({
     finally { setSendingLicenseReminder(false); }
   };
 
+  const togglePaymentTermDiscount = async () => {
+    if (!order) return;
+    try {
+      const updated = await apiClient.updateOrder(Number(id), {
+        disable_payment_term_discount: !order.disable_payment_term_discount,
+      });
+      setOrder(updated);
+      toast.success(updated.disable_payment_term_discount ? "Payment term discount disabled" : "Payment term discount enabled");
+    } catch {
+      showError("toggle payment term discount");
+    }
+  };
+
   const startEditingContacts = () => {
     const contacts = order?.order_users.filter((ou) => ou.role === "contact") ?? [];
     const orderer = order?.order_users.find((ou) => ou.role === "orderer");
@@ -897,6 +910,17 @@ export default function AdminOrderDetailPage({
             {/* Totals */}
             <div className="border-t px-3 sm:px-5 py-3.5 space-y-1 bg-muted/30">
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span>{formatPrice(order.subtotal)}</span></div>
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-1.5 text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={order.disable_payment_term_discount}
+                    onChange={togglePaymentTermDiscount}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-xs">Disable payment term discount</span>
+                </label>
+              </div>
               {order.payment_term_discount_amount && parseFloat(order.payment_term_discount_amount) > 0 && (
                 <div className="flex justify-between text-sm text-green-600"><span>Discount ({order.payment_term_name})</span><span>-{formatPrice(order.payment_term_discount_amount)}</span></div>
               )}

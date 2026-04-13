@@ -152,7 +152,7 @@ export function HeroParallax() {
         </p>
 
         {/* Scalloped "Shop Now" button */}
-        <Link href="/products" className="group relative mt-8 inline-block">
+        <Link href="/strains" className="group relative mt-8 inline-block">
           <svg
             viewBox="0 0 280 120"
             className="w-[240px] md:w-[290px] h-auto drop-shadow-xl"

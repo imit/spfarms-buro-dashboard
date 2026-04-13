@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Logo } from "@/components/shared/logo";
 
 const NAV_LINKS = [
-  { label: "Products", href: "/products" },
+  { label: "Strains", href: "/strains" },
   { label: "About", href: "/about" },
   { label: "Find Us", href: "/find-us" },
   { label: "Blog", href: "/blog" },

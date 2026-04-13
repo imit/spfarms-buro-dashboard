@@ -1026,6 +1026,7 @@ export interface Order {
   tax_amount: string | null;
   delivery_fee: string | null;
   delivery_fee_waived: boolean;
+  disable_payment_term_discount: boolean;
   notes_to_vendor: string | null;
   internal_notes: string | null;
   desired_delivery_date: string | null;
@@ -3939,7 +3940,7 @@ export class ApiClient {
 
   async updateOrder(
     id: number,
-    data: { status?: string; internal_notes?: string; shipping_location_id?: number; billing_location_id?: number },
+    data: { status?: string; internal_notes?: string; shipping_location_id?: number; billing_location_id?: number; disable_payment_term_discount?: boolean },
     sendNotification?: boolean
   ): Promise<Order> {
     const res = await this.request<JsonApiResponse<Order>>(

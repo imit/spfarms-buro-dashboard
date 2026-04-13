@@ -13,9 +13,9 @@ function TikTokIcon({ className }: { className?: string }) {
 
 const NAV_SECTIONS = [
   {
-    title: "Products",
+    title: "Strains",
     links: [
-      { label: "All Products", href: "/products" },
+      { label: "All Strains", href: "/strains" },
       { label: "Find a Dispensary", href: "/find-us" },
     ],
   },
