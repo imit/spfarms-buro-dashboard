@@ -40,6 +40,7 @@ import {
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
+import { buildBoxLabelHtml } from "@/lib/box-label";
 
 const STATUS_BADGE_COLORS: Record<ShipmentStatus, string> = {
   draft: "bg-slate-100 text-slate-700",
@@ -511,35 +512,15 @@ export default function AdminShipmentDetailPage({
   };
 
   const printBoxLabel = (order: ShipmentOrderSummary) => {
-    const win = window.open("", "_blank", "width=400,height=600");
+    const win = window.open("", "_blank", "width=600,height=400");
     if (!win) return;
-    win.document.write(`<!DOCTYPE html>
-<html><head><title>Box Label - ${order.order_number}</title>
-<style>
-  @page { size: 4in 6in; margin: 0.25in; }
-  body { font-family: Arial, Helvetica, sans-serif; padding: 0.5in; }
-  .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; }
-  .header h1 { margin: 0; font-size: 22px; }
-  .header p { margin: 4px 0 0; font-size: 12px; color: #666; }
-  .order-number { font-size: 28px; font-weight: bold; text-align: center; margin: 16px 0; letter-spacing: 2px; }
-  .section { margin-bottom: 14px; }
-  .section-label { font-size: 10px; text-transform: uppercase; color: #888; letter-spacing: 1px; margin-bottom: 4px; }
-  .section-value { font-size: 14px; line-height: 1.4; }
-  .items { margin-top: 16px; border-top: 1px solid #ccc; padding-top: 12px; }
-  .items table { width: 100%; font-size: 12px; border-collapse: collapse; }
-  .items th { text-align: left; font-weight: 600; padding: 4px 0; border-bottom: 1px solid #eee; }
-  .items td { padding: 3px 0; }
-  .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #aaa; border-top: 1px solid #ccc; padding-top: 10px; }
-</style></head>
-<body onload="window.print()">
-  <div class="header"><h1>SPFarms</h1><p>Cannabis Delivery</p></div>
-  <div class="order-number">${order.order_number}</div>
-  <div class="section"><div class="section-label">Ship To</div><div class="section-value"><strong>${order.company_name}</strong></div></div>
-  ${order.desired_delivery_date ? `<div class="section"><div class="section-label">Desired Delivery</div><div class="section-value">${new Date(order.desired_delivery_date).toLocaleDateString()}</div></div>` : ""}
-  <div class="items"><table><thead><tr><th>Product</th><th style="text-align:right">Qty</th></tr></thead>
-  <tbody>${order.items.map((i) => `<tr><td>${i.product_name}</td><td style="text-align:right">${i.quantity}</td></tr>`).join("")}</tbody></table></div>
-  <div class="footer">Packed on ${new Date().toLocaleDateString()} - ${order.items.length} item${order.items.length !== 1 ? "s" : ""}</div>
-</body></html>`);
+    win.document.write(buildBoxLabelHtml({
+      orderNumber: order.order_number,
+      companyName: order.company_name,
+      address: "",
+      deliveryDate: order.desired_delivery_date ? new Date(order.desired_delivery_date).toLocaleDateString() : null,
+      items: order.items.map((i) => ({ name: i.product_name, qty: i.quantity })),
+    }));
     win.document.close();
   };
 
