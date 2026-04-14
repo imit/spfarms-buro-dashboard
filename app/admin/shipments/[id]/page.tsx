@@ -102,6 +102,12 @@ export default function AdminShipmentDetailPage({
   const [metrcSheetLayoutId, setMetrcSheetLayoutId] = useState("");
   const [metrcPrinting, setMetrcPrinting] = useState(false);
 
+  // Per-order METRC download
+  const [metrcDownloadOrderId, setMetrcDownloadOrderId] = useState<number | null>(null);
+  const [metrcDownloadOrderNumber, setMetrcDownloadOrderNumber] = useState("");
+  const [metrcDownloadLayoutId, setMetrcDownloadLayoutId] = useState("");
+  const [metrcDownloadPrinting, setMetrcDownloadPrinting] = useState(false);
+
   // Per-order METRC import (multi-file)
   const [metrcImportItemId, setMetrcImportItemId] = useState<number | null>(null);
   const [metrcImportOrderId, setMetrcImportOrderId] = useState<number | null>(null);
@@ -350,6 +356,29 @@ export default function AdminShipmentDetailPage({
       URL.revokeObjectURL(url);
     } catch {
       showError("download batch payment terms");
+    }
+  };
+
+  // Download all METRC labels for a single order
+  const downloadOrderMetrcLabels = async () => {
+    if (!metrcDownloadOrderId || !metrcDownloadLayoutId) return;
+    setMetrcDownloadPrinting(true);
+    try {
+      const blob = await apiClient.printAllOrderMetrcLabels(metrcDownloadOrderId, metrcDownloadLayoutId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${metrcDownloadOrderNumber}-all-metrc-labels.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setMetrcDownloadOrderId(null);
+      toast.success("PDF downloaded");
+    } catch {
+      showError("download order METRC labels");
+    } finally {
+      setMetrcDownloadPrinting(false);
     }
   };
 
@@ -1050,6 +1079,11 @@ export default function AdminShipmentDetailPage({
                         <DropdownMenuItem onClick={() => downloadOrderDeliveryAgreement(order.id, order.order_number)}>Delivery Agreement</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => downloadOrderPaymentTerms(order.id, order.order_number)}>Payment Terms</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => printBoxLabel(order)}>Box Label</DropdownMenuItem>
+                        {order.items.some((i) => i.metrc_label_sets && i.metrc_label_sets.length > 0) && (
+                          <DropdownMenuItem onClick={() => { setMetrcDownloadOrderId(order.id); setMetrcDownloadOrderNumber(order.order_number); setMetrcDownloadLayoutId(""); }}>
+                            METRC Labels
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                     <Button
@@ -1653,6 +1687,38 @@ export default function AdminShipmentDetailPage({
               </Button>
               <Button onClick={downloadBatchMetrcLabels} disabled={!metrcSheetLayoutId || metrcPrinting}>
                 {metrcPrinting ? "Generating PDF..." : "Combined"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Per-order METRC Download Dialog */}
+      <Dialog open={metrcDownloadOrderId !== null} onOpenChange={(open) => { if (!open) setMetrcDownloadOrderId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>METRC Labels — {metrcDownloadOrderNumber}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Select a sheet layout for printing:</p>
+              <Select value={metrcDownloadLayoutId} onValueChange={setMetrcDownloadLayoutId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select sheet layout..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sheetLayouts.map((layout) => (
+                    <SelectItem key={layout.id} value={layout.slug}>
+                      {layout.name} ({layout.columns}x{layout.rows})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setMetrcDownloadOrderId(null)}>Cancel</Button>
+              <Button onClick={downloadOrderMetrcLabels} disabled={!metrcDownloadLayoutId || metrcDownloadPrinting}>
+                {metrcDownloadPrinting ? "Generating PDF..." : "Download"}
               </Button>
             </div>
           </div>
