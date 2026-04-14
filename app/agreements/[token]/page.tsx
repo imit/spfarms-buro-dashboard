@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/shared/logo";
-import { CheckCircleIcon, LoaderIcon, AlertCircleIcon, ShoppingBagIcon, MailIcon, CheckIcon } from "lucide-react";
+import { CheckCircleIcon, LoaderIcon, AlertCircleIcon, ShoppingBagIcon, MailIcon, CheckIcon, DownloadIcon } from "lucide-react";
 import Link from "next/link";
 import posthog from "posthog-js";
 
@@ -33,6 +33,10 @@ interface AgreementOrder {
     quantity: number;
     unit_price: string;
     line_total: string;
+    is_bulk?: boolean;
+    bulk_grams?: number | null;
+    bulk_lbs?: number | null;
+    bulk_price_per_pound?: number | null;
   }[];
 }
 
@@ -300,6 +304,29 @@ export default function PaymentTermAgreementPage({
             </div>
           )}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${API_BASE_URL}/api/v1/public/payment_term_agreements/${token}/invoice`);
+                  if (!res.ok) throw new Error();
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `invoice-${order.order_number}.pdf`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                } catch {
+                  alert("Failed to download invoice");
+                }
+              }}
+            >
+              <DownloadIcon className="mr-2 size-4" />
+              Download Invoice
+            </Button>
             {order.company_slug && (
               <Link href={`/${order.company_slug}`}>
                 <Button variant="outline">
@@ -349,10 +376,16 @@ export default function PaymentTermAgreementPage({
             <div key={i} className="flex items-center justify-between px-4 py-2.5 text-sm">
               <div>
                 <span className="font-medium">{item.product_name}</span>
-                {item.strain_name && (
-                  <span className="text-muted-foreground"> ({item.strain_name})</span>
+                {item.is_bulk && item.bulk_lbs ? (
+                  <span className="text-muted-foreground"> — {item.bulk_lbs % 1 === 0 ? item.bulk_lbs.toFixed(0) : item.bulk_lbs.toFixed(2)} lb{item.bulk_lbs !== 1 ? "s" : ""} ({item.bulk_grams}g) @ ${item.bulk_price_per_pound}/lb</span>
+                ) : (
+                  <>
+                    {item.strain_name && (
+                      <span className="text-muted-foreground"> ({item.strain_name})</span>
+                    )}
+                    <span className="text-muted-foreground"> x{item.quantity}</span>
+                  </>
                 )}
-                <span className="text-muted-foreground"> x{item.quantity}</span>
               </div>
               <span>{formatPrice(item.line_total)}</span>
             </div>

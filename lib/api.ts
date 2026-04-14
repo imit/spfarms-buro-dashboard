@@ -959,6 +959,8 @@ export interface OrderItem {
   line_total: string;
   thumbnail_url: string | null;
   strain_name: string | null;
+  bulk_grams: string | null;
+  bulk_price_per_pound: string | null;
   metrc_label_sets?: OrderItemMetrcSet[];
 }
 

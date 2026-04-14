@@ -576,6 +576,20 @@ export default function AdminOrderDetailPage({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={async () => {
+                try {
+                  const members = order.company_details?.members ?? companyDetails?.members ?? [];
+                  if (members.length === 0) { toast.error("No company members to send to"); return; }
+                  for (const m of members) {
+                    await apiClient.resendOrderEmail(order.id, m.email);
+                  }
+                  toast.success(`Order email resent to ${members.map((m) => m.email).join(", ")}`);
+                  setTimelineKey((k) => k + 1);
+                } catch { showError("resend the order email"); }
+              }}>
+                <MailIcon className="mr-2 size-4" />
+                Resend Order Email
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setShowForwardDialog(true); setForwardEmail(""); }}>
                 <SendIcon className="mr-2 size-4" />
                 Forward Order
