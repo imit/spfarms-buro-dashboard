@@ -1565,6 +1565,8 @@ export interface CreateManualOrderParams {
   notes_to_vendor?: string;
   desired_delivery_date?: string;
   internal_notes?: string;
+  cod_only?: boolean;
+  disable_payment_term_discount?: boolean;
   items: { product_id: number; quantity: number; unit_price?: number }[];
 }
 

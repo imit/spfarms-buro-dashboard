@@ -56,6 +56,8 @@ export default function NewManualOrderPage() {
   const [notesToVendor, setNotesToVendor] = useState("");
   const [desiredDeliveryDate, setDesiredDeliveryDate] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
+  const [codOnly, setCodOnly] = useState(false);
+  const [disableDiscount, setDisableDiscount] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [productSearch, setProductSearch] = useState("");
@@ -146,6 +148,8 @@ export default function NewManualOrderPage() {
         notes_to_vendor: notesToVendor || undefined,
         desired_delivery_date: desiredDeliveryDate || undefined,
         internal_notes: internalNotes || undefined,
+        cod_only: codOnly || undefined,
+        disable_payment_term_discount: disableDiscount || undefined,
         items: items.map((i) => ({
           product_id: i.product_id,
           quantity: i.quantity,
@@ -481,14 +485,25 @@ export default function NewManualOrderPage() {
               onChange={(e) => setInternalNotes(e.target.value)}
             />
           </Field>
+          <div className="space-y-2 pt-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={codOnly} onChange={(e) => { setCodOnly(e.target.checked); if (e.target.checked) setDisableDiscount(true); }} className="rounded border-gray-300" />
+              COD only (no payment term selection for customer)
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={disableDiscount} onChange={(e) => setDisableDiscount(e.target.checked)} className="rounded border-gray-300" />
+              Disable payment term discount (custom pricing)
+            </label>
+          </div>
         </FieldGroup>
       </div>
 
       {/* Submit */}
       <div className="flex items-center justify-between pb-10">
         <p className="text-sm text-muted-foreground">
-          The customer will receive a link to review the order, select payment
-          terms (COD, Net 15, Net 30), and sign the agreement.
+          {codOnly
+            ? "Customer will receive a link to review and confirm the order (COD, no payment term selection)."
+            : "Customer will receive a link to review, select payment terms (COD, Net 15, Net 30), and sign."}
         </p>
         <Button
           size="lg"

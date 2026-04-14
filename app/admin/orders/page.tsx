@@ -133,6 +133,11 @@ export default function AdminOrdersPage() {
                         {ORDER_TYPE_LABELS.preorder}
                       </span>
                     )}
+                    {order.items.length > 0 && order.items.every((i) => i.product_type === "bulk_flower") && (
+                      <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                        Bulk
+                      </span>
+                    )}
                     </Link>
                   </td>
                   <td className="px-4 py-3">{order.company?.name ?? "—"}</td>
