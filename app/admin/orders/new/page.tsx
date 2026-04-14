@@ -388,75 +388,60 @@ export default function NewManualOrderPage() {
 
         {/* Line items table */}
         {items.length > 0 && (
-          <div className="rounded-md border divide-y">
-            <div className="grid grid-cols-[1fr,100px,80px,80px,40px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/30">
-              <span>Product</span>
-              <span>Price</span>
-              <span>Qty</span>
-              <span>Total</span>
-              <span />
-            </div>
-            {items.map((item) => {
-              const lineTotal = (parseFloat(item.unit_price) || 0) * item.quantity;
-              return (
-                <div
-                  key={item.product_id}
-                  className="grid grid-cols-[1fr,100px,80px,80px,40px] gap-2 px-3 py-2 items-center text-sm"
-                >
-                  <span className="flex items-center gap-2 font-medium truncate">
-                    {item.thumbnail_url ? (
-                      <img src={item.thumbnail_url} alt="" className="size-7 rounded object-cover shrink-0" />
-                    ) : (
-                      <div className="size-7 rounded bg-muted shrink-0" />
-                    )}
-                    <span className="truncate">{item.product_name}</span>
-                  </span>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={item.unit_price}
-                      onChange={(e) => updateItem(item.product_id, "unit_price", e.target.value)}
-                      className="h-8 text-sm pl-5"
-                    />
-                  </div>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={(e) =>
-                      updateItem(
-                        item.product_id,
-                        "quantity",
-                        parseInt(e.target.value) || 1
-                      )
-                    }
-                    className="h-8 text-sm"
-                  />
-                  <span className="text-sm font-medium">${lineTotal.toFixed(2)}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => removeItem(item.product_id)}
-                  >
-                    <Trash2Icon className="size-3.5 text-muted-foreground" />
-                  </Button>
-                </div>
-              );
-            })}
-            {/* Subtotal */}
-            <div className="grid grid-cols-[1fr,100px,80px,80px,40px] gap-2 px-3 py-2 items-center text-sm bg-muted/30">
-              <span />
-              <span />
-              <span className="text-xs font-medium text-muted-foreground">Subtotal</span>
-              <span className="font-semibold">
-                ${items.reduce((sum, i) => sum + (parseFloat(i.unit_price) || 0) * i.quantity, 0).toFixed(2)}
-              </span>
-              <span />
-            </div>
-          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30 text-xs font-medium text-muted-foreground">
+                <th className="text-left py-2 px-3 font-medium">Product</th>
+                <th className="text-left py-2 px-2 font-medium w-28">Price</th>
+                <th className="text-left py-2 px-2 font-medium w-20">Qty</th>
+                <th className="text-right py-2 px-2 font-medium w-24">Total</th>
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {items.map((item) => {
+                const total = (parseFloat(item.unit_price) || 0) * item.quantity;
+                return (
+                  <tr key={item.product_id}>
+                    <td className="py-2 px-3">
+                      <span className="flex items-center gap-2 font-medium">
+                        {item.thumbnail_url ? (
+                          <img src={item.thumbnail_url} alt="" className="size-7 rounded object-cover shrink-0" />
+                        ) : (
+                          <div className="size-7 rounded bg-muted shrink-0" />
+                        )}
+                        <span className="truncate">{item.product_name}</span>
+                      </span>
+                    </td>
+                    <td className="py-2 px-2">
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                        <Input type="number" min={0} step="0.01" value={item.unit_price} onChange={(e) => updateItem(item.product_id, "unit_price", e.target.value)} className="h-8 text-sm pl-5 w-full" />
+                      </div>
+                    </td>
+                    <td className="py-2 px-2">
+                      <Input type="number" min={1} value={item.quantity} onChange={(e) => updateItem(item.product_id, "quantity", parseInt(e.target.value) || 1)} className="h-8 text-sm w-full" />
+                    </td>
+                    <td className="py-2 px-2 text-right font-medium">${total.toFixed(2)}</td>
+                    <td className="py-2 px-1">
+                      <Button variant="ghost" size="icon-sm" onClick={() => removeItem(item.product_id)}>
+                        <Trash2Icon className="size-3.5 text-muted-foreground" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t bg-muted/30">
+                <td colSpan={3} className="py-2 px-3 text-right text-xs font-medium text-muted-foreground">Subtotal</td>
+                <td className="py-2 px-2 text-right font-semibold">
+                  ${items.reduce((sum, i) => sum + (parseFloat(i.unit_price) || 0) * i.quantity, 0).toFixed(2)}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
         )}
 
         {items.length === 0 && !productSearch && (

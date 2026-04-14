@@ -1568,6 +1568,17 @@ export interface CreateManualOrderParams {
   items: { product_id: number; quantity: number; unit_price?: number }[];
 }
 
+export interface CreateBulkOrderParams {
+  company_id: number;
+  shipping_location_id?: number;
+  billing_location_id?: number;
+  notes_to_vendor?: string;
+  desired_delivery_date?: string;
+  internal_notes?: string;
+  disable_payment_term_discount?: boolean;
+  items: { strain_id: number; grams: number; price_per_pound: number }[];
+}
+
 // ---- Grow / Facility ----
 
 export type RoomType = "veg" | "flower" | "clone" | "dry" | "cure" | "storage" | "other";
@@ -3908,6 +3919,17 @@ export class ApiClient {
   async createManualOrder(params: CreateManualOrderParams): Promise<Order> {
     const res = await this.request<JsonApiResponse<Order>>(
       "/api/v1/orders/create_manual",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createBulkOrder(params: CreateBulkOrderParams): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      "/api/v1/orders/create_bulk",
       {
         method: "POST",
         body: JSON.stringify(params),

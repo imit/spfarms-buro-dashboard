@@ -69,12 +69,20 @@ export default function AdminOrdersPage() {
             Manage dispensary orders
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/orders/new">
-            <PlusIcon className="mr-1.5 size-4" />
-            Create Order
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/admin/orders/new-bulk">
+              <PlusIcon className="mr-1.5 size-4" />
+              Bulk Order
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/admin/orders/new">
+              <PlusIcon className="mr-1.5 size-4" />
+              Create Order
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
