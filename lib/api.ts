@@ -3964,6 +3964,10 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
+  async deleteOrder(id: number): Promise<void> {
+    await this.request(`/api/v1/orders/${id}`, { method: "DELETE" });
+  }
+
   async updateOrder(
     id: number,
     data: { status?: string; internal_notes?: string; shipping_location_id?: number; billing_location_id?: number; disable_payment_term_discount?: boolean },

@@ -67,7 +67,7 @@ export default function AdminOrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,6 +81,9 @@ export default function AdminOrderDetailPage({
   const [sendingLicenseReminder, setSendingLicenseReminder] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"bank_info" | "agreement" | "license_reminder" | null>(null);
   const [showForwardDialog, setShowForwardDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [forwardEmail, setForwardEmail] = useState("");
   const [forwardingSending, setForwardingSending] = useState(false);
   const [timelineKey, setTimelineKey] = useState(0);
@@ -369,6 +372,19 @@ export default function AdminOrderDetailPage({
 
   const refreshComments = async () => {
     try { const data = await apiClient.getOrderComments(Number(id)); setComments(data); } catch {}
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!order || deleteConfirmText !== order.order_number) return;
+    setDeleting(true);
+    try {
+      await apiClient.deleteOrder(Number(id));
+      router.push("/admin/orders");
+    } catch {
+      showError("delete the order");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleForwardOrder = async () => {
@@ -1487,6 +1503,51 @@ export default function AdminOrderDetailPage({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete order — admin only */}
+      {user?.role === "admin" && (
+        <>
+          <div className="mt-12 border-t pt-4">
+            <button
+              className="text-xs text-muted-foreground/50 hover:text-destructive transition-colors"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              Delete this order
+            </button>
+          </div>
+          <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => { if (!open) { setShowDeleteConfirm(false); setDeleteConfirmText(""); } }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete order permanently?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3">
+                    <p>This will permanently delete <strong>{order.order_number}</strong> and all associated data (items, agreement, notifications). This cannot be undone.</p>
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-medium text-foreground">Type <strong>{order.order_number}</strong> to confirm:</p>
+                      <Input
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        placeholder={order.order_number}
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteOrder}
+                  disabled={deleteConfirmText !== order.order_number || deleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleting ? "Deleting..." : "Delete Order"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </div>
   );
 }
