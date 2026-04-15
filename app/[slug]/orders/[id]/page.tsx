@@ -134,6 +134,7 @@ function OrderDetailContent({
 
   // Auto-login via magic token from email link
   const magicToken = searchParams.get("magic_token");
+  const fallbackAgreement = useRef(searchParams.get("fallback"));
   const magicTokenAttempted = useRef(false);
   const [magicTokenDone, setMagicTokenDone] = useState(!magicToken);
 
@@ -154,12 +155,13 @@ function OrderDetailContent({
         const { user } = await apiClient.verifyMagicLink(magicToken);
         loginWithToken(user);
       } catch {
-        // Token invalid — will fall through to unauthenticated state
+        // Token invalid — will fall through to fallback
       }
       setMagicTokenDone(true);
-      // Clean magic_token from URL
+      // Clean magic_token and fallback from URL
       const p = new URLSearchParams(window.location.search);
       p.delete("magic_token");
+      p.delete("fallback");
       const clean = `${window.location.pathname}${p.toString() ? `?${p}` : ""}`;
       window.history.replaceState({}, "", clean);
     })();
@@ -330,8 +332,16 @@ function OrderDetailContent({
     );
   }
 
-  // Not authenticated after all attempts — show login prompt
+  // Not authenticated after all attempts — redirect to agreement page (no auth needed)
   if (!isAuthenticated) {
+    if (fallbackAgreement.current) {
+      router.replace(`/agreements/${fallbackAgreement.current}`);
+      return (
+        <div className="flex items-center justify-center py-20">
+          <LoaderIcon className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center space-y-4">
         <div className="mx-auto w-36">
