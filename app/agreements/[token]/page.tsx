@@ -1,7 +1,10 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { Suspense, use, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import SignatureCanvas from "react-signature-canvas";
+import { apiClient } from "@/lib/api";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +16,7 @@ import posthog from "posthog-js";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 interface AgreementOrder {
+  id: number;
   order_number: string;
   status: string;
   company_name: string;
@@ -69,7 +73,22 @@ export default function PaymentTermAgreementPage({
 }: {
   params: Promise<{ token: string }>;
 }) {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><LoaderIcon className="size-6 animate-spin text-muted-foreground" /></div>}>
+      <PaymentTermAgreementContent params={params} />
+    </Suspense>
+  );
+}
+
+function PaymentTermAgreementContent({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
   const { token } = use(params);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { loginWithToken } = useAuth();
   const sigRef = useRef<SignatureCanvas>(null);
   const [data, setData] = useState<AgreementData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +102,32 @@ export default function PaymentTermAgreementPage({
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
+
+  // Magic link auto-login: if magic_token is in the URL, log the user in
+  // and redirect to the full order page. If it fails, stay here — this page
+  // works fine without auth.
+  const magicTokenAttempted = useRef(false);
+  useEffect(() => {
+    const magicToken = searchParams.get("magic_token");
+    if (!magicToken || magicTokenAttempted.current) return;
+    magicTokenAttempted.current = true;
+
+    (async () => {
+      try {
+        const { user } = await apiClient.verifyMagicLink(magicToken);
+        loginWithToken(user);
+        // Redirect to the authenticated order page
+        // We'll get the order info from the agreement data once loaded
+      } catch {
+        // Magic link failed — no problem, this page works without auth
+      }
+      // Clean magic_token from URL
+      const p = new URLSearchParams(window.location.search);
+      p.delete("magic_token");
+      const clean = `${window.location.pathname}${p.toString() ? `?${p}` : ""}`;
+      window.history.replaceState({}, "", clean);
+    })();
+  }, [searchParams, loginWithToken]);
 
   useEffect(() => {
     async function load() {
@@ -120,6 +165,17 @@ export default function PaymentTermAgreementPage({
     }
     load();
   }, [token]);
+
+  // After magic login succeeds and agreement data loads, redirect to the
+  // authenticated order page for the full experience.
+  const { isAuthenticated } = useAuth();
+  useEffect(() => {
+    if (!isAuthenticated || !data) return;
+    const { order } = data;
+    if (order.company_slug && order.id) {
+      router.replace(`/${order.company_slug}/orders/${order.id}`);
+    }
+  }, [isAuthenticated, data, router]);
 
   if (isLoading) {
     return (

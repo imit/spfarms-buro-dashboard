@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, use, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { use, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import SignatureCanvas from "react-signature-canvas";
 import Link from "next/link";
 import {
@@ -96,22 +96,9 @@ export default function OrderDetailPage({
 }: {
   params: Promise<{ slug: string; id: string }>;
 }) {
-  return (
-    <Suspense fallback={<div className="flex items-center justify-center py-20"><LoaderIcon className="size-6 animate-spin text-muted-foreground" /></div>}>
-      <OrderDetailContent params={params} />
-    </Suspense>
-  );
-}
-
-function OrderDetailContent({
-  params,
-}: {
-  params: Promise<{ slug: string; id: string }>;
-}) {
   const { slug, id } = use(params);
-  const { isAuthenticated, isLoading: authLoading, loginWithToken } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,41 +118,6 @@ function OrderDetailContent({
   const [signed, setSigned] = useState(false);
   const [rejected, setRejected] = useState(false);
   const sigRef = useRef<SignatureCanvas>(null);
-
-  // Auto-login via magic token from email link
-  const magicToken = searchParams.get("magic_token");
-  const fallbackAgreement = useRef(searchParams.get("fallback"));
-  const magicTokenAttempted = useRef(false);
-  const [magicTokenDone, setMagicTokenDone] = useState(!magicToken);
-
-  useEffect(() => {
-    // Wait for auth context to finish initializing before deciding
-    if (authLoading) return;
-    // Already logged in or no magic token — nothing to do
-    if (isAuthenticated || !magicToken) {
-      setMagicTokenDone(true);
-      return;
-    }
-    // Only attempt once
-    if (magicTokenAttempted.current) return;
-    magicTokenAttempted.current = true;
-
-    (async () => {
-      try {
-        const { user } = await apiClient.verifyMagicLink(magicToken);
-        loginWithToken(user);
-      } catch {
-        // Token invalid — will fall through to fallback
-      }
-      setMagicTokenDone(true);
-      // Clean magic_token and fallback from URL
-      const p = new URLSearchParams(window.location.search);
-      p.delete("magic_token");
-      p.delete("fallback");
-      const clean = `${window.location.pathname}${p.toString() ? `?${p}` : ""}`;
-      window.history.replaceState({}, "", clean);
-    })();
-  }, [authLoading, isAuthenticated, magicToken, loginWithToken]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -323,8 +275,8 @@ function OrderDetailContent({
     }
   };
 
-  // Still initializing auth or processing magic token
-  if (authLoading || !magicTokenDone) {
+  // Still initializing auth
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <LoaderIcon className="size-6 animate-spin text-muted-foreground" />
@@ -332,16 +284,8 @@ function OrderDetailContent({
     );
   }
 
-  // Not authenticated after all attempts — redirect to agreement page (no auth needed)
+  // Not authenticated — prompt login
   if (!isAuthenticated) {
-    if (fallbackAgreement.current) {
-      router.replace(`/agreements/${fallbackAgreement.current}`);
-      return (
-        <div className="flex items-center justify-center py-20">
-          <LoaderIcon className="size-6 animate-spin text-muted-foreground" />
-        </div>
-      );
-    }
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center space-y-4">
         <div className="mx-auto w-36">
