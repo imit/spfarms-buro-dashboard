@@ -1,9 +1,11 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, use, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import SignatureCanvas from "react-signature-canvas";
+import Link from "next/link";
 import {
+  AlertCircleIcon,
   ArrowLeftIcon,
   DownloadIcon,
   CheckCircleIcon,
@@ -94,9 +96,22 @@ export default function OrderDetailPage({
 }: {
   params: Promise<{ slug: string; id: string }>;
 }) {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-20"><LoaderIcon className="size-6 animate-spin text-muted-foreground" /></div>}>
+      <OrderDetailContent params={params} />
+    </Suspense>
+  );
+}
+
+function OrderDetailContent({
+  params,
+}: {
+  params: Promise<{ slug: string; id: string }>;
+}) {
   const { slug, id } = use(params);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, loginWithToken } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -105,6 +120,7 @@ export default function OrderDetailPage({
   const [agreementData, setAgreementData] = useState<AgreementData | null>(
     null
   );
+  const [agreementError, setAgreementError] = useState(false);
   const [selectedTermId, setSelectedTermId] = useState<number | null>(null);
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
@@ -115,6 +131,39 @@ export default function OrderDetailPage({
   const [signed, setSigned] = useState(false);
   const [rejected, setRejected] = useState(false);
   const sigRef = useRef<SignatureCanvas>(null);
+
+  // Auto-login via magic token from email link
+  const magicToken = searchParams.get("magic_token");
+  const magicTokenAttempted = useRef(false);
+  const [magicTokenDone, setMagicTokenDone] = useState(!magicToken);
+
+  useEffect(() => {
+    // Wait for auth context to finish initializing before deciding
+    if (authLoading) return;
+    // Already logged in or no magic token — nothing to do
+    if (isAuthenticated || !magicToken) {
+      setMagicTokenDone(true);
+      return;
+    }
+    // Only attempt once
+    if (magicTokenAttempted.current) return;
+    magicTokenAttempted.current = true;
+
+    (async () => {
+      try {
+        const { user } = await apiClient.verifyMagicLink(magicToken);
+        loginWithToken(user);
+      } catch {
+        // Token invalid — will fall through to unauthenticated state
+      }
+      setMagicTokenDone(true);
+      // Clean magic_token from URL
+      const p = new URLSearchParams(window.location.search);
+      p.delete("magic_token");
+      const clean = `${window.location.pathname}${p.toString() ? `?${p}` : ""}`;
+      window.history.replaceState({}, "", clean);
+    })();
+  }, [authLoading, isAuthenticated, magicToken, loginWithToken]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -143,9 +192,12 @@ export default function OrderDetailPage({
               if (res.ok) {
                 const json = await res.json();
                 setAgreementData(json.data);
+                if (json.data.signed) setSigned(true);
+              } else {
+                setAgreementError(true);
               }
             } catch {
-              // Agreement data is optional enhancement
+              setAgreementError(true);
             }
           }
         }
@@ -269,6 +321,33 @@ export default function OrderDetailPage({
     }
   };
 
+  // Still initializing auth or processing magic token
+  if (authLoading || !magicTokenDone) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <LoaderIcon className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Not authenticated after all attempts — show login prompt
+  if (!isAuthenticated) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-20 text-center space-y-4">
+        <div className="mx-auto w-36">
+          <Logo />
+        </div>
+        <h1 className="text-xl font-bold">Log in to view this order</h1>
+        <p className="text-muted-foreground text-sm">
+          Your session may have expired. Please log in to continue.
+        </p>
+        <Button onClick={() => router.push(`/login`)}>
+          Log In
+        </Button>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -357,6 +436,33 @@ export default function OrderDetailPage({
 
   // ── Draft order: single-column review & sign page ──
   if (isDraft && agreementToken) {
+    // If agreement data failed to load, redirect to the public agreement page
+    if (agreementError) {
+      return (
+        <div className="mx-auto max-w-2xl px-4 py-12 text-center space-y-4">
+          <div className="mx-auto w-36">
+            <Logo />
+          </div>
+          <AlertCircleIcon className="mx-auto size-10 text-muted-foreground" />
+          <h1 className="text-xl font-bold">Unable to load order details</h1>
+          <p className="text-muted-foreground">
+            Please use the confirmation link sent to your email, or contact SPFarms.
+          </p>
+          <div className="flex items-center justify-center gap-2">
+            <Link href={`/agreements/${agreementToken}`}>
+              <Button>Go to Confirmation Page</Button>
+            </Link>
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/${slug}/orders`)}
+            >
+              Back to Orders
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto max-w-2xl px-4 py-12">
         <Button
