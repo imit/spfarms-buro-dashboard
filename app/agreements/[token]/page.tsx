@@ -191,7 +191,9 @@ function PaymentTermAgreementContent({
   const { order } = data;
   const requiresTermSelection = data.requires_payment_term_selection;
   const selectedTerm = data.payment_terms?.find((t) => t.id === selectedTermId);
-  const isCod = selectedTerm ? selectedTerm.days === 0 : false;
+  const isCod = selectedTerm
+    ? selectedTerm.days === 0
+    : !requiresTermSelection && (order.payment_term_days || 0) === 0 && !!order.payment_term_name;
 
   const handleSign = async () => {
     if (!isCod) {
