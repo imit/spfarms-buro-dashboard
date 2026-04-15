@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, use, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import SignatureCanvas from "react-signature-canvas";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
@@ -86,7 +86,6 @@ function PaymentTermAgreementContent({
   params: Promise<{ token: string }>;
 }) {
   const { token } = use(params);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { loginWithToken } = useAuth();
   const sigRef = useRef<SignatureCanvas>(null);
@@ -165,17 +164,6 @@ function PaymentTermAgreementContent({
     }
     load();
   }, [token]);
-
-  // After magic login succeeds and agreement data loads, redirect to the
-  // authenticated order page for the full experience.
-  const { isAuthenticated } = useAuth();
-  useEffect(() => {
-    if (!isAuthenticated || !data) return;
-    const { order } = data;
-    if (order.company_slug && order.id) {
-      router.replace(`/${order.company_slug}/orders/${order.id}`);
-    }
-  }, [isAuthenticated, data, router]);
 
   if (isLoading) {
     return (
