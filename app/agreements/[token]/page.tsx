@@ -37,6 +37,7 @@ interface AgreementOrder {
     bulk_grams?: number | null;
     bulk_lbs?: number | null;
     bulk_price_per_pound?: number | null;
+    coa_pdf_url?: string | null;
   }[];
 }
 
@@ -386,6 +387,9 @@ export default function PaymentTermAgreementPage({
                     <span className="text-muted-foreground"> x{item.quantity}</span>
                   </>
                 )}
+                {item.coa_pdf_url && (
+                  <a href={item.coa_pdf_url} target="_blank" rel="noopener noreferrer" className="ml-2 text-xs text-blue-600 hover:underline">COA</a>
+                )}
               </div>
               <span>{formatPrice(item.line_total)}</span>
             </div>
@@ -478,73 +482,38 @@ export default function PaymentTermAgreementPage({
       )}
 
       {/* Payment Terms (for non-draft orders with terms already set) */}
-      {!requiresTermSelection && order.payment_term_name && (
+      {!requiresTermSelection && order.payment_term_name && (order.payment_term_days || 0) === 0 && (
+        <div className="rounded-lg border p-4 mb-6 bg-muted/30">
+          <h2 className="font-semibold text-sm mb-3">Order Confirmation</h2>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              By confirming, <strong className="text-foreground">{order.company_name}</strong> agrees to pay{" "}
+              <strong className="text-foreground">{formatPrice(order.total)}</strong> for order{" "}
+              <strong className="text-foreground">{order.order_number}</strong> on delivery.
+            </p>
+            <p>Payment accepted via ACH, bank transfer, or check.</p>
+          </div>
+        </div>
+      )}
+
+      {!requiresTermSelection && order.payment_term_name && (order.payment_term_days || 0) > 0 && (
         <div className="rounded-lg border p-4 mb-6 bg-muted/30">
           <h2 className="font-semibold text-sm mb-3">Payment Terms Agreement</h2>
           <div className="space-y-3 text-sm">
             <p>
-              This agreement confirms that <strong>{order.company_name}</strong> (&quot;Buyer&quot;){" "}
-              agrees to pay Catskill Mountain Cannabis LLC dba SPFarms (&quot;Seller&quot;) the total amount of{" "}
+              This agreement confirms that <strong>{order.company_name}</strong> agrees to pay{" "}
               <strong>{formatPrice(order.total)}</strong> for order{" "}
-              <strong>{order.order_number}</strong> under the following terms:
+              <strong>{order.order_number}</strong> within{" "}
+              <strong>{order.payment_term_days} days</strong> of delivery.
             </p>
             <div className="rounded-md border bg-background p-3 space-y-1">
-              <p>
-                <strong>Payment Term:</strong> {order.payment_term_name} ({order.payment_term_days} days)
-              </p>
-              <p>
-                <strong>Due Date:</strong>{" "}
-                {new Date(
-                  new Date(order.created_at).getTime() + (order.payment_term_days || 0) * 86400000
-                ).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </p>
-              <p>
-                <strong>Amount Due:</strong> {formatPrice(order.total)}
-              </p>
+              <p><strong>Payment Term:</strong> {order.payment_term_name}</p>
+              <p><strong>Amount Due:</strong> {formatPrice(order.total)}</p>
             </div>
-            <p>
+            <p className="text-muted-foreground">
               Payment may be made via ACH transfer, direct bank transfer, or
-              check (accepted by driver at time of delivery). Failure to pay within
-              the agreed terms may result in suspension of future orders and
-              referral to collections.
+              check. Late payments may result in a 1.5% monthly fee on overdue balances.
             </p>
-            <ol className="list-decimal list-outside pl-5 space-y-2 text-muted-foreground">
-              <li>
-                Buyer agrees to timely accept all product transfers in the state
-                tracking system upon delivery. Failure to accept transfer does not
-                relieve Buyer of payment obligations.
-              </li>
-              <li>
-                Buyer represents and warrants that it holds a valid and active
-                New York State cannabis retail license issued by the Office of
-                Cannabis Management and is authorized to receive the products
-                listed in this order. Buyer agrees to notify Seller immediately
-                of any suspension, restriction, or lapse in its license.
-              </li>
-              <li>
-                Title and risk of loss transfer to Buyer upon physical delivery
-                and signed receipt.
-              </li>
-              <li>
-                All sales are final. Claims for shortages or damage must be made
-                at time of delivery. No returns permitted except for
-                state-mandated recalls or verified defects.
-              </li>
-              <li>
-                Upon default, all outstanding invoices become immediately due and
-                payable. Seller may suspend future orders and charge a late fee
-                of 1.5% per month on overdue balances.
-              </li>
-              <li>
-                This agreement shall be governed by the laws of the State of
-                New York. Any disputes shall be resolved in the courts of
-                New York State.
-              </li>
-            </ol>
           </div>
         </div>
       )}
@@ -555,52 +524,15 @@ export default function PaymentTermAgreementPage({
           <h2 className="font-semibold text-sm mb-3">Payment Terms Agreement</h2>
           <div className="space-y-3 text-sm">
             <p>
-              By signing below, <strong>{order.company_name}</strong> (&quot;Buyer&quot;) agrees to
-              pay Catskill Mountain Cannabis LLC dba SPFarms (&quot;Seller&quot;) the total amount of{" "}
+              By signing below, <strong>{order.company_name}</strong> agrees to pay{" "}
               <strong>{formatPrice(estimatedTotal)}</strong> for order{" "}
-              <strong>{order.order_number}</strong> under{" "}
-              <strong>{selectedTerm.name}</strong> terms
-              {` (${selectedTerm.days} days from delivery)`}.
+              <strong>{order.order_number}</strong> within{" "}
+              <strong>{selectedTerm.days} days</strong> of delivery ({selectedTerm.name}).
             </p>
-            <p>
+            <p className="text-muted-foreground">
               Payment may be made via ACH transfer, direct bank transfer, or
-              check (accepted by driver at time of delivery). Failure to pay within
-              the agreed terms may result in suspension of future orders and
-              referral to collections.
+              check. Late payments may result in a 1.5% monthly fee on overdue balances.
             </p>
-            <ol className="list-decimal list-outside pl-5 space-y-2 text-muted-foreground">
-              <li>
-                Buyer agrees to timely accept all product transfers in the state
-                tracking system upon delivery. Failure to accept transfer does not
-                relieve Buyer of payment obligations.
-              </li>
-              <li>
-                Buyer represents and warrants that it holds a valid and active
-                New York State cannabis retail license issued by the Office of
-                Cannabis Management and is authorized to receive the products
-                listed in this order. Buyer agrees to notify Seller immediately
-                of any suspension, restriction, or lapse in its license.
-              </li>
-              <li>
-                Title and risk of loss transfer to Buyer upon physical delivery
-                and signed receipt.
-              </li>
-              <li>
-                All sales are final. Claims for shortages or damage must be made
-                at time of delivery. No returns permitted except for
-                state-mandated recalls or verified defects.
-              </li>
-              <li>
-                Upon default, all outstanding invoices become immediately due and
-                payable. Seller may suspend future orders and charge a late fee
-                of 1.5% per month on overdue balances.
-              </li>
-              <li>
-                This agreement shall be governed by the laws of the State of
-                New York. Any disputes shall be resolved in the courts of
-                New York State.
-              </li>
-            </ol>
           </div>
         </div>
       )}

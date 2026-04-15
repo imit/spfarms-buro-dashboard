@@ -62,15 +62,30 @@ interface PaymentTermOption {
   discount_percentage: string;
 }
 
+interface AgreementItem {
+  product_name: string;
+  strain_name: string | null;
+  quantity: number;
+  unit_price: string;
+  line_total: string;
+  is_bulk?: boolean;
+  bulk_grams?: number | null;
+  bulk_lbs?: number | null;
+  bulk_price_per_pound?: number | null;
+  coa_pdf_url?: string | null;
+}
+
 interface AgreementData {
   requires_payment_term_selection: boolean;
   payment_terms?: PaymentTermOption[];
   disable_payment_term_discount?: boolean;
+  bank_info?: string;
   order: {
     subtotal: string;
     tax_amount: string | null;
     delivery_fee: string | null;
     delivery_fee_waived: boolean;
+    items?: AgreementItem[];
   };
 }
 
@@ -168,6 +183,7 @@ export default function OrderDetailPage({
       : parseFloat(order?.total || "0") || 0;
 
   const isCod = selectedTerm ? selectedTerm.days === 0 : false;
+  const agreementItems = agreementData?.order?.items;
 
   const handleSign = async () => {
     if (!agreementToken) return;
@@ -342,7 +358,7 @@ export default function OrderDetailPage({
   // ── Draft order: single-column review & sign page ──
   if (isDraft && agreementToken) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-8">
+      <div className="mx-auto max-w-2xl px-4 py-12">
         <Button
           variant="ghost"
           size="sm"
@@ -353,45 +369,46 @@ export default function OrderDetailPage({
           Back to Orders
         </Button>
 
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold">Review & Confirm Order</h1>
-          <p className="text-muted-foreground mt-1">
-            {order.order_number} &middot;{" "}
-            {new Date(order.created_at).toLocaleDateString()}
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Review & Confirm Order</h1>
+            <p className="text-muted-foreground mt-1">
+              {order.order_number} &middot;{" "}
+              {new Date(order.created_at).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="w-32 shrink-0">
+            <Logo />
+          </div>
         </div>
 
-        {/* Order Items */}
+        {/* Order Summary */}
         <div className="rounded-lg border mb-6">
           <div className="px-4 py-3 border-b bg-muted/50">
-            <h2 className="font-semibold text-sm">Order Items</h2>
+            <h2 className="font-semibold text-sm">Order Summary</h2>
           </div>
           <div className="divide-y">
-            {order.items.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-3 px-4 py-3"
-              >
-                <div className="size-10 shrink-0 overflow-hidden rounded-lg bg-muted">
-                  {item.thumbnail_url ? (
-                    <img
-                      src={item.thumbnail_url}
-                      alt={item.product_name}
-                      className="size-full object-cover"
-                    />
+            {(agreementItems || order.items).map((item, i) => (
+              <div key={i} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                <div>
+                  <span className="font-medium">{item.product_name}</span>
+                  {"is_bulk" in item && item.is_bulk && "bulk_lbs" in item && item.bulk_lbs ? (
+                    <span className="text-muted-foreground">
+                      {" "}&mdash; {(item.bulk_lbs as number) % 1 === 0 ? (item.bulk_lbs as number).toFixed(0) : (item.bulk_lbs as number).toFixed(2)} lb{item.bulk_lbs !== 1 ? "s" : ""} ({item.bulk_grams}g) @ ${item.bulk_price_per_pound}/lb
+                    </span>
                   ) : (
-                    <div className="size-full" />
+                    <>
+                      {"strain_name" in item && item.strain_name && (
+                        <span className="text-muted-foreground"> ({item.strain_name as string})</span>
+                      )}
+                      <span className="text-muted-foreground"> x{item.quantity}</span>
+                    </>
+                  )}
+                  {"coa_pdf_url" in item && item.coa_pdf_url && (
+                    <a href={item.coa_pdf_url as string} target="_blank" rel="noopener noreferrer" className="ml-2 text-xs text-blue-600 hover:underline">COA</a>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{item.product_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatPrice(item.unit_price)} x {item.quantity}
-                  </p>
-                </div>
-                <span className="text-sm font-medium">
-                  {formatPrice(item.line_total)}
-                </span>
+                <span>{formatPrice(item.line_total)}</span>
               </div>
             ))}
           </div>
@@ -521,60 +538,49 @@ export default function OrderDetailPage({
             <h2 className="font-semibold text-sm mb-3">Payment Terms Agreement</h2>
             <div className="space-y-3 text-sm">
               <p>
-                By signing below, <strong>{order.company?.name}</strong> (&quot;Buyer&quot;) agrees to
-                pay Catskill Mountain Cannabis LLC dba SPFarms (&quot;Seller&quot;) the total amount of{" "}
+                By signing below, <strong>{order.company?.name}</strong> agrees to pay{" "}
                 <strong>{formatPrice(estimatedTotal)}</strong> for order{" "}
-                <strong>{order.order_number}</strong> under{" "}
-                <strong>{selectedTerm.name}</strong> terms
-                {` (${selectedTerm.days} days from delivery)`}.
+                <strong>{order.order_number}</strong> within{" "}
+                <strong>{selectedTerm.days} days</strong> of delivery ({selectedTerm.name}).
               </p>
-              <p>
+              <p className="text-muted-foreground">
                 Payment may be made via ACH transfer, direct bank transfer, or
-                check (accepted by driver at time of delivery). Failure to pay
-                within the agreed terms may result in suspension of future
-                orders and referral to collections.
+                check. Late payments may result in a 1.5% monthly fee on overdue balances.
               </p>
-              <ol className="list-decimal list-outside pl-5 space-y-2 text-muted-foreground">
-                <li>
-                  Buyer agrees to timely accept all product transfers in the state
-                  tracking system upon delivery. Failure to accept transfer does not
-                  relieve Buyer of payment obligations.
-                </li>
-                <li>
-                  Buyer represents and warrants that it holds a valid and active
-                  New York State cannabis retail license issued by the Office of
-                  Cannabis Management and is authorized to receive the products
-                  listed in this order. Buyer agrees to notify Seller immediately
-                  of any suspension, restriction, or lapse in its license.
-                </li>
-                <li>
-                  Title and risk of loss transfer to Buyer upon physical delivery
-                  and signed receipt.
-                </li>
-                <li>
-                  All sales are final. Claims for shortages or damage must be made
-                  at time of delivery. No returns permitted except for
-                  state-mandated recalls or verified defects.
-                </li>
-                <li>
-                  Upon default, all outstanding invoices become immediately due and
-                  payable. Seller may suspend future orders and charge a late fee
-                  of 1.5% per month on overdue balances.
-                </li>
-                <li>
-                  This agreement shall be governed by the laws of the State of
-                  New York. Any disputes shall be resolved in the courts of
-                  New York State.
-                </li>
-              </ol>
             </div>
           </div>
         )}
 
+        {/* Bank Info */}
+        {agreementData?.bank_info && (
+          <div className="rounded-lg border p-4 mb-6">
+            <h3 className="font-semibold text-sm mb-1">Payment Information</h3>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              {agreementData.bank_info}
+            </p>
+          </div>
+        )}
+
         {/* Signature Section — skip for COD */}
-        {selectedTerm && selectedTerm.days > 0 ? (
-          <div className="rounded-lg border p-4 mb-6 space-y-4">
-            <h2 className="font-semibold text-sm">Confirm & Sign</h2>
+        {isCod ? (
+          <div className="space-y-3">
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleSign}
+              disabled={submitting || (requiresTermSelection && !selectedTermId)}
+            >
+              {submitting ? "Confirming..." : "Confirm Order"}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Payment will be collected on delivery.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border p-4 space-y-4">
+            <h2 className="font-semibold">
+              {requiresTermSelection ? "Confirm & Sign" : "Sign Agreement"}
+            </h2>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -626,100 +632,49 @@ export default function OrderDetailPage({
               disabled={
                 submitting ||
                 !signerName.trim() ||
-                !signerEmail.trim()
+                !signerEmail.trim() ||
+                (requiresTermSelection && !selectedTermId)
               }
             >
-              {submitting ? (
-                <>
-                  <LoaderIcon className="mr-2 size-4 animate-spin" />
-                  Confirming...
-                </>
-              ) : (
-                <>
-                  <CheckCircleIcon className="mr-2 size-4" />
-                  Confirm Order & Sign
-                </>
-              )}
+              {submitting
+                ? "Signing..."
+                : requiresTermSelection
+                ? "Confirm Order & Sign"
+                : "Sign Agreement"}
             </Button>
 
             <p className="text-xs text-muted-foreground text-center">
-              By signing, you agree to the order and payment terms outlined
-              above.
+              By signing, you agree to the {requiresTermSelection ? "order and " : ""}payment terms outlined above.
             </p>
           </div>
-        ) : selectedTerm ? (
-          <div className="mb-6">
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleSign}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <>
-                  <LoaderIcon className="mr-2 size-4 animate-spin" />
-                  Confirming...
-                </>
-              ) : (
-                <>
-                  <CheckCircleIcon className="mr-2 size-4" />
-                  Confirm Order
-                </>
-              )}
-            </Button>
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Payment will be collected on delivery.
-            </p>
-          </div>
-        ) : null}
+        )}
 
         {/* Reject / Decline */}
-        <div className="border-t pt-6">
+        <div className="mt-8 border-t pt-6">
           {!showRejectForm ? (
             <button
-              className="text-sm text-muted-foreground hover:text-red-600 transition-colors w-full text-center"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
               onClick={() => setShowRejectForm(true)}
             >
-              I don&apos;t want this order — decline
+              I don&apos;t want this order
             </button>
           ) : (
-            <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 p-4 space-y-3">
-              <h3 className="font-semibold text-sm text-red-700 dark:text-red-400">
-                Decline Order
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                This will cancel the order and notify SPFarms.
-              </p>
-              <div className="space-y-1.5">
-                <Label htmlFor="rejectReason">
-                  Reason{" "}
-                  <span className="text-muted-foreground font-normal">
-                    (optional)
-                  </span>
-                </Label>
-                <textarea
-                  id="rejectReason"
-                  className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  placeholder="Let us know why you're declining..."
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center gap-2">
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Decline this order?</p>
+              <textarea
+                className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                placeholder="Reason (optional)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+              <div className="flex gap-2">
                 <Button
                   variant="destructive"
                   size="sm"
                   onClick={handleReject}
                   disabled={rejecting}
                 >
-                  {rejecting ? (
-                    <>
-                      <LoaderIcon className="mr-2 size-3.5 animate-spin" />
-                      Declining...
-                    </>
-                  ) : (
-                    "Decline Order"
-                  )}
+                  {rejecting ? "Declining..." : "Decline Order"}
                 </Button>
                 <Button
                   variant="ghost"
