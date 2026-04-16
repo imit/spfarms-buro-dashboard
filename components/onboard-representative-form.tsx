@@ -225,13 +225,13 @@ export function OnboardRepresentativeForm() {
 
       {/* Company picker */}
       <div className="space-y-2">
-        <label className="text-sm font-medium">Company</label>
+        <label className="text-base font-medium">Company</label>
 
         {isNewCompany ? (
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <Input
-                className="h-12 text-base flex-1"
+                className="h-14 text-lg rounded-xl flex-1"
                 value={newCompanyName}
                 onChange={(e) => setNewCompanyName(e.target.value)}
                 placeholder="Company name"
@@ -251,15 +251,15 @@ export function OnboardRepresentativeForm() {
         ) : selectedCompanyId ? (
           <div className="space-y-2">
             {/* Company name chip */}
-            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-4 py-3">
+            <div className="flex items-center gap-3 rounded-xl border bg-muted/50 px-5 py-4">
               <div className="flex-1 min-w-0">
                 {selectedCompany ? (
                   <>
-                    <p className="text-base font-medium truncate">
+                    <p className="text-lg font-medium truncate">
                       {selectedCompany.name}
                     </p>
                     {selectedCompany.locations[0]?.city && (
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-sm text-muted-foreground truncate">
                         {selectedCompany.locations[0].city},{" "}
                         {selectedCompany.locations[0].state}
                       </p>
@@ -267,8 +267,8 @@ export function OnboardRepresentativeForm() {
                   </>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <LoaderIcon className="size-3.5 animate-spin text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Loading...</p>
+                    <LoaderIcon className="size-4 animate-spin text-muted-foreground" />
+                    <p className="text-base text-muted-foreground">Loading...</p>
                   </div>
                 )}
               </div>
@@ -289,19 +289,19 @@ export function OnboardRepresentativeForm() {
               </div>
             ) : selectedCompany ? (
               selectedCompany.members.length > 0 ? (
-                <div className="rounded-md border px-3 py-2.5 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                    <UsersIcon className="size-3" />
+                <div className="rounded-md border px-4 py-3 space-y-3">
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <UsersIcon className="size-4" />
                     {selectedCompany.members.length} existing{" "}
                     {selectedCompany.members.length === 1 ? "member" : "members"}
                   </p>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {selectedCompany.members.map((m) => (
-                      <div key={m.id} className="flex items-center justify-between gap-2">
-                        <p className="text-xs text-muted-foreground truncate min-w-0">
+                      <div key={m.id} className="flex items-center justify-between gap-3">
+                        <p className="text-sm text-muted-foreground truncate min-w-0">
                           {m.full_name ? (
                             <>
-                              {m.full_name}{" "}
+                              <span className="text-foreground font-medium">{m.full_name}</span>{" "}
                               <span className="opacity-60">{m.email}</span>
                             </>
                           ) : (
@@ -313,18 +313,18 @@ export function OnboardRepresentativeForm() {
                           disabled={resending === m.id}
                           onClick={() => handleResend(m.id)}
                           className={cn(
-                            "shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
+                            "shrink-0 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                             resent.has(m.id)
                               ? "text-green-600 bg-green-50"
                               : "text-muted-foreground hover:text-foreground hover:bg-muted"
                           )}
                         >
                           {resending === m.id ? (
-                            <><LoaderIcon className="size-3 animate-spin" /> Sending</>
+                            <><LoaderIcon className="size-3.5 animate-spin" /> Sending</>
                           ) : resent.has(m.id) ? (
-                            <><CheckIcon className="size-3" /> Sent</>
+                            <><CheckIcon className="size-3.5" /> Sent</>
                           ) : (
-                            <><MailIcon className="size-3" /> Resend</>
+                            <><MailIcon className="size-3.5" /> Resend</>
                           )}
                         </button>
                       </div>
@@ -339,11 +339,11 @@ export function OnboardRepresentativeForm() {
         ) : (
           /* Inline search — no popover */
           <div className="relative">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground pointer-events-none" />
             <input
               ref={searchRef}
               type="text"
-              className="flex h-12 w-full rounded-md border bg-transparent px-3 pl-9 text-base placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="flex h-14 w-full rounded-xl border bg-transparent px-4 pl-11 text-lg placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               value={companySearch}
               onChange={(e) => setCompanySearch(e.target.value)}
               onFocus={() => setSearchFocused(true)}
@@ -356,27 +356,27 @@ export function OnboardRepresentativeForm() {
             />
             {/* Inline results list */}
             {showResults && (
-              <div className="mt-1 rounded-md border bg-popover shadow-sm overflow-hidden">
+              <div className="mt-1.5 rounded-xl border bg-popover shadow-md overflow-hidden">
                 {filteredCompanies.length > 0 && (
-                  <ul className="max-h-48 overflow-y-auto">
+                  <ul className="max-h-64 overflow-y-auto divide-y">
                     {filteredCompanies.map((c) => (
                       <li key={c.id}>
                         <button
                           type="button"
-                          className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-accent transition-colors"
+                          className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-accent transition-colors active:bg-accent"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => selectCompany(c)}
                         >
-                          <div className="flex-1 min-w-0 truncate">
-                            <span>{c.name}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-base font-medium truncate">{c.name}</p>
                             {c.locations[0]?.city && (
-                              <span className="text-xs text-muted-foreground ml-2">
+                              <p className="text-sm text-muted-foreground">
                                 {c.locations[0].city}, {c.locations[0].state}
-                              </span>
+                              </p>
                             )}
                           </div>
                           {c.members_count > 0 && (
-                            <span className="text-xs text-muted-foreground shrink-0">
+                            <span className="text-xs text-muted-foreground shrink-0 bg-muted rounded-full px-2.5 py-1">
                               {c.members_count}{" "}
                               {c.members_count === 1 ? "member" : "members"}
                             </span>
@@ -391,19 +391,19 @@ export function OnboardRepresentativeForm() {
                   <button
                     type="button"
                     className={cn(
-                      "flex w-full items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors",
+                      "flex w-full items-center gap-3 px-4 py-4 text-base font-semibold bg-green-50 text-green-700 hover:bg-green-100 active:bg-green-100 transition-colors dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50",
                       filteredCompanies.length > 0 && "border-t"
                     )}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={createNewFromSearch}
                   >
-                    <PlusIcon className="size-4 text-green-600 shrink-0" />
+                    <PlusIcon className="size-5 shrink-0" />
                     Create &ldquo;{companySearch.trim()}&rdquo;
                   </button>
                 )}
                 {filteredCompanies.length === 0 &&
                   !companySearch.trim() && (
-                    <p className="px-3 py-2.5 text-sm text-muted-foreground">
+                    <p className="px-4 py-3.5 text-base text-muted-foreground">
                       Start typing...
                     </p>
                   )}
@@ -415,14 +415,14 @@ export function OnboardRepresentativeForm() {
 
       {/* Email - full width, required */}
       <div className="space-y-2">
-        <label htmlFor="email" className="text-sm font-medium">
+        <label htmlFor="email" className="text-base font-medium">
           Email
         </label>
         <Input
           id="email"
           type="email"
           className={cn(
-            "h-12 text-base",
+            "h-14 text-lg rounded-xl",
             duplicateMember && "border-amber-500 focus-visible:ring-amber-500"
           )}
           value={email}
@@ -432,8 +432,8 @@ export function OnboardRepresentativeForm() {
           disabled={isSubmitting}
         />
         {duplicateMember && (
-          <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2">
-            <p className="text-xs text-amber-700 dark:text-amber-400">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-3">
+            <p className="text-sm text-amber-700 dark:text-amber-400">
               Already a member
               {duplicateMember.full_name ? ` (${duplicateMember.full_name})` : ""}
             </p>
@@ -442,18 +442,18 @@ export function OnboardRepresentativeForm() {
               disabled={resending === duplicateMember.id}
               onClick={() => handleResend(duplicateMember.id)}
               className={cn(
-                "shrink-0 inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                "shrink-0 inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
                 resent.has(duplicateMember.id)
                   ? "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30"
                   : "text-amber-700 bg-amber-100 hover:bg-amber-200 dark:text-amber-300 dark:bg-amber-900/40 dark:hover:bg-amber-900/60"
               )}
             >
               {resending === duplicateMember.id ? (
-                <><LoaderIcon className="size-3 animate-spin" /> Sending...</>
+                <><LoaderIcon className="size-4 animate-spin" /> Sending...</>
               ) : resent.has(duplicateMember.id) ? (
-                <><CheckIcon className="size-3" /> Invitation sent</>
+                <><CheckIcon className="size-4" /> Invitation sent</>
               ) : (
-                <><MailIcon className="size-3" /> Resend invitation</>
+                <><MailIcon className="size-4" /> Resend invitation</>
               )}
             </button>
           </div>
@@ -462,13 +462,13 @@ export function OnboardRepresentativeForm() {
 
       {/* Name - optional */}
       <div className="space-y-2">
-        <label htmlFor="full_name" className="text-sm font-medium">
+        <label htmlFor="full_name" className="text-base font-medium">
           Name{" "}
-          <span className="text-muted-foreground font-normal">optional</span>
+          <span className="text-muted-foreground font-normal text-sm">optional</span>
         </label>
         <Input
           id="full_name"
-          className="h-12 text-base"
+          className="h-14 text-lg rounded-xl"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           placeholder="John Doe"
@@ -482,7 +482,7 @@ export function OnboardRepresentativeForm() {
           <div className="flex items-center justify-between">
             <label
               htmlFor="note"
-              className="text-sm font-medium text-muted-foreground"
+              className="text-base font-medium text-muted-foreground"
             >
               Note
             </label>
@@ -492,15 +492,15 @@ export function OnboardRepresentativeForm() {
                 setShowNote(false);
                 setNote("");
               }}
-              className="text-xs text-muted-foreground hover:text-foreground"
+              className="text-sm text-muted-foreground hover:text-foreground"
             >
-              <XIcon className="size-3.5 inline mr-0.5" />
+              <XIcon className="size-4 inline mr-0.5" />
               Remove
             </button>
           </div>
           <textarea
             id="note"
-            className="w-full rounded-md border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+            className="w-full rounded-xl border bg-transparent px-4 py-3 text-base placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Any notes about this person..."
@@ -512,39 +512,40 @@ export function OnboardRepresentativeForm() {
         <button
           type="button"
           onClick={() => setShowNote(true)}
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground/60 hover:text-muted-foreground transition-colors"
         >
-          <StickyNoteIcon className="size-3.5" />
+          <StickyNoteIcon className="size-4" />
           Add a note
         </button>
       )}
 
       {/* Send email + Submit in one row */}
-      <div className="flex items-center justify-between gap-4 pt-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-4 pt-4">
+        <div className="flex items-center gap-2.5">
           <Checkbox
             id="send-email"
+            className="size-5"
             checked={sendEmail}
             onCheckedChange={(checked) => setSendEmail(checked === true)}
             disabled={isSubmitting}
           />
           <label
             htmlFor="send-email"
-            className="text-sm cursor-pointer select-none text-muted-foreground"
+            className="text-base cursor-pointer select-none text-muted-foreground"
           >
             Send login link
           </label>
         </div>
         <Button
           type="submit"
-          className="h-12 px-8 text-base font-semibold"
+          className="h-14 px-10 text-lg font-semibold rounded-xl"
           disabled={isSubmitting || !!duplicateMember}
         >
           {isSubmitting ? (
             "Adding..."
           ) : (
             <>
-              <SendIcon className="mr-2 size-4" />
+              <SendIcon className="mr-2 size-5" />
               Add
             </>
           )}
