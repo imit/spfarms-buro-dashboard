@@ -27,6 +27,7 @@ import {
   XIcon,
   PlusIcon,
   SendIcon,
+  StickyNoteIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -51,8 +52,10 @@ export function OnboardRepresentativeForm() {
   const [newCompanyName, setNewCompanyName] = useState("");
   const [companySearch, setCompanySearch] = useState("");
 
-  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [showNote, setShowNote] = useState(false);
+  const [note, setNote] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
 
   useEffect(() => {
@@ -90,8 +93,8 @@ export function OnboardRepresentativeForm() {
       setError("Pick a company or create a new one.");
       return;
     }
-    if (!fullName || !email) {
-      setError("Name and email are required.");
+    if (!email) {
+      setError("Email is required.");
       return;
     }
 
@@ -99,7 +102,10 @@ export function OnboardRepresentativeForm() {
 
     try {
       const payload: Parameters<typeof apiClient.onboardRepresentative>[0] = {
-        representative: { full_name: fullName, email },
+        representative: {
+          full_name: fullName || email.split("@")[0],
+          email,
+        },
         send_email: sendEmail,
       };
 
@@ -123,8 +129,10 @@ export function OnboardRepresentativeForm() {
 
       // Reset
       clearCompany();
-      setFullName("");
       setEmail("");
+      setFullName("");
+      setNote("");
+      setShowNote(false);
       setSendEmail(true);
     } catch (err) {
       setError(
@@ -296,38 +304,75 @@ export function OnboardRepresentativeForm() {
         )}
       </div>
 
-      {/* Name + Email */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <label htmlFor="full_name" className="text-sm font-medium">
-            Name
-          </label>
-          <Input
-            id="full_name"
-            className="h-12 text-base"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="John Doe"
-            required
-            disabled={isSubmitting}
-          />
-        </div>
-        <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium">
-            Email
-          </label>
-          <Input
-            id="email"
-            type="email"
-            className="h-12 text-base"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="john@dispensary.com"
-            required
-            disabled={isSubmitting}
-          />
-        </div>
+      {/* Email - full width, required */}
+      <div className="space-y-2">
+        <label htmlFor="email" className="text-sm font-medium">
+          Email
+        </label>
+        <Input
+          id="email"
+          type="email"
+          className="h-12 text-base"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="john@dispensary.com"
+          required
+          disabled={isSubmitting}
+        />
       </div>
+
+      {/* Name - optional */}
+      <div className="space-y-2">
+        <label htmlFor="full_name" className="text-sm font-medium">
+          Name{" "}
+          <span className="text-muted-foreground font-normal">optional</span>
+        </label>
+        <Input
+          id="full_name"
+          className="h-12 text-base"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder="John Doe"
+          disabled={isSubmitting}
+        />
+      </div>
+
+      {/* Toggleable note */}
+      {showNote ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label htmlFor="note" className="text-sm font-medium text-muted-foreground">
+              Note
+            </label>
+            <button
+              type="button"
+              onClick={() => { setShowNote(false); setNote(""); }}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              <XIcon className="size-3.5 inline mr-0.5" />
+              Remove
+            </button>
+          </div>
+          <textarea
+            id="note"
+            className="w-full rounded-md border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Any notes about this person..."
+            rows={2}
+            disabled={isSubmitting}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowNote(true)}
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+        >
+          <StickyNoteIcon className="size-3.5" />
+          Add a note
+        </button>
+      )}
 
       {/* Send email + Submit in one row */}
       <div className="flex items-center justify-between gap-4 pt-2">
