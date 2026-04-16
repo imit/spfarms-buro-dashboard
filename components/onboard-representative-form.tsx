@@ -70,8 +70,25 @@ export function OnboardRepresentativeForm() {
       .catch(() => {});
   }, []);
 
-  const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
+  const listCompany = companies.find((c) => c.id === selectedCompanyId);
+  const [fullCompany, setFullCompany] = useState<Company | null>(null);
+  const [loadingCompany, setLoadingCompany] = useState(false);
+  const selectedCompany = fullCompany?.id === selectedCompanyId ? fullCompany : listCompany;
   const isNewCompany = !!newCompanyName && !selectedCompanyId;
+
+  // Fetch full company (with members) when selected
+  useEffect(() => {
+    if (!listCompany?.slug) {
+      setFullCompany(null);
+      return;
+    }
+    setLoadingCompany(true);
+    apiClient
+      .getCompany(listCompany.slug)
+      .then((c) => setFullCompany(c))
+      .catch(() => {})
+      .finally(() => setLoadingCompany(false));
+  }, [listCompany?.slug]);
 
   // Filter companies for search results
   const filteredCompanies = companies.filter(
@@ -105,6 +122,7 @@ export function OnboardRepresentativeForm() {
 
   function clearCompany() {
     setSelectedCompanyId(null);
+    setFullCompany(null);
     setNewCompanyName("");
     setCompanySearch("");
     setResent(new Set());
@@ -254,7 +272,13 @@ export function OnboardRepresentativeForm() {
             </div>
 
             {/* Existing members with resend buttons */}
-            {selectedCompany.members.length > 0 && (
+            {loadingCompany && (
+              <div className="flex items-center gap-2 rounded-md border px-3 py-2.5">
+                <LoaderIcon className="size-3 animate-spin text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">Loading members...</p>
+              </div>
+            )}
+            {!loadingCompany && selectedCompany.members.length > 0 && (
               <div className="rounded-md border px-3 py-2.5 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                   <UsersIcon className="size-3" />
