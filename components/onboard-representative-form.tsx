@@ -1,33 +1,23 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { apiClient, type Company } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { Input } from "@/components/ui/input";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   CheckCircle2Icon,
-  ChevronsUpDownIcon,
-  CheckIcon,
   XIcon,
   PlusIcon,
   SendIcon,
   StickyNoteIcon,
+  SearchIcon,
+  UsersIcon,
+  MailIcon,
+  LoaderIcon,
+  CheckIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,18 +35,33 @@ export function OnboardRepresentativeForm() {
   } | null>(null);
 
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [companyOpen, setCompanyOpen] = useState(false);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(
     null
   );
   const [newCompanyName, setNewCompanyName] = useState("");
   const [companySearch, setCompanySearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [showNote, setShowNote] = useState(false);
   const [note, setNote] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
+  const [resending, setResending] = useState<number | null>(null);
+  const [resent, setResent] = useState<Set<number>>(new Set());
+
+  async function handleResend(memberId: number) {
+    setResending(memberId);
+    try {
+      await apiClient.sendWelcomeEmail(memberId);
+      setResent((prev) => new Set(prev).add(memberId));
+    } catch {
+      // silent fail — button stays available to retry
+    } finally {
+      setResending(null);
+    }
+  }
 
   useEffect(() => {
     apiClient
@@ -68,21 +73,41 @@ export function OnboardRepresentativeForm() {
   const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
   const isNewCompany = !!newCompanyName && !selectedCompanyId;
 
+  // Filter companies for search results
+  const filteredCompanies = companies.filter(
+    (c) =>
+      !c.deleted_at &&
+      c.name.toLowerCase().includes(companySearch.toLowerCase())
+  );
+  const showResults = searchFocused && companySearch.trim().length > 0;
+  const hasExactMatch = filteredCompanies.some(
+    (c) => c.name.toLowerCase() === companySearch.toLowerCase()
+  );
+
+  // Duplicate email check
+  const duplicateMember = selectedCompany?.members.find(
+    (m) => email.trim() && m.email.toLowerCase() === email.trim().toLowerCase()
+  ) ?? null;
+
   function selectCompany(company: Company) {
     setSelectedCompanyId(company.id);
     setNewCompanyName("");
-    setCompanyOpen(false);
+    setCompanySearch("");
+    setSearchFocused(false);
   }
 
   function createNewFromSearch() {
-    setNewCompanyName(companySearch);
+    setNewCompanyName(companySearch.trim());
     setSelectedCompanyId(null);
-    setCompanyOpen(false);
+    setCompanySearch("");
+    setSearchFocused(false);
   }
 
   function clearCompany() {
     setSelectedCompanyId(null);
     setNewCompanyName("");
+    setCompanySearch("");
+    setResent(new Set());
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -95,6 +120,10 @@ export function OnboardRepresentativeForm() {
     }
     if (!email) {
       setError("Email is required.");
+      return;
+    }
+    if (duplicateMember) {
+      setError("This email is already a member of this company. Use the resend button instead.");
       return;
     }
 
@@ -179,6 +208,7 @@ export function OnboardRepresentativeForm() {
       {/* Company picker */}
       <div className="space-y-2">
         <label className="text-sm font-medium">Company</label>
+
         {isNewCompany ? (
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -201,95 +231,106 @@ export function OnboardRepresentativeForm() {
             <p className="text-xs text-green-600 px-1">New company</p>
           </div>
         ) : selectedCompany ? (
-          <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-4 py-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-base font-medium truncate">
-                {selectedCompany.name}
-              </p>
-              {selectedCompany.locations[0]?.city && (
-                <p className="text-xs text-muted-foreground truncate">
-                  {selectedCompany.locations[0].city},{" "}
-                  {selectedCompany.locations[0].state}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-medium truncate">
+                  {selectedCompany.name}
                 </p>
-              )}
-              {selectedCompany.members.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {selectedCompany.members.length}{" "}
-                  {selectedCompany.members.length === 1
-                    ? "member"
-                    : "members"}
-                </p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={clearCompany}
-              className="rounded-full p-1 hover:bg-muted-foreground/20"
-            >
-              <XIcon className="size-4 text-muted-foreground" />
-            </button>
-          </div>
-        ) : (
-          <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={companyOpen}
-                className="w-full h-12 text-base justify-between font-normal"
-                disabled={isSubmitting}
+                {selectedCompany.locations[0]?.city && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    {selectedCompany.locations[0].city},{" "}
+                    {selectedCompany.locations[0].state}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={clearCompany}
+                className="rounded-full p-1 hover:bg-muted-foreground/20"
               >
-                <span className="text-muted-foreground">
-                  Search or create...
-                </span>
-                <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-(--radix-popover-trigger-width) p-0"
-              align="start"
-            >
-              <Command>
-                <CommandInput
-                  placeholder="Type a company name..."
-                  value={companySearch}
-                  onValueChange={setCompanySearch}
-                />
-                <CommandList>
-                  <CommandEmpty>
-                    {companySearch.trim() ? (
+                <XIcon className="size-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Existing members with resend buttons */}
+            {selectedCompany.members.length > 0 && (
+              <div className="rounded-md border px-3 py-2.5 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <UsersIcon className="size-3" />
+                  {selectedCompany.members.length} existing{" "}
+                  {selectedCompany.members.length === 1 ? "member" : "members"}
+                </p>
+                <div className="space-y-1">
+                  {selectedCompany.members.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground truncate min-w-0">
+                        {m.full_name ? (
+                          <>
+                            {m.full_name}{" "}
+                            <span className="opacity-60">{m.email}</span>
+                          </>
+                        ) : (
+                          m.email
+                        )}
+                      </p>
                       <button
                         type="button"
-                        onClick={createNewFromSearch}
-                        className="flex w-full items-center gap-2 px-2 py-3 text-sm hover:bg-accent rounded-sm"
+                        disabled={resending === m.id}
+                        onClick={() => handleResend(m.id)}
+                        className={cn(
+                          "shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
+                          resent.has(m.id)
+                            ? "text-green-600 bg-green-50"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        )}
                       >
-                        <PlusIcon className="size-4 text-green-600" />
-                        Create &ldquo;{companySearch.trim()}&rdquo;
+                        {resending === m.id ? (
+                          <><LoaderIcon className="size-3 animate-spin" /> Sending</>
+                        ) : resent.has(m.id) ? (
+                          <><CheckIcon className="size-3" /> Sent</>
+                        ) : (
+                          <><MailIcon className="size-3" /> Resend</>
+                        )}
                       </button>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Start typing...
-                      </p>
-                    )}
-                  </CommandEmpty>
-                  <CommandGroup>
-                    {companies
-                      .filter((c) => !c.deleted_at)
-                      .map((c) => (
-                        <CommandItem
-                          key={c.id}
-                          value={c.name}
-                          onSelect={() => selectCompany(c)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Inline search — no popover */
+          <div className="relative">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+            <input
+              ref={searchRef}
+              type="text"
+              className="flex h-12 w-full rounded-md border bg-transparent px-3 pl-9 text-base placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              value={companySearch}
+              onChange={(e) => setCompanySearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => {
+                // Small delay so clicks on results register
+                setTimeout(() => setSearchFocused(false), 200);
+              }}
+              placeholder="Search or create..."
+              disabled={isSubmitting}
+            />
+            {/* Inline results list */}
+            {showResults && (
+              <div className="mt-1 rounded-md border bg-popover shadow-sm overflow-hidden">
+                {filteredCompanies.length > 0 && (
+                  <ul className="max-h-48 overflow-y-auto">
+                    {filteredCompanies.map((c) => (
+                      <li key={c.id}>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-accent transition-colors"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => selectCompany(c)}
                         >
-                          <CheckIcon
-                            className={cn(
-                              "mr-2 size-4",
-                              selectedCompanyId === c.id
-                                ? "opacity-100"
-                                : "opacity-0"
-                            )}
-                          />
-                          <div className="truncate">
+                          <div className="flex-1 min-w-0 truncate">
                             <span>{c.name}</span>
                             {c.locations[0]?.city && (
                               <span className="text-xs text-muted-foreground ml-2">
@@ -297,28 +338,41 @@ export function OnboardRepresentativeForm() {
                               </span>
                             )}
                           </div>
-                        </CommandItem>
-                      ))}
-                  </CommandGroup>
-                  {companySearch.trim() &&
-                    companies.some(
-                      (c) =>
-                        !c.deleted_at &&
-                        c.name
-                          .toLowerCase()
-                          .includes(companySearch.toLowerCase())
-                    ) && (
-                      <CommandGroup heading="Not what you're looking for?">
-                        <CommandItem onSelect={createNewFromSearch}>
-                          <PlusIcon className="mr-2 size-4 text-green-600" />
-                          Create &ldquo;{companySearch.trim()}&rdquo;
-                        </CommandItem>
-                      </CommandGroup>
+                          {c.members.length > 0 && (
+                            <span className="text-xs text-muted-foreground shrink-0">
+                              {c.members.length}{" "}
+                              {c.members.length === 1 ? "member" : "members"}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {/* Create new option */}
+                {companySearch.trim() && !hasExactMatch && (
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex w-full items-center gap-2 px-3 py-2.5 text-sm hover:bg-accent transition-colors",
+                      filteredCompanies.length > 0 && "border-t"
                     )}
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={createNewFromSearch}
+                  >
+                    <PlusIcon className="size-4 text-green-600 shrink-0" />
+                    Create &ldquo;{companySearch.trim()}&rdquo;
+                  </button>
+                )}
+                {filteredCompanies.length === 0 &&
+                  !companySearch.trim() && (
+                    <p className="px-3 py-2.5 text-sm text-muted-foreground">
+                      Start typing...
+                    </p>
+                  )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -330,13 +384,43 @@ export function OnboardRepresentativeForm() {
         <Input
           id="email"
           type="email"
-          className="h-12 text-base"
+          className={cn(
+            "h-12 text-base",
+            duplicateMember && "border-amber-500 focus-visible:ring-amber-500"
+          )}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="john@dispensary.com"
           required
           disabled={isSubmitting}
         />
+        {duplicateMember && (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2">
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              Already a member
+              {duplicateMember.full_name ? ` (${duplicateMember.full_name})` : ""}
+            </p>
+            <button
+              type="button"
+              disabled={resending === duplicateMember.id}
+              onClick={() => handleResend(duplicateMember.id)}
+              className={cn(
+                "shrink-0 inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                resent.has(duplicateMember.id)
+                  ? "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30"
+                  : "text-amber-700 bg-amber-100 hover:bg-amber-200 dark:text-amber-300 dark:bg-amber-900/40 dark:hover:bg-amber-900/60"
+              )}
+            >
+              {resending === duplicateMember.id ? (
+                <><LoaderIcon className="size-3 animate-spin" /> Sending...</>
+              ) : resent.has(duplicateMember.id) ? (
+                <><CheckIcon className="size-3" /> Invitation sent</>
+              ) : (
+                <><MailIcon className="size-3" /> Resend invitation</>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Name - optional */}
@@ -359,12 +443,18 @@ export function OnboardRepresentativeForm() {
       {showNote ? (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label htmlFor="note" className="text-sm font-medium text-muted-foreground">
+            <label
+              htmlFor="note"
+              className="text-sm font-medium text-muted-foreground"
+            >
               Note
             </label>
             <button
               type="button"
-              onClick={() => { setShowNote(false); setNote(""); }}
+              onClick={() => {
+                setShowNote(false);
+                setNote("");
+              }}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
               <XIcon className="size-3.5 inline mr-0.5" />
@@ -411,7 +501,7 @@ export function OnboardRepresentativeForm() {
         <Button
           type="submit"
           className="h-12 px-8 text-base font-semibold"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !!duplicateMember}
         >
           {isSubmitting ? (
             "Adding..."
