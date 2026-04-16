@@ -725,6 +725,11 @@ export interface LabelStrainVariant {
   overlay_y: number;
   overlay_width: number;
   overlay_height: number;
+  metrc_qr_enabled: boolean;
+  metrc_qr_x: number;
+  metrc_qr_y: number;
+  metrc_qr_width: number;
+  metrc_qr_height: number;
   strain_image_url: string | null;
   overlay_image_url: string | null;
 }

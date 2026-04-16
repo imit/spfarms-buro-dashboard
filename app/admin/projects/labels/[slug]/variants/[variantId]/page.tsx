@@ -106,6 +106,13 @@ export default function VariantEditorPage({
   const [overlayW, setOverlayW] = useState("60");
   const [overlayH, setOverlayH] = useState("30");
 
+  // Metrc QR state
+  const [metrcQrEnabled, setMetrcQrEnabled] = useState(false);
+  const [metrcQrX, setMetrcQrX] = useState("0");
+  const [metrcQrY, setMetrcQrY] = useState("0");
+  const [metrcQrW, setMetrcQrW] = useState("80");
+  const [metrcQrH, setMetrcQrH] = useState("80");
+
   // Print state
   const [sheetLayouts, setSheetLayouts] = useState<SheetLayout[]>([]);
   const [selectedLayout, setSelectedLayout] = useState("");
@@ -149,6 +156,11 @@ export default function VariantEditorPage({
       setOverlayY(String(v.overlay_y ?? 0));
       setOverlayW(String(v.overlay_width ?? 60));
       setOverlayH(String(v.overlay_height ?? 30));
+      setMetrcQrEnabled(v.metrc_qr_enabled ?? false);
+      setMetrcQrX(String(v.metrc_qr_x ?? 0));
+      setMetrcQrY(String(v.metrc_qr_y ?? 0));
+      setMetrcQrW(String(v.metrc_qr_width ?? 80));
+      setMetrcQrH(String(v.metrc_qr_height ?? 80));
       if (v.image_width && v.image_height) {
         aspectRatioRef.current = v.image_width / v.image_height;
       }
@@ -272,6 +284,11 @@ export default function VariantEditorPage({
     formData.append("label_strain_variant[overlay_y]", overlayY);
     formData.append("label_strain_variant[overlay_width]", overlayW);
     formData.append("label_strain_variant[overlay_height]", overlayH);
+    formData.append("label_strain_variant[metrc_qr_enabled]", String(metrcQrEnabled));
+    formData.append("label_strain_variant[metrc_qr_x]", metrcQrX);
+    formData.append("label_strain_variant[metrc_qr_y]", metrcQrY);
+    formData.append("label_strain_variant[metrc_qr_width]", metrcQrW);
+    formData.append("label_strain_variant[metrc_qr_height]", metrcQrH);
     if (overlayFile) {
       formData.append("label_strain_variant[overlay_image]", overlayFile);
     }
@@ -302,6 +319,11 @@ export default function VariantEditorPage({
         setOverlayY(String(v.overlay_y ?? 0));
         setOverlayW(String(v.overlay_width ?? 60));
         setOverlayH(String(v.overlay_height ?? 30));
+        setMetrcQrEnabled(v.metrc_qr_enabled ?? false);
+        setMetrcQrX(String(v.metrc_qr_x ?? 0));
+        setMetrcQrY(String(v.metrc_qr_y ?? 0));
+        setMetrcQrW(String(v.metrc_qr_width ?? 80));
+        setMetrcQrH(String(v.metrc_qr_height ?? 80));
       }
       setOverlayFile(null);
       setRemoveOverlay(false);
@@ -920,6 +942,77 @@ export default function VariantEditorPage({
               </Field>
             </div>
           </div>
+
+          {/* METRC QR Code — sample variants only */}
+          {isSample && (
+            <div className="rounded-lg border bg-card p-4 space-y-3 border-amber-400">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">METRC QR Code</h4>
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-200 text-amber-800">
+                  Sample
+                </span>
+              </div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={metrcQrEnabled}
+                  onChange={(e) => setMetrcQrEnabled(e.target.checked)}
+                  className="rounded"
+                />
+                Enable METRC QR on sample label
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Renders a Metrc QR code on the sample label with the last 4
+                digits of the tag shown below it.
+              </p>
+              {metrcQrEnabled && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field>
+                      <FieldLabel>X</FieldLabel>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={metrcQrX}
+                        onChange={(e) => setMetrcQrX(e.target.value)}
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel>Y</FieldLabel>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={metrcQrY}
+                        onChange={(e) => setMetrcQrY(e.target.value)}
+                      />
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field>
+                      <FieldLabel>Width</FieldLabel>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="1"
+                        value={metrcQrW}
+                        onChange={(e) => setMetrcQrW(e.target.value)}
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel>Height</FieldLabel>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="1"
+                        value={metrcQrH}
+                        onChange={(e) => setMetrcQrH(e.target.value)}
+                      />
+                    </Field>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Print sheet */}
           <div className="rounded-lg border bg-card p-4 space-y-3">
