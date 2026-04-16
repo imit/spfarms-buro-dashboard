@@ -335,10 +335,10 @@ function PaymentTermAgreementContent({
             <CheckCircleIcon className="size-7 text-green-600" />
           </div>
           <h1 className="text-2xl font-bold">
-            {requiresTermSelection ? "Order Confirmed" : "Agreement Signed"}
+            {requiresTermSelection || isCod ? "Order Confirmed" : "Agreement Signed"}
           </h1>
           <p className="text-muted-foreground">
-            Thank you for {requiresTermSelection ? "confirming" : "signing the payment terms agreement for"} order{" "}
+            Thank you for {requiresTermSelection || isCod ? "confirming" : "signing the payment terms agreement for"} order{" "}
             <strong>{order.order_number}</strong>. We will be in touch regarding
             payment details.
           </p>
