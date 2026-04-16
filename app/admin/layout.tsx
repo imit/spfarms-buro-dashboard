@@ -10,8 +10,9 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/auth-context";
-import { ADMIN_LAYOUT_ROLES } from "@/lib/roles";
+import { ADMIN_LAYOUT_ROLES, canAccess } from "@/lib/roles";
 import type { UserRole } from "@/lib/api";
+import { QuickOnboardFab } from "@/components/quick-onboard-fab";
 
 export default function DashboardLayout({
   children,
@@ -62,6 +63,7 @@ export default function DashboardLayout({
         </div>
       </SidebarInset>
     </SidebarProvider>
+    {canAccess("quick_onboard", user?.role as UserRole) && <QuickOnboardFab />}
     </>
   );
 }

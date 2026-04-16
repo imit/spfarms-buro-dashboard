@@ -179,22 +179,40 @@ export function OnboardRepresentativeForm() {
       {/* Company picker */}
       <div className="space-y-2">
         <label className="text-sm font-medium">Company</label>
-        {selectedCompany || isNewCompany ? (
+        {isNewCompany ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Input
+                className="h-12 text-base flex-1"
+                value={newCompanyName}
+                onChange={(e) => setNewCompanyName(e.target.value)}
+                placeholder="Company name"
+                autoFocus
+                disabled={isSubmitting}
+              />
+              <button
+                type="button"
+                onClick={clearCompany}
+                className="rounded-full p-1.5 hover:bg-muted-foreground/20 shrink-0"
+              >
+                <XIcon className="size-4 text-muted-foreground" />
+              </button>
+            </div>
+            <p className="text-xs text-green-600 px-1">New company</p>
+          </div>
+        ) : selectedCompany ? (
           <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-4 py-3">
             <div className="flex-1 min-w-0">
               <p className="text-base font-medium truncate">
-                {isNewCompany ? newCompanyName : selectedCompany?.name}
+                {selectedCompany.name}
               </p>
-              {selectedCompany?.locations[0]?.city && (
+              {selectedCompany.locations[0]?.city && (
                 <p className="text-xs text-muted-foreground truncate">
                   {selectedCompany.locations[0].city},{" "}
                   {selectedCompany.locations[0].state}
                 </p>
               )}
-              {isNewCompany && (
-                <p className="text-xs text-green-600">New company</p>
-              )}
-              {selectedCompany && selectedCompany.members.length > 0 && (
+              {selectedCompany.members.length > 0 && (
                 <p className="text-xs text-muted-foreground">
                   {selectedCompany.members.length}{" "}
                   {selectedCompany.members.length === 1
