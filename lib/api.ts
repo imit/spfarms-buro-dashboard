@@ -4077,6 +4077,14 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
+  async updateOrderItems(id: number, items: { id: number; unit_price: string; quantity: number }[], removeItemIds: number[], resendEmail: boolean): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${id}/update_items`,
+      { method: "PATCH", body: JSON.stringify({ items, remove_item_ids: removeItemIds, resend_email: resendEmail }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async sendPaymentTermsAgreement(id: number): Promise<Order> {
     const res = await this.request<JsonApiResponse<Order>>(
       `/api/v1/orders/${id}/send_payment_terms_agreement`,

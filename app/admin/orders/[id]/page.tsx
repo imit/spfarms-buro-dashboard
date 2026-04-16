@@ -97,9 +97,12 @@ export default function AdminOrderDetailPage({
   const [savingLocations, setSavingLocations] = useState(false);
   const [editingPrices, setEditingPrices] = useState(false);
   const [priceDrafts, setPriceDrafts] = useState<Record<number, string>>({});
+  const [qtyDrafts, setQtyDrafts] = useState<Record<number, number>>({});
+  const [removedItemIds, setRemovedItemIds] = useState<Set<number>>(new Set());
   const [savingPrices, setSavingPrices] = useState(false);
   const [sendPriceNotification, setSendPriceNotification] = useState(true);
   const [priceCustomMessage, setPriceCustomMessage] = useState("");
+  const [resendOrderEmail, setResendOrderEmail] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [postingComment, setPostingComment] = useState(false);
@@ -541,28 +544,46 @@ export default function AdminOrderDetailPage({
 
   const startEditingPrices = () => {
     if (!order) return;
-    const drafts: Record<number, string> = {};
-    order.items.forEach((item) => { drafts[item.id] = parseFloat(item.unit_price).toFixed(2); });
-    setPriceDrafts(drafts);
+    const prices: Record<number, string> = {};
+    const qtys: Record<number, number> = {};
+    order.items.forEach((item) => {
+      prices[item.id] = parseFloat(item.unit_price).toFixed(2);
+      qtys[item.id] = item.quantity;
+    });
+    setPriceDrafts(prices);
+    setQtyDrafts(qtys);
+    setRemovedItemIds(new Set());
     setSendPriceNotification(true);
     setPriceCustomMessage("");
+    setResendOrderEmail(false);
     setEditingPrices(true);
   };
 
   const savePrices = async () => {
     if (!order) return;
+    const remainingItems = order.items.filter((item) => !removedItemIds.has(item.id));
+    if (remainingItems.length === 0) {
+      toast.error("Can't remove all items from an order");
+      return;
+    }
     setSavingPrices(true);
     try {
-      const items = order.items.map((item) => ({
+      const items = remainingItems.map((item) => ({
         id: item.id,
         unit_price: priceDrafts[item.id] || item.unit_price,
+        quantity: qtyDrafts[item.id] ?? item.quantity,
       }));
-      const updated = await apiClient.updateOrderPrices(Number(id), items, sendPriceNotification, priceCustomMessage || undefined);
+      const updated = await apiClient.updateOrderItems(
+        Number(id),
+        items,
+        Array.from(removedItemIds),
+        resendOrderEmail
+      );
       setOrder(updated);
       setEditingPrices(false);
       refreshComments();
-      toast.success("Prices updated");
-    } catch { showError("update the prices"); }
+      toast.success("Order items updated");
+    } catch { showError("update the order items"); }
     finally { setSavingPrices(false); }
   };
 
@@ -801,14 +822,16 @@ export default function AdminOrderDetailPage({
                 {!editingPrices && (
                   <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditingPrices}>
                     <PencilIcon className="mr-1 size-3" />
-                    Edit Prices
+                    Edit Items
                   </Button>
                 )}
               </div>
             </div>
             <div className="divide-y">
-              {order.items.map((item) => (
-                <div key={item.id} className="px-3 sm:px-5 py-3 space-y-2">
+              {order.items.map((item) => {
+                const isRemoved = removedItemIds.has(item.id);
+                return (
+                <div key={item.id} className={`px-3 sm:px-5 py-3 space-y-2 ${editingPrices && isRemoved ? "opacity-40" : ""}`}>
                   <div className="flex items-center gap-3 sm:gap-4">
                     <div className="size-10 sm:size-12 shrink-0 overflow-hidden rounded-lg bg-muted">
                       {item.thumbnail_url ? (
@@ -820,9 +843,9 @@ export default function AdminOrderDetailPage({
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{item.product_name}</p>
-                      {editingPrices ? (
-                        <div className="flex items-center gap-1.5 mt-1">
+                      <p className={`font-medium text-sm ${editingPrices && isRemoved ? "line-through" : ""}`}>{item.product_name}</p>
+                      {editingPrices && !isRemoved ? (
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <span className="text-xs text-muted-foreground">$</span>
                           <Input
                             type="number" step="0.01" min="0"
@@ -830,26 +853,53 @@ export default function AdminOrderDetailPage({
                             value={priceDrafts[item.id] ?? ""}
                             onChange={(e) => setPriceDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
                           />
-                          <span className="text-xs text-muted-foreground">× {item.quantity}</span>
+                          <span className="text-xs text-muted-foreground">×</span>
+                          <Input
+                            type="number" step="1" min="1"
+                            className="h-7 w-16 text-sm"
+                            value={qtyDrafts[item.id] ?? item.quantity}
+                            onChange={(e) => setQtyDrafts((d) => ({ ...d, [item.id]: parseInt(e.target.value) || 1 }))}
+                          />
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground">{formatPrice(item.unit_price)} × {item.quantity}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="font-medium text-sm tabular-nums">
-                        {editingPrices
-                          ? formatPrice((parseFloat(priceDrafts[item.id] || "0") * item.quantity).toFixed(2))
-                          : formatPrice(item.line_total)}
-                      </div>
-                      {!editingPrices && (
-                        <Button
-                          variant="outline" size="sm" className="h-7 text-xs shrink-0"
-                          onClick={() => { setMetrcImportItemId(item.id); setMetrcLabelId(""); setMetrcFiles([]); }}
-                        >
-                          <UploadIcon className="mr-1 size-3" />
-                          METRC
-                        </Button>
+                      {editingPrices ? (
+                        isRemoved ? (
+                          <Button
+                            variant="ghost" size="sm" className="h-7 text-xs"
+                            onClick={() => setRemovedItemIds((s) => { const n = new Set(s); n.delete(item.id); return n; })}
+                          >
+                            Undo
+                          </Button>
+                        ) : (
+                          <>
+                            <div className="font-medium text-sm tabular-nums">
+                              {formatPrice((parseFloat(priceDrafts[item.id] || "0") * (qtyDrafts[item.id] ?? item.quantity)).toFixed(2))}
+                            </div>
+                            <Button
+                              variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                              onClick={() => setRemovedItemIds((s) => new Set(s).add(item.id))}
+                            >
+                              <Trash2Icon className="size-3.5" />
+                            </Button>
+                          </>
+                        )
+                      ) : (
+                        <>
+                          <div className="font-medium text-sm tabular-nums">
+                            {formatPrice(item.line_total)}
+                          </div>
+                          <Button
+                            variant="outline" size="sm" className="h-7 text-xs shrink-0"
+                            onClick={() => { setMetrcImportItemId(item.id); setMetrcLabelId(""); setMetrcFiles([]); }}
+                          >
+                            <UploadIcon className="mr-1 size-3" />
+                            METRC
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -899,19 +949,19 @@ export default function AdminOrderDetailPage({
                     );
                   })()}
                 </div>
-              ))}
+              );
+              })}
             </div>
             {editingPrices && (
               <div className="border-t px-3 sm:px-5 py-3.5 space-y-3">
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={sendPriceNotification} onChange={(e) => setSendPriceNotification(e.target.checked)} className="rounded border-gray-300" />
-                  Send price update email to company
+                  <input type="checkbox" checked={resendOrderEmail} onChange={(e) => setResendOrderEmail(e.target.checked)} className="rounded border-gray-300" />
+                  Resend order email to company
                 </label>
-                {sendPriceNotification && (
-                  <Textarea placeholder="Custom message (optional)" value={priceCustomMessage} onChange={(e) => setPriceCustomMessage(e.target.value)} rows={2} className="text-sm" />
-                )}
                 <div className="flex gap-2">
-                  <Button size="sm" className="text-xs h-7" onClick={savePrices} disabled={savingPrices}>{savingPrices ? "Saving..." : "Save Prices"}</Button>
+                  <Button size="sm" className="text-xs h-7" onClick={savePrices} disabled={savingPrices}>
+                    {savingPrices ? "Saving..." : "Save Changes"}
+                  </Button>
                   <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setEditingPrices(false)}>Cancel</Button>
                 </div>
               </div>

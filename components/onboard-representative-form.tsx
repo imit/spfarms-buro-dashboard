@@ -90,23 +90,27 @@ export function OnboardRepresentativeForm() {
     (m) => email.trim() && m.email.toLowerCase() === email.trim().toLowerCase()
   ) ?? null;
 
-  async function selectCompany(company: Company) {
+  function selectCompany(company: Company) {
     setSelectedCompanyId(company.id);
-    setSelectedCompany(company);
+    setSelectedCompany(null);
     setNewCompanyName("");
     setCompanySearch("");
     setSearchFocused(false);
 
     // Fetch full company with members
     setLoadingCompany(true);
-    try {
-      const full = await apiClient.getCompany(company.slug);
-      setSelectedCompany(full);
-    } catch {
-      // keep the list version if fetch fails
-    } finally {
-      setLoadingCompany(false);
-    }
+    apiClient
+      .getCompany(company.slug)
+      .then((full) => {
+        setSelectedCompany(full);
+      })
+      .catch(() => {
+        // Fallback to list version if fetch fails
+        setSelectedCompany(company);
+      })
+      .finally(() => {
+        setLoadingCompany(false);
+      });
   }
 
   function createNewFromSearch() {
@@ -244,18 +248,28 @@ export function OnboardRepresentativeForm() {
             </div>
             <p className="text-xs text-green-600 px-1">New company</p>
           </div>
-        ) : selectedCompany ? (
+        ) : selectedCompanyId ? (
           <div className="space-y-2">
+            {/* Company name chip */}
             <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-4 py-3">
               <div className="flex-1 min-w-0">
-                <p className="text-base font-medium truncate">
-                  {selectedCompany.name}
-                </p>
-                {selectedCompany.locations[0]?.city && (
-                  <p className="text-xs text-muted-foreground truncate">
-                    {selectedCompany.locations[0].city},{" "}
-                    {selectedCompany.locations[0].state}
-                  </p>
+                {selectedCompany ? (
+                  <>
+                    <p className="text-base font-medium truncate">
+                      {selectedCompany.name}
+                    </p>
+                    {selectedCompany.locations[0]?.city && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {selectedCompany.locations[0].city},{" "}
+                        {selectedCompany.locations[0].state}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <LoaderIcon className="size-3.5 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                  </div>
                 )}
               </div>
               <button
@@ -267,57 +281,60 @@ export function OnboardRepresentativeForm() {
               </button>
             </div>
 
-            {/* Existing members with resend buttons */}
-            {loadingCompany && (
+            {/* Members section — always visible when company is loaded */}
+            {loadingCompany ? (
               <div className="flex items-center gap-2 rounded-md border px-3 py-2.5">
                 <LoaderIcon className="size-3 animate-spin text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Loading members...</p>
               </div>
-            )}
-            {!loadingCompany && selectedCompany.members.length > 0 && (
-              <div className="rounded-md border px-3 py-2.5 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                  <UsersIcon className="size-3" />
-                  {selectedCompany.members.length} existing{" "}
-                  {selectedCompany.members.length === 1 ? "member" : "members"}
-                </p>
-                <div className="space-y-1">
-                  {selectedCompany.members.map((m) => (
-                    <div key={m.id} className="flex items-center justify-between gap-2">
-                      <p className="text-xs text-muted-foreground truncate min-w-0">
-                        {m.full_name ? (
-                          <>
-                            {m.full_name}{" "}
-                            <span className="opacity-60">{m.email}</span>
-                          </>
-                        ) : (
-                          m.email
-                        )}
-                      </p>
-                      <button
-                        type="button"
-                        disabled={resending === m.id}
-                        onClick={() => handleResend(m.id)}
-                        className={cn(
-                          "shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
-                          resent.has(m.id)
-                            ? "text-green-600 bg-green-50"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        )}
-                      >
-                        {resending === m.id ? (
-                          <><LoaderIcon className="size-3 animate-spin" /> Sending</>
-                        ) : resent.has(m.id) ? (
-                          <><CheckIcon className="size-3" /> Sent</>
-                        ) : (
-                          <><MailIcon className="size-3" /> Resend</>
-                        )}
-                      </button>
-                    </div>
-                  ))}
+            ) : selectedCompany ? (
+              selectedCompany.members.length > 0 ? (
+                <div className="rounded-md border px-3 py-2.5 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <UsersIcon className="size-3" />
+                    {selectedCompany.members.length} existing{" "}
+                    {selectedCompany.members.length === 1 ? "member" : "members"}
+                  </p>
+                  <div className="space-y-1">
+                    {selectedCompany.members.map((m) => (
+                      <div key={m.id} className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground truncate min-w-0">
+                          {m.full_name ? (
+                            <>
+                              {m.full_name}{" "}
+                              <span className="opacity-60">{m.email}</span>
+                            </>
+                          ) : (
+                            m.email
+                          )}
+                        </p>
+                        <button
+                          type="button"
+                          disabled={resending === m.id}
+                          onClick={() => handleResend(m.id)}
+                          className={cn(
+                            "shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
+                            resent.has(m.id)
+                              ? "text-green-600 bg-green-50"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          )}
+                        >
+                          {resending === m.id ? (
+                            <><LoaderIcon className="size-3 animate-spin" /> Sending</>
+                          ) : resent.has(m.id) ? (
+                            <><CheckIcon className="size-3" /> Sent</>
+                          ) : (
+                            <><MailIcon className="size-3" /> Resend</>
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground px-1">No members yet</p>
+              )
+            ) : null}
           </div>
         ) : (
           /* Inline search — no popover */
@@ -358,10 +375,10 @@ export function OnboardRepresentativeForm() {
                               </span>
                             )}
                           </div>
-                          {c.members.length > 0 && (
+                          {c.members_count > 0 && (
                             <span className="text-xs text-muted-foreground shrink-0">
-                              {c.members.length}{" "}
-                              {c.members.length === 1 ? "member" : "members"}
+                              {c.members_count}{" "}
+                              {c.members_count === 1 ? "member" : "members"}
                             </span>
                           )}
                         </button>
