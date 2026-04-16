@@ -70,25 +70,9 @@ export function OnboardRepresentativeForm() {
       .catch(() => {});
   }, []);
 
-  const listCompany = companies.find((c) => c.id === selectedCompanyId);
-  const [fullCompany, setFullCompany] = useState<Company | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [loadingCompany, setLoadingCompany] = useState(false);
-  const selectedCompany = fullCompany?.id === selectedCompanyId ? fullCompany : listCompany;
   const isNewCompany = !!newCompanyName && !selectedCompanyId;
-
-  // Fetch full company (with members) when selected
-  useEffect(() => {
-    if (!listCompany?.slug) {
-      setFullCompany(null);
-      return;
-    }
-    setLoadingCompany(true);
-    apiClient
-      .getCompany(listCompany.slug)
-      .then((c) => setFullCompany(c))
-      .catch(() => {})
-      .finally(() => setLoadingCompany(false));
-  }, [listCompany?.slug]);
 
   // Filter companies for search results
   const filteredCompanies = companies.filter(
@@ -106,11 +90,23 @@ export function OnboardRepresentativeForm() {
     (m) => email.trim() && m.email.toLowerCase() === email.trim().toLowerCase()
   ) ?? null;
 
-  function selectCompany(company: Company) {
+  async function selectCompany(company: Company) {
     setSelectedCompanyId(company.id);
+    setSelectedCompany(company);
     setNewCompanyName("");
     setCompanySearch("");
     setSearchFocused(false);
+
+    // Fetch full company with members
+    setLoadingCompany(true);
+    try {
+      const full = await apiClient.getCompany(company.slug);
+      setSelectedCompany(full);
+    } catch {
+      // keep the list version if fetch fails
+    } finally {
+      setLoadingCompany(false);
+    }
   }
 
   function createNewFromSearch() {
@@ -122,7 +118,7 @@ export function OnboardRepresentativeForm() {
 
   function clearCompany() {
     setSelectedCompanyId(null);
-    setFullCompany(null);
+    setSelectedCompany(null);
     setNewCompanyName("");
     setCompanySearch("");
     setResent(new Set());
