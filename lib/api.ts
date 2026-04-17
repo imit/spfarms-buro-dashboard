@@ -1325,6 +1325,8 @@ export interface RootDashboardStats {
   total_revenue: number;
   expected_revenue: number;
   cod_revenue: number;
+  total_expenses_this_month: number;
+  net_income_this_month: number;
   total_orders: number;
   orders_today: number;
   revenue_today: number;
@@ -1335,6 +1337,78 @@ export interface RootDashboardStats {
   open_support_tickets: RootDashboardTicket[];
   recent_orders_today: RootDashboardOrder[];
   latest_orders: RootDashboardOrder[];
+}
+
+// ---- Expense Categories & Expenses ----
+
+export interface ExpenseCategory {
+  id: number;
+  name: string;
+  color: string | null;
+  position: number;
+  active: boolean;
+  expenses_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Expense {
+  id: number;
+  description: string;
+  amount: string;
+  expense_date: string;
+  vendor: string | null;
+  payment_method: string | null;
+  notes: string | null;
+  recurring: boolean;
+  recurring_frequency: string | null;
+  category: { id: number; name: string; color: string | null };
+  user: { id: number; full_name: string };
+  receipt_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExpenseAnalyticsSummary {
+  total_expenses: number;
+  total_revenue: number;
+  net_income: number;
+  profit_margin: number;
+}
+
+export interface ExpenseMonthlyData {
+  month: string;
+  revenue: number;
+  expenses: number;
+  net: number;
+  by_category: Record<string, number>;
+}
+
+export interface ExpenseCategoryTotal {
+  id: number;
+  name: string;
+  color: string | null;
+  total: number;
+}
+
+export interface ExpenseForecast {
+  month: string;
+  predicted_expenses: number;
+  predicted_revenue: number;
+  predicted_net: number;
+  by_category: Record<string, number>;
+}
+
+export interface ExpenseAnalyticsData {
+  summary: ExpenseAnalyticsSummary;
+  monthly: ExpenseMonthlyData[];
+  category_totals: ExpenseCategoryTotal[];
+  forecast: ExpenseForecast[];
+}
+
+export interface ExpensesListResponse {
+  data: Array<{ id: string; type: string; attributes: Expense }>;
+  meta: { page: number; per_page: number; total: number; total_pages: number };
 }
 
 // ---- Notifications ----
@@ -5863,6 +5937,97 @@ export class ApiClient {
     if (!res.ok) throw new Error("Failed to assign labels to sample group");
     const json = await res.json();
     return { ...json.data.attributes, id: Number(json.data.id) };
+  }
+
+  // Expense Categories
+
+  async getExpenseCategories(all = false): Promise<ExpenseCategory[]> {
+    const query = all ? "?all=true" : "";
+    const res = await this.request<JsonApiCollectionResponse<ExpenseCategory>>(
+      `/api/v1/expense_categories${query}`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createExpenseCategory(data: { name: string; color?: string; position?: number }): Promise<ExpenseCategory> {
+    const res = await this.request<JsonApiResponse<ExpenseCategory>>(
+      "/api/v1/expense_categories",
+      { method: "POST", body: JSON.stringify({ expense_category: data }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateExpenseCategory(id: number, data: Partial<{ name: string; color: string; position: number; active: boolean }>): Promise<ExpenseCategory> {
+    const res = await this.request<JsonApiResponse<ExpenseCategory>>(
+      `/api/v1/expense_categories/${id}`,
+      { method: "PATCH", body: JSON.stringify({ expense_category: data }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteExpenseCategory(id: number): Promise<void> {
+    await this.request(`/api/v1/expense_categories/${id}`, { method: "DELETE" });
+  }
+
+  // Expenses
+
+  async getExpenses(params?: { page?: number; per_page?: number; category_id?: number; start_date?: string; end_date?: string }): Promise<ExpensesListResponse> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.per_page) query.set("per_page", String(params.per_page));
+    if (params?.category_id) query.set("category_id", String(params.category_id));
+    if (params?.start_date) query.set("start_date", params.start_date);
+    if (params?.end_date) query.set("end_date", params.end_date);
+    const qs = query.toString();
+    return this.request<ExpensesListResponse>(`/api/v1/expenses${qs ? `?${qs}` : ""}`);
+  }
+
+  async getExpense(id: number): Promise<Expense> {
+    const res = await this.request<JsonApiResponse<Expense>>(`/api/v1/expenses/${id}`);
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createExpense(data: {
+    expense_category_id: number; description: string; amount: number;
+    expense_date: string; vendor?: string; payment_method?: string;
+    notes?: string; recurring?: boolean; recurring_frequency?: string;
+  }): Promise<Expense> {
+    const res = await this.request<JsonApiResponse<Expense>>(
+      "/api/v1/expenses",
+      { method: "POST", body: JSON.stringify({ expense: data }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateExpense(id: number, data: Partial<{
+    expense_category_id: number; description: string; amount: number;
+    expense_date: string; vendor: string; payment_method: string;
+    notes: string; recurring: boolean; recurring_frequency: string;
+  }>): Promise<Expense> {
+    const res = await this.request<JsonApiResponse<Expense>>(
+      `/api/v1/expenses/${id}`,
+      { method: "PATCH", body: JSON.stringify({ expense: data }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteExpense(id: number): Promise<void> {
+    await this.request(`/api/v1/expenses/${id}`, { method: "DELETE" });
+  }
+
+  async getExpenseAnalytics(months = 6): Promise<ExpenseAnalyticsData> {
+    const res = await this.request<{ data: ExpenseAnalyticsData }>(
+      `/api/v1/expenses/analytics?months=${months}`
+    );
+    return res.data;
+  }
+
+  async simulateExpenses(adjustments: Record<string, number>, monthsAhead = 3): Promise<ExpenseForecast[]> {
+    const res = await this.request<{ data: ExpenseForecast[] }>(
+      "/api/v1/expenses/simulate",
+      { method: "POST", body: JSON.stringify({ adjustments, months_ahead: monthsAhead }) }
+    );
+    return res.data;
   }
 }
 
