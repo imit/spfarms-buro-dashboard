@@ -73,12 +73,6 @@ const navCommerce: NavItem[] = [
     resource: "payments",
   },
   {
-    title: "Expenses",
-    url: "/admin/expenses",
-    icon: <ReceiptIcon className="text-red-500" />,
-    resource: "expenses",
-  },
-  {
     title: "Carts",
     url: "/admin/carts",
     icon: <ShoppingCartIcon className="text-orange-500" />,
@@ -225,6 +219,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }
   if (canAccess("support_tickets", role)) {
     workspaceItems.push({ title: "Support Tickets", url: "/admin/support-tickets", icon: <TicketIcon className="text-violet-500" /> })
+  }
+  if (canAccess("expenses", role)) {
+    workspaceItems.push({ title: "Expenses", url: "/admin/expenses", icon: <ReceiptIcon className="text-red-500" /> })
   }
 
   return (
