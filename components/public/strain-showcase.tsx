@@ -23,10 +23,15 @@ export function StrainShowcase() {
   if (strains.length === 0) return null;
 
   return (
-    <section className="px-6 lg:px-10 py-20 lg:py-28 max-w-8xl mx-auto">
-      <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-12">
-        Our Strains
-      </h2>
+    <section className="px-6 lg:px-10 py-20 lg:py-28 max-w-7xl mx-auto">
+      <div className="flex items-baseline gap-4 mb-12">
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
+          Our Strains
+        </h2>
+        <span className="font-mono text-xs text-foreground/30 tabular-nums">
+          ({strains.length})
+        </span>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {strains.map((strain) => (
           <StrainCard key={strain.id} strain={strain} />
@@ -82,15 +87,15 @@ function StrainCard({ strain }: { strain: Strain }) {
 
       {/* Cannabinoid stats */}
       {(thc || cbg) && (
-        <div className="flex items-center gap-4 px-5 pb-5 pt-2 text-sm">
+        <div className="flex items-center gap-3 px-5 pb-5 pt-2 font-mono text-xs text-foreground/50">
           {thc && (
             <span>
-              THC <span className="font-bold">{parseFloat(thc).toFixed(0)}%</span>
+              THC <span className="font-semibold text-foreground/80 tabular-nums">{parseFloat(thc).toFixed(1)}%</span>
             </span>
           )}
           {cbg && (
             <span>
-              CBG <span className="font-bold">{parseFloat(cbg).toFixed(0)}%</span>
+              CBG <span className="font-semibold text-foreground/80 tabular-nums">{parseFloat(cbg).toFixed(1)}%</span>
             </span>
           )}
         </div>

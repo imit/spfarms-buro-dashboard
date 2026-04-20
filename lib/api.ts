@@ -1325,6 +1325,8 @@ export interface RootDashboardStats {
   total_revenue: number;
   expected_revenue: number;
   cod_revenue: number;
+  total_expenses_this_month: number;
+  net_income_this_month: number;
   total_orders: number;
   orders_today: number;
   revenue_today: number;
@@ -1335,6 +1337,154 @@ export interface RootDashboardStats {
   open_support_tickets: RootDashboardTicket[];
   recent_orders_today: RootDashboardOrder[];
   latest_orders: RootDashboardOrder[];
+}
+
+// ---- Expense Categories & Expenses ----
+
+export interface ExpenseCategory {
+  id: number;
+  name: string;
+  color: string | null;
+  position: number;
+  active: boolean;
+  expenses_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Expense {
+  id: number;
+  description: string;
+  amount: string;
+  expense_date: string;
+  vendor: string | null;
+  payment_method: string | null;
+  notes: string | null;
+  recurring: boolean;
+  recurring_frequency: string | null;
+  planned: boolean;
+  category: { id: number; name: string; color: string | null };
+  user: { id: number; full_name: string };
+  receipt_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BusinessSummary {
+  total_revenue: number;
+  total_expenses: number;
+  net_income: number;
+  profit_margin: number;
+  order_count: number;
+  avg_order_value: number;
+  avg_unit_price: number;
+  total_units_sold: number;
+  unique_customers: number;
+}
+
+export interface BusinessMonthlyData {
+  month: string;
+  revenue: number;
+  expenses: number;
+  net: number;
+  orders: number;
+  units_sold: number;
+  avg_order_value: number;
+  avg_unit_price: number;
+  customers: number;
+  expense_by_category: Record<string, number>;
+}
+
+export interface ExpenseCategoryTotal {
+  id: number;
+  name: string;
+  color: string | null;
+  total: number;
+}
+
+export interface OrderMetrics {
+  payment_distribution: Record<string, number>;
+  status_distribution: Record<string, number>;
+  avg_days_to_payment: number;
+  total_discounts_given: number;
+  total_payment_term_discounts: number;
+  total_tax_collected: number;
+  total_delivery_fees: number;
+}
+
+export interface TopProduct {
+  id: number;
+  name: string;
+  product_type: string;
+  default_price: number;
+  total_quantity: number;
+  total_revenue: number;
+  avg_price: number;
+  order_count: number;
+}
+
+export interface TopCustomer {
+  id: number;
+  name: string;
+  slug: string;
+  lead_status: string;
+  order_count: number;
+  total_spent: number;
+  avg_order: number;
+}
+
+export interface ProductTypeRevenue {
+  product_type: string;
+  label: string;
+  total_revenue: number;
+  total_units: number;
+}
+
+export interface BusinessForecast {
+  month: string;
+  revenue: number;
+  expenses: number;
+  net: number;
+  orders: number;
+  units_sold: number;
+  avg_order_value: number;
+  avg_unit_price: number;
+  customers: number;
+  expense_by_category: Record<string, number>;
+  discount_impact?: number;
+}
+
+export interface WeeklyData {
+  week: string;
+  week_label: string;
+  revenue: number;
+  orders: number;
+  units_sold: number;
+  avg_order_value: number;
+  avg_unit_price: number;
+  customers: number;
+}
+
+export interface BusinessAnalyticsData {
+  summary: BusinessSummary;
+  monthly: BusinessMonthlyData[];
+  weekly: WeeklyData[];
+  expense_category_totals: ExpenseCategoryTotal[];
+  order_metrics: OrderMetrics;
+  top_products: TopProduct[];
+  top_customers: TopCustomer[];
+  product_type_revenue: ProductTypeRevenue[];
+  forecast: BusinessForecast[];
+}
+
+export interface SimulationResult {
+  base: BusinessForecast[];
+  adjusted: BusinessForecast[];
+}
+
+export interface ExpensesListResponse {
+  data: Array<{ id: string; type: string; attributes: Expense }>;
+  meta: { page: number; per_page: number; total: number; total_pages: number };
 }
 
 // ---- Notifications ----
@@ -5863,6 +6013,98 @@ export class ApiClient {
     if (!res.ok) throw new Error("Failed to assign labels to sample group");
     const json = await res.json();
     return { ...json.data.attributes, id: Number(json.data.id) };
+  }
+
+  // Expense Categories
+
+  async getExpenseCategories(all = false): Promise<ExpenseCategory[]> {
+    const query = all ? "?all=true" : "";
+    const res = await this.request<JsonApiCollectionResponse<ExpenseCategory>>(
+      `/api/v1/expense_categories${query}`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async createExpenseCategory(data: { name: string; color?: string; position?: number }): Promise<ExpenseCategory> {
+    const res = await this.request<JsonApiResponse<ExpenseCategory>>(
+      "/api/v1/expense_categories",
+      { method: "POST", body: JSON.stringify({ expense_category: data }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateExpenseCategory(id: number, data: Partial<{ name: string; color: string; position: number; active: boolean }>): Promise<ExpenseCategory> {
+    const res = await this.request<JsonApiResponse<ExpenseCategory>>(
+      `/api/v1/expense_categories/${id}`,
+      { method: "PATCH", body: JSON.stringify({ expense_category: data }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteExpenseCategory(id: number): Promise<void> {
+    await this.request(`/api/v1/expense_categories/${id}`, { method: "DELETE" });
+  }
+
+  // Expenses
+
+  async getExpenses(params?: { page?: number; per_page?: number; category_id?: number; start_date?: string; end_date?: string; status?: "actual" | "planned" }): Promise<ExpensesListResponse> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.per_page) query.set("per_page", String(params.per_page));
+    if (params?.category_id) query.set("category_id", String(params.category_id));
+    if (params?.start_date) query.set("start_date", params.start_date);
+    if (params?.end_date) query.set("end_date", params.end_date);
+    if (params?.status) query.set("status", params.status);
+    const qs = query.toString();
+    return this.request<ExpensesListResponse>(`/api/v1/expenses${qs ? `?${qs}` : ""}`);
+  }
+
+  async getExpense(id: number): Promise<Expense> {
+    const res = await this.request<JsonApiResponse<Expense>>(`/api/v1/expenses/${id}`);
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createExpense(formData: FormData): Promise<Expense> {
+    const res = await this.requestFormData<JsonApiResponse<Expense>>(
+      "/api/v1/expenses",
+      { method: "POST", body: formData }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateExpense(id: number, formData: FormData): Promise<Expense> {
+    const res = await this.requestFormData<JsonApiResponse<Expense>>(
+      `/api/v1/expenses/${id}`,
+      { method: "PATCH", body: formData }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteExpense(id: number): Promise<void> {
+    await this.request(`/api/v1/expenses/${id}`, { method: "DELETE" });
+  }
+
+  async getBusinessAnalytics(months = 6): Promise<BusinessAnalyticsData> {
+    const res = await this.request<{ data: BusinessAnalyticsData }>(
+      `/api/v1/expenses/analytics?months=${months}`
+    );
+    return res.data;
+  }
+
+  async simulateBusiness(params: {
+    months_ahead?: number;
+    expense_adjustments?: Record<string, number>;
+    order_volume_pct?: number;
+    unit_price_pct?: number;
+    customer_growth_pct?: number;
+    discount_change_pct?: number;
+    new_expense_monthly?: number;
+  }): Promise<SimulationResult> {
+    const res = await this.request<{ data: SimulationResult }>(
+      "/api/v1/expenses/simulate",
+      { method: "POST", body: JSON.stringify(params) }
+    );
+    return res.data;
   }
 }
 

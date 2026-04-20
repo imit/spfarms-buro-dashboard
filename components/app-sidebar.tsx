@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, UsersIcon, Settings2Icon, BoxIcon, UserPlusIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon, FolderIcon, BuildingIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, UsersIcon, Settings2Icon, BoxIcon, UserPlusIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon, FolderIcon, BuildingIcon, ReceiptIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -219,6 +219,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }
   if (canAccess("support_tickets", role)) {
     workspaceItems.push({ title: "Support Tickets", url: "/admin/support-tickets", icon: <TicketIcon className="text-violet-500" /> })
+  }
+  if (canAccess("expenses", role)) {
+    workspaceItems.push({ title: "Expenses", url: "/admin/expenses", icon: <ReceiptIcon className="text-red-500" /> })
   }
 
   return (

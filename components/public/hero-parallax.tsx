@@ -7,6 +7,7 @@ import Link from "next/link";
 // Roxbury, NY coordinates
 const LAT = 42.2962;
 const LON = -74.5593;
+const ELEVATION = "1,820 ft";
 
 // WMO weather codes to human-readable keywords
 function weatherKeyword(code: number): string {
@@ -25,14 +26,26 @@ function weatherKeyword(code: number): string {
 interface WeatherData {
   temperature: number;
   weatherCode: number;
+  humidity?: number;
+}
+
+function DataRow({ label, value, blinking }: { label: string; value: string; blinking?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-6 py-1.5 border-b border-white/6 last:border-0">
+      <span className="text-[11px] tracking-[0.15em] uppercase text-white/40 shrink-0">{label}</span>
+      <span className={`font-mono text-sm text-white/90 tabular-nums text-right ${blinking ? "animate-pulse" : ""}`}>
+        {value}
+      </span>
+    </div>
+  );
 }
 
 export function HeroParallax() {
-  const sectionRef = useRef<HTMLElement>(null);
   const bgRef = useRef<HTMLDivElement>(null);
   const budRef = useRef<HTMLDivElement>(null);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [time, setTime] = useState("");
+  const [date, setDate] = useState("");
 
   // Update local time for Roxbury, NY (America/New_York)
   useEffect(() => {
@@ -42,13 +55,22 @@ export function HeroParallax() {
         now.toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
+          second: "2-digit",
           hour12: false,
+          timeZone: "America/New_York",
+        })
+      );
+      setDate(
+        now.toLocaleDateString("en-US", {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
           timeZone: "America/New_York",
         })
       );
     }
     updateTime();
-    const interval = setInterval(updateTime, 60_000);
+    const interval = setInterval(updateTime, 1_000);
     return () => clearInterval(interval);
   }, []);
 
@@ -57,12 +79,13 @@ export function HeroParallax() {
     async function fetchWeather() {
       try {
         const res = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`
+          `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,weather_code,relative_humidity_2m&temperature_unit=fahrenheit`
         );
         const data = await res.json();
         setWeather({
           temperature: Math.round(data.current.temperature_2m),
           weatherCode: data.current.weather_code,
+          humidity: data.current.relative_humidity_2m,
         });
       } catch {
         // Silently fail — hero still renders without weather
@@ -83,7 +106,7 @@ export function HeroParallax() {
             bgRef.current.style.transform = `translate3d(0, ${scrollY * 0.3}px, 0)`;
           }
           if (budRef.current) {
-            budRef.current.style.transform = `translate3d(0, ${scrollY * -0.15}px, 0)`;
+            budRef.current.style.transform = `translate3d(0, ${scrollY * -0.1}px, 0)`;
           }
           ticking = false;
         });
@@ -96,10 +119,7 @@ export function HeroParallax() {
   }, []);
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative h-screen w-full overflow-hidden"
-    >
+    <section className="relative min-h-screen w-full overflow-hidden">
       {/* Background sky layer */}
       <div
         ref={bgRef}
@@ -114,12 +134,15 @@ export function HeroParallax() {
           className="object-cover"
           sizes="100vw"
         />
+        {/* Gradient overlay for readability */}
+        <div className="absolute inset-0 bg-linear-to-b from-black/30 via-black/10 to-black/50" />
       </div>
 
-      {/* Bud layer */}
+      {/* Bud layer — centered, on top of everything */}
       <div
         ref={budRef}
-        className="absolute inset-0 flex items-center justify-center will-change-transform"
+        className="absolute inset-0 flex items-center justify-center will-change-transform pointer-events-none"
+        style={{ zIndex: 1000 }}
       >
         <div className="relative w-[280px] h-[280px] md:w-[380px] md:h-[380px] lg:w-[440px] lg:h-[440px]">
           <Image
@@ -127,47 +150,73 @@ export function HeroParallax() {
             alt="Cannabis bud"
             fill
             priority
-            className="object-contain"
+            className="object-contain drop-shadow-2xl"
             sizes="(max-width: 768px) 280px, (max-width: 1024px) 380px, 440px"
           />
         </div>
       </div>
 
-      {/* Text overlay */}
-      <div className="relative z-10 flex flex-col items-center justify-center h-full text-center text-white px-6">
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight drop-shadow-lg">
-          We grow epic flower
-        </h1>
-        <div className="mt-4 flex items-center gap-4 text-sm md:text-base font-medium tracking-wide uppercase drop-shadow">
-          {time && <span>{time}</span>}
-          {weather && (
-            <>
-              <span>{weatherKeyword(weather.weatherCode)}</span>
-              <span>{weather.temperature}°F</span>
-            </>
-          )}
+      {/* Content */}
+      <div className="relative z-30 flex flex-col justify-between min-h-screen px-6 lg:px-10 pt-28 pb-10 pointer-events-none">
+        {/* Top: Headline */}
+        <div className="max-w-5xl">
+          <p className="font-mono text-xs tracking-[0.2em] uppercase text-white/50 mb-4">
+            Micro-farm / Catskills, NY
+          </p>
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white leading-[0.95] drop-shadow-lg">
+            We grow
+            <br />
+            epic flower.
+          </h1>
         </div>
-        <p className="text-sm md:text-base font-medium tracking-wide uppercase drop-shadow">
-          Roxbury, New York
-        </p>
 
-        {/* Scalloped "Shop Now" button */}
-        <Link href="/strains" className="group relative mt-8 inline-block">
-          <svg
-            viewBox="0 0 280 120"
-            className="w-[240px] md:w-[290px] h-auto drop-shadow-xl"
-            aria-hidden="true"
-          >
-            <path
-              d="M 20 20 a 20 20 0 0 0 40 0 a 20 20 0 0 0 40 0 a 20 20 0 0 0 40 0 a 20 20 0 0 0 40 0 a 20 20 0 0 0 40 0 a 20 20 0 0 0 40 0 a 20 20 0 0 0 0 40 a 20 20 0 0 0 0 40 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 -40 0 a 20 20 0 0 0 0 -40 a 20 20 0 0 0 0 -40 Z"
-              fill="#3B1515"
-              className="transition-colors group-hover:fill-[#4D2222]"
-            />
-          </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-[#EBC430] text-lg md:text-2xl font-black tracking-widest drop-shadow">
-            SHOP NOW
-          </span>
-        </Link>
+        {/* Bottom: Data panel + CTA */}
+        <div className="flex flex-col lg:flex-row items-end justify-between gap-8 mt-auto">
+          <div className="w-full lg:w-auto pointer-events-auto">
+            <div className="backdrop-blur-md bg-white/5 border border-white/8 rounded-2xl p-5 w-full lg:w-[320px]">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-white/40">
+                  Live from farm
+                </span>
+              </div>
+
+              <DataRow label="Location" value="Catskills, NY" />
+              <DataRow label="Coordinates" value={`${LAT}°N, ${Math.abs(LON)}°W`} />
+              <DataRow label="Elevation" value={ELEVATION} />
+              {time && <DataRow label="Local time" value={time} blinking />}
+              {date && <DataRow label="Date" value={date} />}
+              {weather && (
+                <>
+                  <DataRow label="Conditions" value={weatherKeyword(weather.weatherCode)} />
+                  <DataRow label="Temperature" value={`${weather.temperature}°F`} />
+                  {weather.humidity !== undefined && (
+                    <DataRow label="Humidity" value={`${weather.humidity}%`} />
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* CTA */}
+            <div className="flex items-center gap-3 mt-5">
+              <Link
+                href="/strains"
+                className="inline-flex items-center gap-2 rounded-xl bg-white text-[#431F13] px-7 py-3.5 text-sm font-semibold hover:bg-white/90 transition-colors"
+              >
+                Browse strains
+                <svg className="size-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 8h10M9 4l4 4-4 4" />
+                </svg>
+              </Link>
+              <Link
+                href="/wholesale"
+                className="inline-flex items-center rounded-xl border border-white/20 text-white/80 px-7 py-3.5 text-sm font-medium hover:bg-white/10 transition-colors"
+              >
+                Become a partner
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

@@ -32,6 +32,8 @@ import {
   SearchIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ReceiptIcon,
+  WalletIcon,
 } from "lucide-react";
 
 const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
@@ -282,6 +284,21 @@ export default function RootDashboardPage() {
           label="COD Revenue"
           value={formatCurrency(stats.cod_revenue)}
           sub="Cash on delivery (paid)"
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          icon={<ReceiptIcon className="size-5 text-red-500" />}
+          label="Expenses This Month"
+          value={formatCurrency(stats.total_expenses_this_month)}
+          href="/admin/expenses"
+        />
+        <StatCard
+          icon={<WalletIcon className="size-5 text-emerald-600" />}
+          label="Net Income This Month"
+          value={formatCurrency(stats.net_income_this_month)}
+          sub="Revenue - Expenses"
+          href="/admin/expenses/analytics"
         />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
