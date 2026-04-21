@@ -182,6 +182,7 @@ export interface CompanyMember {
   role: UserRole;
   company_title: string | null;
   invitation_sent_at: string | null;
+  sign_in_count: number;
 }
 
 export interface CompanyReferrer {

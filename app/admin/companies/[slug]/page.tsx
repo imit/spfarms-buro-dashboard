@@ -572,13 +572,13 @@ export default function CompanyDetailPage({
                   {!isSales && company.bulk_buyer && (
                     <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">Bulk</Badge>
                   )}
-                  {!isSales && (company.active ? (
+                  {company.active ? (
                     <Badge variant="default">Active</Badge>
                   ) : (
                     <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
                       Pending Approval
                     </Badge>
-                  ))}
+                  )}
                 </div>
 
                 {/* Lead status dropdown — hidden for sales */}
@@ -684,18 +684,16 @@ export default function CompanyDetailPage({
                 {company.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
               </a>
             )}
-            {!isSales && company.license_number && (
+            {company.license_number && (
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <TagIcon className="size-3.5" />
                 {company.license_number}
               </span>
             )}
-            {!isSales && (
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <CalendarIcon className="size-3.5" />
-                Since {new Date(company.created_at).toLocaleDateString()}
-              </span>
-            )}
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <CalendarIcon className="size-3.5" />
+              Since {new Date(company.created_at).toLocaleDateString()}
+            </span>
             {!isSales && (
               <span className="flex items-center gap-1.5 text-muted-foreground" title={company.last_activity_at ? new Date(company.last_activity_at).toLocaleString() : "No activity yet"}>
                 <ClockIcon className="size-3.5" />
@@ -761,49 +759,200 @@ export default function CompanyDetailPage({
         </div>
       )}
 
-      {/* Sales: simplified view — contact & address only */}
+      {/* Sales: focused view */}
       {isSales && (
-        <div className="space-y-6">
-          {/* Locations */}
-          <div className="space-y-4">
-            <h3 className="font-medium">Locations</h3>
-            {!company.locations || company.locations.length === 0 ? (
-              <div className="rounded-xl border bg-card p-6 text-center shadow-xs">
-                <p className="text-sm text-muted-foreground">No locations added yet.</p>
-              </div>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {company.locations.map((loc, i) => {
-                  const fullAddress = [loc.address, loc.city, loc.state, loc.zip_code]
-                    .filter(Boolean)
-                    .join(", ");
-                  return (
-                    <div key={loc.id ?? i} className="rounded-xl border bg-card p-4 shadow-xs">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-sm">{loc.name || `Location ${i + 1}`}</span>
-                        {loc.region && (
-                          <Badge variant="outline" className="text-xs">
-                            {REGION_LABELS[loc.region]}
+        <div className="flex gap-6">
+          <div className="flex-1 min-w-0 space-y-6">
+
+            {/* Orders indicator (no prices) */}
+            <div className="rounded-xl border bg-card p-5 shadow-xs">
+              <h3 className="font-medium mb-3">Orders</h3>
+              <Separator className="mb-3" />
+              {orders.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No orders yet.</p>
+              ) : (
+                <p className="text-sm">
+                  <span className="text-2xl font-semibold">{orders.length}</span>
+                  <span className="text-muted-foreground ml-2">
+                    order{orders.length !== 1 ? "s" : ""}
+                    {orders.filter((o) => o.status === "pending").length > 0 && (
+                      <span className="ml-1">
+                        ({orders.filter((o) => o.status === "pending").length} pending)
+                      </span>
+                    )}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            {/* Members */}
+            <div className="space-y-4">
+              <h3 className="font-medium">Members</h3>
+              {!company.members || company.members.length === 0 ? (
+                <div className="rounded-xl border bg-card p-6 text-center shadow-xs">
+                  <p className="text-sm text-muted-foreground">No members yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {company.members.map((member) => (
+                    <div
+                      key={member.id}
+                      className="rounded-xl border bg-card p-4 shadow-xs flex items-center gap-4"
+                    >
+                      <div className="size-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <UserIcon className="size-5 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{member.full_name || member.email}</span>
+                          {member.company_title && (
+                            <span className="text-xs text-muted-foreground">{member.company_title}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                          <a href={`mailto:${member.email}`} className="hover:text-foreground">{member.email}</a>
+                          {member.phone_number && (
+                            <a href={`tel:${member.phone_number}`} className="hover:text-foreground">{member.phone_number}</a>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {member.sign_in_count > 0 ? (
+                          <Badge className="text-xs bg-green-100 text-green-700 hover:bg-green-100">
+                            Signed in
+                          </Badge>
+                        ) : member.invitation_sent_at ? (
+                          <Badge variant="secondary" className="text-xs">
+                            Invited {new Date(member.invitation_sent_at).toLocaleDateString()}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                            Not invited
                           </Badge>
                         )}
                       </div>
-                      {fullAddress && (
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <MapPinIcon className="size-3.5 mt-0.5 shrink-0" />
-                          <span>{fullAddress}</span>
-                        </div>
-                      )}
-                      {loc.phone_number && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                          <PhoneIcon className="size-3.5 shrink-0" />
-                          <span>{loc.phone_number}</span>
-                        </div>
-                      )}
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Locations */}
+            <div className="space-y-4">
+              <h3 className="font-medium">Locations</h3>
+              {!company.locations || company.locations.length === 0 ? (
+                <div className="rounded-xl border bg-card p-6 text-center shadow-xs">
+                  <p className="text-sm text-muted-foreground">No locations added yet.</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {company.locations.map((loc, i) => {
+                    const fullAddress = [loc.address, loc.city, loc.state, loc.zip_code]
+                      .filter(Boolean)
+                      .join(", ");
+                    return (
+                      <div key={loc.id ?? i} className="rounded-xl border bg-card p-4 shadow-xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-sm">{loc.name || `Location ${i + 1}`}</span>
+                          {loc.region && (
+                            <Badge variant="outline" className="text-xs">
+                              {REGION_LABELS[loc.region]}
+                            </Badge>
+                          )}
+                        </div>
+                        {loc.license_number && (
+                          <div className="flex items-center gap-2 text-sm mb-1">
+                            <Badge variant="secondary" className="text-xs">OCM</Badge>
+                            <span className="text-muted-foreground">{loc.license_number}</span>
+                          </div>
+                        )}
+                        {fullAddress && (
+                          <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                            <MapPinIcon className="size-3.5 mt-0.5 shrink-0" />
+                            <span>{fullAddress}</span>
+                          </div>
+                        )}
+                        {loc.phone_number && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                            <PhoneIcon className="size-3.5 shrink-0" />
+                            <span>{loc.phone_number}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Follow-up email */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium">Follow-up</h3>
+                <Dialog open={followupOpen} onOpenChange={(open) => { setFollowupOpen(open); if (!open) setFollowupForm({ notification_type: "feedback_request", subject: "", body: "" }); }}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <MailIcon className="mr-1.5 size-3.5" />
+                      Send Follow-up
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-xl">
+                    <DialogHeader>
+                      <DialogTitle>Send Follow-up Email</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Send an email to all members of <span className="font-medium text-foreground">{company?.name}</span>.
+                      </p>
+                      <div className="space-y-2">
+                        <Label>Type</Label>
+                        <select
+                          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                          value={followupForm.notification_type}
+                          onChange={(e) => setFollowupForm((f) => ({ ...f, notification_type: e.target.value as NotificationType }))}
+                        >
+                          {(["feedback_request", "info_request", "product_update", "announcement"] as NotificationType[]).map((t) => (
+                            <option key={t} value={t}>{NOTIFICATION_TYPE_LABELS[t]}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Subject *</Label>
+                        <Input
+                          value={followupForm.subject}
+                          onChange={(e) => setFollowupForm((f) => ({ ...f, subject: e.target.value }))}
+                          placeholder="Email subject line"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Message</Label>
+                        <Textarea
+                          value={followupForm.body}
+                          onChange={(e) => setFollowupForm((f) => ({ ...f, body: e.target.value }))}
+                          placeholder="Email body..."
+                          rows={4}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleSendFollowup} disabled={sendingFollowup || !followupForm.subject.trim()} className="w-full">
+                        <SendIcon className="mr-2 size-4" />
+                        {sendingFollowup ? "Sending..." : "Send Follow-up"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
-            )}
+            </div>
+
+          </div>{/* end left column */}
+
+          {/* Right column: notes */}
+          <div className="w-80 shrink-0 hidden lg:block">
+            <div className="sticky top-6">
+              <CompanyNotes slug={company.slug} />
+            </div>
           </div>
         </div>
       )}
