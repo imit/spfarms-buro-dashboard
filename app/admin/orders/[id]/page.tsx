@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import {
   apiClient, type Order, type OrderStatus, type Comment, type Label as LabelType, type SheetLayout,
-  type PaymentStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
-  PAYMENT_STATUS_LABELS,
+  type Product, type PaymentStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
+  PAYMENT_STATUS_LABELS, PRODUCT_TYPE_LABELS,
 } from "@/lib/api";
 import { statusBadgeClasses, STATUS_COLORS, TIMELINE_STEPS, getStepIndex } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
@@ -107,6 +107,15 @@ export default function AdminOrderDetailPage({
   const [newComment, setNewComment] = useState("");
   const [postingComment, setPostingComment] = useState(false);
   const [activeTab, setActiveTab] = useState<"activity" | "delivery" | "payment">("activity");
+
+  // Add item state
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoaded, setProductsLoaded] = useState(false);
+  const [addItemSearch, setAddItemSearch] = useState("");
+  const [addItemSelections, setAddItemSelections] = useState<{ product_id: number; product_name: string; quantity: number; unit_price: string }[]>([]);
+  const [addingItems, setAddingItems] = useState(false);
+  const [sendAddItemNotification, setSendAddItemNotification] = useState(true);
 
   // METRC import state
   const [labels, setLabels] = useState<LabelType[]>([]);
@@ -538,6 +547,37 @@ export default function AdminOrderDetailPage({
     }
   };
 
+  const openAddItemDialog = async () => {
+    setShowAddItem(true);
+    setAddItemSearch("");
+    setAddItemSelections([]);
+    if (!productsLoaded) {
+      try {
+        const data = await apiClient.getProducts();
+        setProducts(data.filter((p) => p.active && p.status === "active"));
+        setProductsLoaded(true);
+      } catch { showError("load products"); }
+    }
+  };
+
+  const handleAddItems = async () => {
+    if (addItemSelections.length === 0) return;
+    setAddingItems(true);
+    try {
+      const items = addItemSelections.map((s) => ({
+        product_id: s.product_id,
+        quantity: s.quantity,
+        unit_price: s.unit_price || undefined,
+      }));
+      const updated = await apiClient.addOrderItems(Number(id), items, sendAddItemNotification);
+      setOrder(updated);
+      setShowAddItem(false);
+      refreshComments();
+      toast.success(`${addItemSelections.length} item${addItemSelections.length > 1 ? "s" : ""} added`);
+    } catch { showError("add items to the order"); }
+    finally { setAddingItems(false); }
+  };
+
   const totalMetrcLabels = order?.items.reduce((sum, item) =>
     sum + (item.metrc_label_sets ?? []).reduce((s, ms) => s + ms.item_count, 0), 0
   ) ?? 0;
@@ -820,10 +860,16 @@ export default function AdminOrderDetailPage({
                   </Button>
                 )}
                 {!editingPrices && (
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditingPrices}>
-                    <PencilIcon className="mr-1 size-3" />
-                    Edit Items
-                  </Button>
+                  <>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={openAddItemDialog}>
+                      <PlusIcon className="mr-1 size-3" />
+                      Add Item
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={startEditingPrices}>
+                      <PencilIcon className="mr-1 size-3" />
+                      Edit Items
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -1355,6 +1401,133 @@ export default function AdminOrderDetailPage({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Item Dialog */}
+      <Dialog open={showAddItem} onOpenChange={(open) => { if (!open) setShowAddItem(false); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Add Items to Order</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+            <Input
+              placeholder="Search products..."
+              value={addItemSearch}
+              onChange={(e) => setAddItemSearch(e.target.value)}
+            />
+            <div className="flex-1 overflow-y-auto border rounded-lg divide-y min-h-0">
+              {products
+                .filter((p) => {
+                  const q = addItemSearch.toLowerCase();
+                  return !q || p.name.toLowerCase().includes(q) || p.strain_name?.toLowerCase().includes(q) || p.product_type.toLowerCase().includes(q);
+                })
+                .slice(0, 50)
+                .map((product) => {
+                  const selected = addItemSelections.find((s) => s.product_id === product.id);
+                  return (
+                    <div key={product.id} className="px-3 py-2 flex items-center gap-3 hover:bg-muted/50">
+                      <div className="size-8 shrink-0 overflow-hidden rounded bg-muted">
+                        {product.thumbnail_url ? (
+                          <img src={product.thumbnail_url} alt="" className="size-full object-cover" />
+                        ) : (
+                          <div className="size-full flex items-center justify-center">
+                            <PackageIcon className="size-3.5 text-muted-foreground/40" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{product.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {PRODUCT_TYPE_LABELS[product.product_type]}
+                          {product.default_price && ` · $${parseFloat(product.default_price).toFixed(2)}`}
+                        </p>
+                      </div>
+                      {selected ? (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Input
+                            type="number" min="1" step="1"
+                            className="h-7 w-14 text-xs"
+                            value={selected.quantity}
+                            onChange={(e) => {
+                              const qty = parseInt(e.target.value) || 1;
+                              setAddItemSelections((s) => s.map((i) => i.product_id === product.id ? { ...i, quantity: qty } : i));
+                            }}
+                          />
+                          <span className="text-xs text-muted-foreground">×</span>
+                          <Input
+                            type="number" min="0" step="0.01"
+                            className="h-7 w-20 text-xs"
+                            placeholder={product.default_price ? `$${parseFloat(product.default_price).toFixed(2)}` : "$0.00"}
+                            value={selected.unit_price}
+                            onChange={(e) => {
+                              setAddItemSelections((s) => s.map((i) => i.product_id === product.id ? { ...i, unit_price: e.target.value } : i));
+                            }}
+                          />
+                          <Button
+                            variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                            onClick={() => setAddItemSelections((s) => s.filter((i) => i.product_id !== product.id))}
+                          >
+                            <XIcon className="size-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline" size="sm" className="h-7 text-xs shrink-0"
+                          onClick={() => setAddItemSelections((s) => [
+                            ...s,
+                            {
+                              product_id: product.id,
+                              product_name: product.name,
+                              quantity: 1,
+                              unit_price: product.default_price ? parseFloat(product.default_price).toFixed(2) : "",
+                            },
+                          ])}
+                        >
+                          <PlusIcon className="mr-1 size-3" />
+                          Add
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              {products.length === 0 && !productsLoaded && (
+                <p className="text-sm text-muted-foreground p-4 text-center">Loading products...</p>
+              )}
+              {productsLoaded && products.filter((p) => {
+                const q = addItemSearch.toLowerCase();
+                return !q || p.name.toLowerCase().includes(q) || p.strain_name?.toLowerCase().includes(q);
+              }).length === 0 && (
+                <p className="text-sm text-muted-foreground p-4 text-center">No products found.</p>
+              )}
+            </div>
+            {addItemSelections.length > 0 && (
+              <div className="border rounded-lg p-3 space-y-2 bg-muted/30">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {addItemSelections.length} item{addItemSelections.length > 1 ? "s" : ""} selected
+                </p>
+                {addItemSelections.map((s) => (
+                  <div key={s.product_id} className="flex items-center justify-between text-sm">
+                    <span className="truncate">{s.product_name}</span>
+                    <span className="text-muted-foreground shrink-0 ml-2">
+                      {s.quantity} × {s.unit_price ? `$${parseFloat(s.unit_price).toFixed(2)}` : "default price"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={sendAddItemNotification} onChange={(e) => setSendAddItemNotification(e.target.checked)} className="rounded border-gray-300" />
+              Send order change email to customer
+            </label>
+            <Button
+              onClick={handleAddItems}
+              disabled={addingItems || addItemSelections.length === 0}
+              className="w-full"
+            >
+              {addingItems ? "Adding..." : `Add ${addItemSelections.length} Item${addItemSelections.length !== 1 ? "s" : ""} to Order`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* METRC Import Dialog (Multi-file) */}
       <Dialog open={metrcImportItemId !== null} onOpenChange={(open) => { if (!open) setMetrcImportItemId(null); }}>

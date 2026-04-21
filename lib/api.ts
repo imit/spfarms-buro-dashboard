@@ -4236,6 +4236,14 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
+  async addOrderItems(id: number, items: { product_id: number; quantity: number; unit_price?: string }[], sendNotification: boolean): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      `/api/v1/orders/${id}/add_items`,
+      { method: "POST", body: JSON.stringify({ items, send_notification: sendNotification }) }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async sendPaymentTermsAgreement(id: number): Promise<Order> {
     const res = await this.request<JsonApiResponse<Order>>(
       `/api/v1/orders/${id}/send_payment_terms_agreement`,
