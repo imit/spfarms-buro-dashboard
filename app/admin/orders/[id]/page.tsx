@@ -968,7 +968,16 @@ export default function AdminOrderDetailPage({
             )}
             {/* Totals */}
             <div className="border-t px-3 sm:px-5 py-3.5 space-y-1 bg-muted/30">
-              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span>{formatPrice(order.subtotal)}</span></div>
+              {(() => {
+                const liveSubtotal = editingPrices
+                  ? order.items
+                      .filter((item) => !removedItemIds.has(item.id))
+                      .reduce((sum, item) => sum + parseFloat(priceDrafts[item.id] || String(item.unit_price)) * (qtyDrafts[item.id] ?? item.quantity), 0)
+                  : parseFloat(String(order.subtotal));
+                return (
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span>{formatPrice(liveSubtotal.toFixed(2))}</span></div>
+                );
+              })()}
               <div className="flex items-center justify-between text-sm">
                 <label className="flex items-center gap-1.5 text-muted-foreground cursor-pointer select-none">
                   <input
