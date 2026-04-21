@@ -38,7 +38,7 @@ export const ROLE_ACCESS: RoleAccessMap = {
   projects:      { admin: "full", observer_admin: "read", editor: "full" },
   posts:         { admin: "full", observer_admin: "read", editor: "full", cultivator: "full", processing: "full", delivery: "read", sales: "full", default: "read" },
   companies:     { admin: "full", observer_admin: "read", editor: "full", sales: "full", account: "read" },
-  users:         { admin: "full", observer_admin: "read", editor: "full", sales: "full" },
+  users:         { admin: "full", observer_admin: "read", editor: "full" },
   orders_list:   { admin: "full", observer_admin: "read", editor: "full", account: "read" },
   orders_show:   { admin: "full", observer_admin: "read", editor: "full", cultivator: "read", processing: "read", account: "read" },
   fulfilment:    { admin: "full", observer_admin: "read", editor: "full", cultivator: "full", processing: "full", delivery: "full" },

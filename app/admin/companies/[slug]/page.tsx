@@ -133,7 +133,7 @@ export default function CompanyDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user: currentUser } = useAuth();
   const router = useRouter();
   const [company, setCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -492,6 +492,8 @@ export default function CompanyDetailPage({
 
   if (!company) return null;
 
+  const isSales = currentUser?.role === "sales";
+
   const socialEntries = Object.entries(company.social_media || {}).filter(
     ([, v]) => v
   );
@@ -567,93 +569,97 @@ export default function CompanyDetailPage({
                   <Badge variant="outline">
                     {COMPANY_TYPE_LABELS[company.company_type]}
                   </Badge>
-                  {company.bulk_buyer && (
+                  {!isSales && company.bulk_buyer && (
                     <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">Bulk</Badge>
                   )}
-                  {company.active ? (
+                  {!isSales && (company.active ? (
                     <Badge variant="default">Active</Badge>
                   ) : (
                     <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
                       Pending Approval
                     </Badge>
-                  )}
+                  ))}
                 </div>
 
-                {/* Lead status dropdown */}
-                <div className="flex items-center gap-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-opacity hover:opacity-80 ${LEAD_STATUS_COLORS[company.lead_status] || ""}`}
-                      >
-                        {LEAD_STATUS_LABELS[company.lead_status] || company.lead_status}
-                        <svg width="10" height="10" viewBox="0 0 10 10" className="opacity-50">
-                          <path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {LEAD_STATUSES.map(([value, label]) => (
-                        <DropdownMenuItem
-                          key={value}
-                          onClick={() => handleLeadStatusChange(value)}
+                {/* Lead status dropdown — hidden for sales */}
+                {!isSales && (
+                  <div className="flex items-center gap-3">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-opacity hover:opacity-80 ${LEAD_STATUS_COLORS[company.lead_status] || ""}`}
                         >
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_STATUS_COLORS[value]}`}>
-                            {label}
-                          </span>
-                          {value === company.lead_status && (
-                            <span className="ml-auto text-xs text-muted-foreground">current</span>
-                          )}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  {company.description && (
-                    <span className="text-sm text-muted-foreground">{company.description}</span>
-                  )}
-                </div>
+                          {LEAD_STATUS_LABELS[company.lead_status] || company.lead_status}
+                          <svg width="10" height="10" viewBox="0 0 10 10" className="opacity-50">
+                            <path d="M2 4l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        {LEAD_STATUSES.map(([value, label]) => (
+                          <DropdownMenuItem
+                            key={value}
+                            onClick={() => handleLeadStatusChange(value)}
+                          >
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_STATUS_COLORS[value]}`}>
+                              {label}
+                            </span>
+                            {value === company.lead_status && (
+                              <span className="ml-auto text-xs text-muted-foreground">current</span>
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    {company.description && (
+                      <span className="text-sm text-muted-foreground">{company.description}</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-2 shrink-0">
-              {!company.active && (
-                <Button size="sm" onClick={handleApprove}>
-                  <CheckCircle2Icon className="mr-2 size-4" />
-                  Approve
-                </Button>
-              )}
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/admin/companies/${company.slug}/edit`}>
-                  <PencilIcon className="mr-2 size-4" />
-                  Edit
-                </Link>
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" disabled={isDeleting}>
-                    <Trash2Icon className="mr-2 size-4" />
-                    Delete
+            {/* Actions — hidden for sales */}
+            {!isSales && (
+              <div className="flex gap-2 shrink-0">
+                {!company.active && (
+                  <Button size="sm" onClick={handleApprove}>
+                    <CheckCircle2Icon className="mr-2 size-4" />
+                    Approve
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete company?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete {company.name} and all its
-                      locations. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete}>
+                )}
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/admin/companies/${company.slug}/edit`}>
+                    <PencilIcon className="mr-2 size-4" />
+                    Edit
+                  </Link>
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={isDeleting}>
+                      <Trash2Icon className="mr-2 size-4" />
                       Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete company?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete {company.name} and all its
+                        locations. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete}>
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            )}
           </div>
         </div>
 
@@ -678,25 +684,29 @@ export default function CompanyDetailPage({
                 {company.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
               </a>
             )}
-            {company.license_number && (
+            {!isSales && company.license_number && (
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <TagIcon className="size-3.5" />
                 {company.license_number}
               </span>
             )}
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <CalendarIcon className="size-3.5" />
-              Since {new Date(company.created_at).toLocaleDateString()}
-            </span>
-            <span className="flex items-center gap-1.5 text-muted-foreground" title={company.last_activity_at ? new Date(company.last_activity_at).toLocaleString() : "No activity yet"}>
-              <ClockIcon className="size-3.5" />
-              Last activity: {timeAgo(company.last_activity_at)}
-            </span>
+            {!isSales && (
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <CalendarIcon className="size-3.5" />
+                Since {new Date(company.created_at).toLocaleDateString()}
+              </span>
+            )}
+            {!isSales && (
+              <span className="flex items-center gap-1.5 text-muted-foreground" title={company.last_activity_at ? new Date(company.last_activity_at).toLocaleString() : "No activity yet"}>
+                <ClockIcon className="size-3.5" />
+                Last activity: {timeAgo(company.last_activity_at)}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Stats strip */}
-        {orders.length > 0 && (
+        {/* Stats strip — hidden for sales */}
+        {!isSales && orders.length > 0 && (
           <div className="border-t px-6 py-3">
             <div className="flex items-center gap-8 text-sm">
               <div>
@@ -726,31 +736,80 @@ export default function CompanyDetailPage({
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="border-b">
-        <div className="flex gap-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-                activeTab === tab.key
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
-              }`}
-            >
-              {tab.label}
-              {tab.count !== undefined && tab.count > 0 && (
-                <span className="ml-1.5 text-xs bg-muted rounded-full px-1.5 py-0.5">{tab.count}</span>
-              )}
-            </button>
-          ))}
+      {/* Tabs — hidden for sales */}
+      {!isSales && (
+        <div className="border-b">
+          <div className="flex gap-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+                  activeTab === tab.key
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
+                }`}
+              >
+                {tab.label}
+                {tab.count !== undefined && tab.count > 0 && (
+                  <span className="ml-1.5 text-xs bg-muted rounded-full px-1.5 py-0.5">{tab.count}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Tab content */}
-      <div className="flex gap-6">
+      {/* Sales: simplified view — contact & address only */}
+      {isSales && (
+        <div className="space-y-6">
+          {/* Locations */}
+          <div className="space-y-4">
+            <h3 className="font-medium">Locations</h3>
+            {!company.locations || company.locations.length === 0 ? (
+              <div className="rounded-xl border bg-card p-6 text-center shadow-xs">
+                <p className="text-sm text-muted-foreground">No locations added yet.</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {company.locations.map((loc, i) => {
+                  const fullAddress = [loc.address, loc.city, loc.state, loc.zip_code]
+                    .filter(Boolean)
+                    .join(", ");
+                  return (
+                    <div key={loc.id ?? i} className="rounded-xl border bg-card p-4 shadow-xs">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-sm">{loc.name || `Location ${i + 1}`}</span>
+                        {loc.region && (
+                          <Badge variant="outline" className="text-xs">
+                            {REGION_LABELS[loc.region]}
+                          </Badge>
+                        )}
+                      </div>
+                      {fullAddress && (
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <MapPinIcon className="size-3.5 mt-0.5 shrink-0" />
+                          <span>{fullAddress}</span>
+                        </div>
+                      )}
+                      {loc.phone_number && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                          <PhoneIcon className="size-3.5 shrink-0" />
+                          <span>{loc.phone_number}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab content — hidden for sales */}
+      {!isSales && <div className="flex gap-6">
         <div className="flex-1 min-w-0 space-y-6">
 
           {/* ===== OVERVIEW TAB ===== */}
@@ -1476,7 +1535,7 @@ export default function CompanyDetailPage({
             <CompanyNotes slug={company.slug} />
           </div>
         </div>
-      </div>{/* end two-column layout */}
+      </div>}{/* end two-column layout */}
 
       {/* Invite modal */}
       <Dialog open={!!inviteModalMember} onOpenChange={(open) => { if (!open) { setInviteModalMember(null); setInviteCustomMessage(""); } }}>

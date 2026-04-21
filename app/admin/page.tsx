@@ -163,30 +163,32 @@ export default function DashboardPage() {
         </Link>
       )}
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          icon={<ShoppingCartIcon className="size-5" />}
-          label="Total Orders"
-          value={String(stats.total_orders)}
-          href="/admin/orders"
-        />
-        <StatCard
-          icon={<PhoneIcon className="size-5" />}
-          label="Contacted Dispensaries"
-          value={String(stats.contacted_dispensaries)}
-          href="/admin/companies"
-        />
-        <StatCard
-          icon={<FlaskConicalIcon className="size-5" />}
-          label="Samples Dropped"
-          value={String(stats.samples_dropped)}
-          href="/admin/samples"
-        />
-      </div>
+      {/* Stats cards — hidden for sales */}
+      {currentUser?.role !== "sales" && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            icon={<ShoppingCartIcon className="size-5" />}
+            label="Total Orders"
+            value={String(stats.total_orders)}
+            href="/admin/orders"
+          />
+          <StatCard
+            icon={<PhoneIcon className="size-5" />}
+            label="Contacted Dispensaries"
+            value={String(stats.contacted_dispensaries)}
+            href="/admin/companies"
+          />
+          <StatCard
+            icon={<FlaskConicalIcon className="size-5" />}
+            label="Samples Dropped"
+            value={String(stats.samples_dropped)}
+            href="/admin/samples"
+          />
+        </div>
+      )}
 
-      {/* Highlights */}
-      {(stats.employee_of_the_month || stats.dispensary_of_the_month || stats.best_dispensary_ever) && (
+      {/* Highlights — hidden for sales */}
+      {currentUser?.role !== "sales" && (stats.employee_of_the_month || stats.dispensary_of_the_month || stats.best_dispensary_ever) && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {stats.employee_of_the_month && (
             <Link
@@ -392,8 +394,8 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Recent lists */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Recent lists — hidden for sales */}
+      {currentUser?.role !== "sales" && <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Recent companies */}
         <div className="rounded-xl border bg-card p-5 shadow-xs ring-1 ring-foreground/10">
           <div className="mb-4 flex items-center justify-between">
@@ -486,7 +488,7 @@ export default function DashboardPage() {
             </ul>
           )}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
