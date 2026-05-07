@@ -5,12 +5,8 @@ import { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import {
-  apiClient,
-  type Label,
-} from "@/lib/api";
+import { apiClient, type Label } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
@@ -25,7 +21,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LabelPrintDialog } from "@/components/label-print-dialog";
 import { MetrcLabelSetPanel } from "@/components/metrc-label-set-panel";
-import { LabelStrainVariantPanel } from "@/components/label-strain-variant-panel";
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -36,13 +31,7 @@ import {
 } from "lucide-react";
 import { ErrorAlert } from "@/components/ui/error-alert";
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   if (!value) return null;
   return (
     <div className="grid grid-cols-3 gap-4 py-2.5">
@@ -61,7 +50,8 @@ export default function LabelDetailPage({
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [label, setLabel] = useState<Label | null>(null);
-  const [svgPreview, setSvgPreview] = useState<string>("");
+  const [regularSvg, setRegularSvg] = useState<string>("");
+  const [sampleSvg, setSampleSvg] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -79,9 +69,7 @@ export default function LabelDetailPage({
       const data = await apiClient.getLabel(slug);
       setLabel(data);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "We couldn't load the label"
-      );
+      setError(err instanceof Error ? err.message : "We couldn't load the label");
     } finally {
       setIsLoading(false);
     }
@@ -92,19 +80,28 @@ export default function LabelDetailPage({
     fetchLabel();
   }, [isAuthenticated, fetchLabel]);
 
-  const fetchPreview = useCallback(async () => {
+  const fetchPreviews = useCallback(async () => {
+    if (!label) return;
     try {
-      const svg = await apiClient.getLabelSvgPreview(slug);
-      setSvgPreview(svg);
+      const reg = await apiClient.getLabelSvgPreview(slug);
+      setRegularSvg(reg);
     } catch {
-      // Preview may not be available
+      // ignore
     }
-  }, [slug]);
+    const sampleVariant = label.variants?.find((v) => v.is_sample);
+    if (sampleVariant) {
+      try {
+        const smp = await apiClient.getLabelVariantSvgPreview(slug, sampleVariant.id);
+        setSampleSvg(smp);
+      } catch {
+        // ignore
+      }
+    }
+  }, [slug, label]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-    fetchPreview();
-  }, [isAuthenticated, fetchPreview]);
+    fetchPreviews();
+  }, [fetchPreviews]);
 
   async function handleDelete() {
     if (!label) return;
@@ -113,9 +110,7 @@ export default function LabelDetailPage({
       await apiClient.deleteLabel(label.slug);
       router.push("/admin/projects/labels");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "We couldn't delete the label"
-      );
+      setError(err instanceof Error ? err.message : "We couldn't delete the label");
       setIsDeleting(false);
     }
   }
@@ -127,16 +122,14 @@ export default function LabelDetailPage({
       const copy = await apiClient.duplicateLabel(label.slug);
       router.push(`/admin/projects/labels/${copy.slug}/edit`);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "We couldn't duplicate the label"
-      );
+      setError(err instanceof Error ? err.message : "We couldn't duplicate the label");
       setIsDuplicating(false);
     }
   }
 
   async function handleDownloadSvg() {
-    if (!svgPreview || !label) return;
-    const blob = new Blob([svgPreview], { type: "image/svg+xml" });
+    if (!regularSvg || !label) return;
+    const blob = new Blob([regularSvg], { type: "image/svg+xml" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -160,18 +153,12 @@ export default function LabelDetailPage({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "We couldn't download the PDF"
-      );
+      setError(err instanceof Error ? err.message : "We couldn't download the PDF");
     }
   }
 
   if (authLoading || !isAuthenticated) return null;
-
-  if (isLoading) {
-    return <p className="text-muted-foreground px-10">Loading...</p>;
-  }
-
+  if (isLoading) return <p className="text-muted-foreground px-10">Loading...</p>;
   if (error) {
     return (
       <div className="space-y-4 px-10">
@@ -185,12 +172,15 @@ export default function LabelDetailPage({
       </div>
     );
   }
-
   if (!label) return null;
+
+  const cannabinoidsDisplay = label.cannabinoids
+    ?.map((c) => `${c.label} ${c.value}`)
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="space-y-6 px-10">
-      {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
@@ -204,6 +194,7 @@ export default function LabelDetailPage({
               {label.strain_name && (
                 <p className="text-sm text-muted-foreground">
                   {label.strain_name}
+                  {label.strain_category && ` · ${label.strain_category}`}
                 </p>
               )}
             </div>
@@ -220,7 +211,7 @@ export default function LabelDetailPage({
             <CopyIcon className="mr-2 size-4" />
             {isDuplicating ? "Duplicating..." : "Duplicate"}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleDownloadSvg} disabled={!svgPreview}>
+          <Button variant="outline" size="sm" onClick={handleDownloadSvg} disabled={!regularSvg}>
             <DownloadIcon className="mr-2 size-4" />
             SVG
           </Button>
@@ -243,147 +234,92 @@ export default function LabelDetailPage({
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete label?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete {label.name}. This action
-                  cannot be undone.
+                  This will permanently delete {label.name}. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete}>
-                  Delete
-                </AlertDialogAction>
+                <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </div>
       </div>
 
-      {/* SVG Preview */}
-      {svgPreview && (
-        <div className="rounded-lg border bg-white p-4 flex items-center justify-center">
-          <div dangerouslySetInnerHTML={{ __html: svgPreview }} />
-        </div>
-      )}
-
-      {/* Info Cards */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Details */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground">Regular</h3>
+          <div className="rounded-lg border bg-white p-4 flex items-center justify-center min-h-[200px]">
+            {regularSvg ? (
+              <div className="w-full [&_svg]:w-full [&_svg]:h-auto" dangerouslySetInnerHTML={{ __html: regularSvg }} />
+            ) : (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            )}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground">Sample</h3>
+          <div className="rounded-lg border bg-white p-4 flex items-center justify-center min-h-[200px]">
+            {sampleSvg ? (
+              <div className="w-full [&_svg]:w-full [&_svg]:h-auto" dangerouslySetInnerHTML={{ __html: sampleSvg }} />
+            ) : (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border bg-card p-5">
           <h3 className="font-medium mb-3">Details</h3>
           <Separator className="mb-1" />
           <dl>
-            <DetailRow label="Name" value={label.name} />
             <DetailRow label="Strain" value={label.strain_name} />
-            <DetailRow label="Product" value={label.product_name} />
+            <DetailRow label="Category" value={label.strain_category} />
             <DetailRow label="Slug" value={label.slug} />
             <DetailRow
-              label="Created"
-              value={new Date(label.created_at).toLocaleDateString()}
+              label="Top-right"
+              value={[label.top_right_line_1, label.top_right_line_2, label.top_right_line_3].filter(Boolean).join(" / ")}
             />
+            <DetailRow label="Cannabinoids" value={cannabinoidsDisplay} />
+            <DetailRow label="Harvest" value={label.harvest_batch} />
+            <DetailRow label="Batch" value={label.batch_number} />
+            <DetailRow label="Expiration" value={label.expiration_date} />
+            <DetailRow label="METRC payload" value={label.metrc_qr_payload} />
+            <DetailRow
+              label="Strain image"
+              value={
+                label.strain_image_id ? (
+                  <Link
+                    href={`/admin/projects/strain-images/${label.strain_image_id}`}
+                    className="underline"
+                  >
+                    {label.strain_image_name ?? `#${label.strain_image_id}`}
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground">— none —</span>
+                )
+              }
+            />
+            <DetailRow label="Created" value={new Date(label.created_at).toLocaleDateString()} />
           </dl>
         </div>
 
-        {/* Dimensions */}
         <div className="rounded-lg border bg-card p-5">
           <h3 className="font-medium mb-3">Dimensions</h3>
           <Separator className="mb-1" />
           <dl>
             <DetailRow label="Width" value={`${label.width_cm} cm`} />
             <DetailRow label="Height" value={`${label.height_cm} cm`} />
-            <DetailRow
-              label="Corner Radius"
-              value={`${label.corner_radius_mm} mm`}
-            />
           </dl>
         </div>
-
-        {/* Design */}
-        {label.design && (
-          <div className="rounded-lg border bg-card p-5">
-            <h3 className="font-medium mb-3">Design</h3>
-            <Separator className="mb-1" />
-            <dl>
-              <DetailRow
-                label="Background"
-                value={label.design.background_color}
-              />
-              <DetailRow label="Font" value={label.design.font_primary} />
-              {label.design.qr?.enabled && (
-                <DetailRow
-                  label="QR Code"
-                  value={
-                    label.design.qr.data_source === "custom"
-                      ? label.design.qr.custom_url
-                      : "Product URL"
-                  }
-                />
-              )}
-              {label.design.metrc_zone?.enabled && (
-                <DetailRow
-                  label="METRC Zone"
-                  value={
-                    label.design.metrc_zone.render_as === "original_image"
-                      ? "Original Image"
-                      : label.design.metrc_zone.render_as === "qr_code"
-                        ? "QR Code"
-                        : label.design.metrc_zone.render_as === "barcode"
-                          ? "Barcode"
-                          : "Text"
-                  }
-                />
-              )}
-            </dl>
-          </div>
-        )}
       </div>
 
-      {/* Overlays */}
-      {label.overlays && label.overlays.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-lg font-medium">Overlays</h3>
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-            {label.overlays.map((overlay) => (
-              <div
-                key={overlay.id}
-                className="rounded-lg border bg-card p-4 space-y-2"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">
-                    {overlay.name || `Overlay #${overlay.id}`}
-                  </span>
-                  <Badge variant="outline">{overlay.overlay_type}</Badge>
-                </div>
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>
-                    Position: ({overlay.position_x}, {overlay.position_y})
-                  </p>
-                  <p>
-                    Size: {overlay.width} x {overlay.height}
-                  </p>
-                  <p>Z-Index: {overlay.z_index}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <Separator />
 
-      {/* Strain Variants */}
-      <LabelStrainVariantPanel label={label} onUpdated={setLabel} />
-
-      <Separator />
-
-      {/* METRC Label Sets */}
       <MetrcLabelSetPanel label={label} onUpdated={fetchLabel} />
 
-      {/* Print Dialog */}
-      <LabelPrintDialog
-        label={label}
-        open={printOpen}
-        onOpenChange={setPrintOpen}
-      />
+      <LabelPrintDialog label={label} open={printOpen} onOpenChange={setPrintOpen} />
     </div>
   );
 }

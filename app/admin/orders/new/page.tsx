@@ -12,6 +12,8 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import {
@@ -31,8 +33,10 @@ import {
   BuildingIcon,
   MapPinIcon,
   UsersIcon,
+  MinusIcon,
 } from "lucide-react";
 import { COMPANY_TYPE_LABELS } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 interface OrderLineItem {
   product_id: number;
@@ -127,6 +131,16 @@ export default function NewManualOrderPage() {
     );
   }
 
+  function bumpQty(productId: number, delta: number) {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.product_id === productId
+          ? { ...i, quantity: Math.max(1, i.quantity + delta) }
+          : i
+      )
+    );
+  }
+
   function removeItem(productId: number) {
     setItems((prev) => prev.filter((i) => i.product_id !== productId));
   }
@@ -166,8 +180,13 @@ export default function NewManualOrderPage() {
 
   if (authLoading || !isAuthenticated) return null;
 
+  const subtotal = items.reduce(
+    (sum, i) => sum + (parseFloat(i.unit_price) || 0) * i.quantity,
+    0
+  );
+
   return (
-    <div className="space-y-6 px-10 max-w-4xl">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-10 max-w-4xl pb-32 sm:pb-10">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon-sm" asChild>
@@ -175,9 +194,9 @@ export default function NewManualOrderPage() {
             <ArrowLeftIcon className="size-4" />
           </Link>
         </Button>
-        <div>
-          <h2 className="text-2xl font-semibold">Create Manual Order</h2>
-          <p className="text-sm text-muted-foreground">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-semibold truncate">Create Manual Order</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Build an order for a customer and send it for their approval
           </p>
         </div>
@@ -185,29 +204,29 @@ export default function NewManualOrderPage() {
 
       {error && <ErrorAlert message={error} />}
 
-      {/* Company selector */}
-      <div className="rounded-lg border bg-card p-4 space-y-4">
-        <h3 className="text-sm font-medium">Customer</h3>
+      {/* Customer */}
+      <div className="rounded-xl border bg-card p-4 sm:p-5 space-y-4">
+        <h3 className="text-base font-medium">Customer</h3>
 
-        {/* Company search */}
         {!selectedCompany ? (
           <div className="relative">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search companies..."
               value={companySearch}
               onChange={(e) => setCompanySearch(e.target.value)}
-              className="pl-9"
+              className="h-14 text-lg rounded-xl pl-12"
             />
             {companySearch.length >= 1 && (
-              <div className="mt-1 rounded-md border max-h-48 overflow-y-auto divide-y">
+              <div className="mt-2 rounded-xl border bg-popover shadow-md max-h-72 overflow-y-auto divide-y">
                 {filteredCompanies.length === 0 ? (
-                  <p className="text-sm text-muted-foreground p-3">No companies found</p>
+                  <p className="text-base text-muted-foreground p-4">No companies found</p>
                 ) : (
                   filteredCompanies.slice(0, 20).map((c) => (
                     <button
                       key={c.id}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 transition-colors text-left"
+                      type="button"
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors text-left"
                       onClick={() => {
                         setSelectedCompanyId(String(c.id));
                         setCompanySearch("");
@@ -216,14 +235,14 @@ export default function NewManualOrderPage() {
                       }}
                     >
                       {c.logo_url ? (
-                        <img src={c.logo_url} alt="" className="size-6 rounded object-cover" />
+                        <img src={c.logo_url} alt="" className="size-9 rounded-md object-cover" />
                       ) : (
-                        <div className="flex size-6 items-center justify-center rounded bg-muted">
-                          <BuildingIcon className="size-3 text-muted-foreground" />
+                        <div className="flex size-9 items-center justify-center rounded-md bg-muted">
+                          <BuildingIcon className="size-4 text-muted-foreground" />
                         </div>
                       )}
-                      <span className="font-medium">{c.name}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">
+                      <span className="font-medium text-base">{c.name}</span>
+                      <span className="text-sm text-muted-foreground ml-auto">
                         {COMPANY_TYPE_LABELS[c.company_type]}
                       </span>
                     </button>
@@ -232,29 +251,27 @@ export default function NewManualOrderPage() {
               </div>
             )}
           </div>
-        ) : null}
-
-        {selectedCompany && (
-          <div className="flex items-start gap-3 rounded-md border bg-muted/30 px-3 py-2.5 text-sm">
+        ) : (
+          <div className="flex items-start gap-3 rounded-xl border bg-muted/30 px-5 py-4">
             {selectedCompany.logo_url ? (
               <img
                 src={selectedCompany.logo_url}
                 alt=""
-                className="size-9 rounded-md object-cover mt-0.5"
+                className="size-11 rounded-lg object-cover mt-0.5"
               />
             ) : (
-              <div className="flex size-9 items-center justify-center rounded-md bg-muted mt-0.5">
-                <BuildingIcon className="size-4 text-muted-foreground" />
+              <div className="flex size-11 items-center justify-center rounded-lg bg-muted mt-0.5">
+                <BuildingIcon className="size-5 text-muted-foreground" />
               </div>
             )}
-            <div className="flex-1 min-w-0 space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{selectedCompany.name}</span>
+            <div className="flex-1 min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span className="font-medium text-base truncate">{selectedCompany.name}</span>
                 <span className="text-xs text-muted-foreground">
                   {COMPANY_TYPE_LABELS[selectedCompany.company_type]}
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 {selectedCompany.locations.length > 0 && (
                   <span className="flex items-center gap-1">
                     <MapPinIcon className="size-3" />
@@ -270,17 +287,18 @@ export default function NewManualOrderPage() {
                 )}
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1 mt-0.5">
+            <div className="flex flex-col items-end gap-2 mt-0.5 shrink-0">
               <Link
                 href={`/admin/companies/${selectedCompany.slug}`}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 px-2 py-1 -mr-2"
                 target="_blank"
               >
                 View
                 <ExternalLinkIcon className="size-3" />
               </Link>
               <button
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 -mr-2"
                 onClick={() => {
                   setSelectedCompanyId("");
                   setShippingLocationId("");
@@ -295,14 +313,14 @@ export default function NewManualOrderPage() {
         )}
 
         {selectedCompany && locations.length > 0 && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <Field>
-              <FieldLabel>Shipping Location</FieldLabel>
+              <FieldLabel className="text-base">Shipping location</FieldLabel>
               <Select
                 value={shippingLocationId}
                 onValueChange={setShippingLocationId}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-12 rounded-xl">
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -316,12 +334,12 @@ export default function NewManualOrderPage() {
               </Select>
             </Field>
             <Field>
-              <FieldLabel>Billing Location</FieldLabel>
+              <FieldLabel className="text-base">Billing location</FieldLabel>
               <Select
                 value={billingLocationId}
                 onValueChange={setBillingLocationId}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-12 rounded-xl">
                   <SelectValue placeholder="Same as shipping" />
                 </SelectTrigger>
                 <SelectContent>
@@ -339,179 +357,358 @@ export default function NewManualOrderPage() {
       </div>
 
       {/* Products */}
-      <div className="rounded-lg border bg-card p-4 space-y-4">
-        <h3 className="text-sm font-medium">Products</h3>
+      <div className="rounded-xl border bg-card p-4 sm:p-5 space-y-4">
+        <h3 className="text-base font-medium">Products</h3>
 
-        {/* Product search */}
         <div className="relative">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground pointer-events-none" />
           <Input
             placeholder="Search products..."
             value={productSearch}
             onChange={(e) => setProductSearch(e.target.value)}
-            className="pl-9"
+            className="h-14 text-lg rounded-xl pl-12"
           />
         </div>
 
-        {/* Product dropdown results */}
         {productSearch && (
-          <div className="rounded-md border max-h-48 overflow-y-auto divide-y">
+          <div className="rounded-xl border bg-popover shadow-md max-h-72 overflow-y-auto divide-y">
             {filteredProducts.length === 0 ? (
-              <p className="text-sm text-muted-foreground p-3">
+              <p className="text-base text-muted-foreground p-4">
                 No products found
               </p>
             ) : (
-              filteredProducts.slice(0, 20).map((p) => (
-                <button
-                  key={p.id}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/50 transition-colors text-left"
-                  onClick={() => addItem(p)}
-                  disabled={items.some((i) => i.product_id === p.id)}
-                >
-                  <span className="flex items-center gap-2">
-                    {p.thumbnail_url ? (
-                      <img src={p.thumbnail_url} alt="" className="size-7 rounded object-cover" />
-                    ) : (
-                      <div className="size-7 rounded bg-muted" />
+              filteredProducts.slice(0, 20).map((p) => {
+                const added = items.some((i) => i.product_id === p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={cn(
+                      "w-full flex items-center justify-between px-4 py-3 hover:bg-accent transition-colors text-left",
+                      added && "opacity-50 cursor-not-allowed"
                     )}
-                    <span>
-                      <span className="font-medium">{p.name}</span>
-                      {p.strain_name && (
-                        <span className="text-muted-foreground">
-                          {" "}({p.strain_name})
-                        </span>
+                    onClick={() => addItem(p)}
+                    disabled={added}
+                  >
+                    <span className="flex items-center gap-3">
+                      {p.thumbnail_url ? (
+                        <img src={p.thumbnail_url} alt="" className="size-9 rounded-md object-cover" />
+                      ) : (
+                        <div className="size-9 rounded-md bg-muted" />
                       )}
+                      <span className="text-base">
+                        <span className="font-medium">{p.name}</span>
+                        {p.strain_name && (
+                          <span className="text-muted-foreground">
+                            {" "}({p.strain_name})
+                          </span>
+                        )}
+                      </span>
                     </span>
-                  </span>
-                  <PlusIcon className="size-3.5 text-muted-foreground" />
-                </button>
-              ))
+                    {added ? (
+                      <span className="text-xs text-muted-foreground">Added</span>
+                    ) : (
+                      <PlusIcon className="size-4 text-muted-foreground" />
+                    )}
+                  </button>
+                );
+              })
             )}
           </div>
         )}
 
-        {/* Line items table */}
+        {/* Line items */}
         {items.length > 0 && (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30 text-xs font-medium text-muted-foreground">
-                <th className="text-left py-2 px-3 font-medium">Product</th>
-                <th className="text-left py-2 px-2 font-medium w-28">Price</th>
-                <th className="text-left py-2 px-2 font-medium w-20">Qty</th>
-                <th className="text-right py-2 px-2 font-medium w-24">Total</th>
-                <th className="w-8" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {items.map((item) => {
-                const total = (parseFloat(item.unit_price) || 0) * item.quantity;
-                return (
-                  <tr key={item.product_id}>
-                    <td className="py-2 px-3">
-                      <span className="flex items-center gap-2 font-medium">
-                        {item.thumbnail_url ? (
-                          <img src={item.thumbnail_url} alt="" className="size-7 rounded object-cover shrink-0" />
-                        ) : (
-                          <div className="size-7 rounded bg-muted shrink-0" />
+          <div className="space-y-2 pt-1">
+            {items.map((item) => {
+              const total = (parseFloat(item.unit_price) || 0) * item.quantity;
+              const priceChanged =
+                parseFloat(item.unit_price) !== parseFloat(item.default_price);
+              return (
+                <div
+                  key={item.product_id}
+                  className="rounded-xl border bg-background p-3 sm:p-4 space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-4"
+                >
+                  {/* Header: image + name + remove (sm:remove moves to end) */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {item.thumbnail_url ? (
+                      <img
+                        src={item.thumbnail_url}
+                        alt=""
+                        className="size-11 sm:size-12 rounded-lg object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="size-11 sm:size-12 rounded-lg bg-muted shrink-0" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-base truncate">
+                        {item.product_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        Default ${parseFloat(item.default_price).toFixed(2)}
+                        {priceChanged && (
+                          <span className="text-amber-600 ml-1">· custom</span>
                         )}
-                        <span className="truncate">{item.product_name}</span>
-                      </span>
-                    </td>
-                    <td className="py-2 px-2">
+                      </p>
+                    </div>
+                    {/* Remove on mobile only */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => removeItem(item.product_id)}
+                      className="text-muted-foreground hover:text-destructive shrink-0 sm:hidden"
+                    >
+                      <Trash2Icon className="size-4" />
+                    </Button>
+                  </div>
+
+                  {/* Controls row */}
+                  <div className="flex items-end gap-2 sm:gap-3">
+                    {/* Price */}
+                    <div className="space-y-1 flex-1 sm:flex-initial">
+                      <label className="block text-[11px] font-medium text-muted-foreground px-1 uppercase tracking-wide">
+                        Price
+                      </label>
                       <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
-                        <Input type="number" min={0} step="0.01" value={item.unit_price} onChange={(e) => updateItem(item.product_id, "unit_price", e.target.value)} className="h-8 text-sm pl-5 w-full" />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground pointer-events-none">
+                          $
+                        </span>
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step="0.01"
+                          value={item.unit_price}
+                          onChange={(e) =>
+                            updateItem(item.product_id, "unit_price", e.target.value)
+                          }
+                          className={cn(
+                            "h-12 text-base pl-7 rounded-lg tabular-nums w-full sm:w-28",
+                            priceChanged && "border-amber-500/60"
+                          )}
+                        />
                       </div>
-                    </td>
-                    <td className="py-2 px-2">
-                      <Input type="number" min={1} value={item.quantity} onChange={(e) => updateItem(item.product_id, "quantity", parseInt(e.target.value) || 1)} className="h-8 text-sm w-full" />
-                    </td>
-                    <td className="py-2 px-2 text-right font-medium">${total.toFixed(2)}</td>
-                    <td className="py-2 px-1">
-                      <Button variant="ghost" size="icon-sm" onClick={() => removeItem(item.product_id)}>
-                        <Trash2Icon className="size-3.5 text-muted-foreground" />
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t bg-muted/30">
-                <td colSpan={3} className="py-2 px-3 text-right text-xs font-medium text-muted-foreground">Subtotal</td>
-                <td className="py-2 px-2 text-right font-semibold">
-                  ${items.reduce((sum, i) => sum + (parseFloat(i.unit_price) || 0) * i.quantity, 0).toFixed(2)}
-                </td>
-                <td />
-              </tr>
-            </tfoot>
-          </table>
+                    </div>
+
+                    {/* Qty stepper */}
+                    <div className="space-y-1 shrink-0">
+                      <label className="block text-[11px] font-medium text-muted-foreground px-1 uppercase tracking-wide">
+                        Qty
+                      </label>
+                      <div className="flex h-12 items-center rounded-lg border overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => bumpQty(item.product_id, -1)}
+                          disabled={item.quantity <= 1}
+                          className="flex h-full w-10 sm:w-9 items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:bg-muted"
+                          aria-label="Decrease quantity"
+                        >
+                          <MinusIcon className="size-4" />
+                        </button>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          value={item.quantity}
+                          onChange={(e) =>
+                            updateItem(
+                              item.product_id,
+                              "quantity",
+                              parseInt(e.target.value) || 1
+                            )
+                          }
+                          className="h-full w-10 sm:w-12 bg-transparent text-center text-base font-medium tabular-nums outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => bumpQty(item.product_id, 1)}
+                          className="flex h-full w-10 sm:w-9 items-center justify-center text-muted-foreground hover:bg-muted transition-colors active:bg-muted"
+                          aria-label="Increase quantity"
+                        >
+                          <PlusIcon className="size-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Total */}
+                    <div className="space-y-1 shrink-0 text-right ml-auto sm:ml-0">
+                      <label className="block text-[11px] font-medium text-muted-foreground px-1 uppercase tracking-wide">
+                        Total
+                      </label>
+                      <p className="h-12 flex items-center justify-end font-semibold text-base tabular-nums sm:w-24">
+                        ${total.toFixed(2)}
+                      </p>
+                    </div>
+
+                    {/* Remove on desktop only */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => removeItem(item.product_id)}
+                      className="text-muted-foreground hover:text-destructive shrink-0 hidden sm:inline-flex self-end mb-1"
+                    >
+                      <Trash2Icon className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Subtotal */}
+            <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 sm:px-5 py-3 mt-3">
+              <span className="text-sm font-medium text-muted-foreground">
+                Subtotal · {items.length} item{items.length !== 1 ? "s" : ""}
+              </span>
+              <span className="text-lg font-semibold tabular-nums">
+                ${subtotal.toFixed(2)}
+              </span>
+            </div>
+          </div>
         )}
 
         {items.length === 0 && !productSearch && (
-          <p className="text-sm text-muted-foreground py-4 text-center">
+          <p className="text-sm text-muted-foreground py-6 text-center">
             Search for products above to add them to the order
           </p>
         )}
       </div>
 
-      {/* Notes */}
-      <div className="rounded-lg border bg-card p-4 space-y-4">
-        <h3 className="text-sm font-medium">Details</h3>
-        <FieldGroup>
+      {/* Pricing & payment */}
+      <div className="rounded-xl border bg-card p-4 sm:p-5 space-y-4">
+        <div>
+          <h3 className="text-base font-medium">Pricing &amp; payment</h3>
+          <p className="text-sm text-muted-foreground">
+            How the customer pays for this order
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !codOnly;
+              setCodOnly(next);
+              if (next) setDisableDiscount(true);
+            }}
+            className={cn(
+              "flex items-start gap-3 rounded-xl border p-4 text-left transition-colors",
+              codOnly
+                ? "border-primary bg-primary/5"
+                : "hover:bg-muted/40"
+            )}
+          >
+            <Checkbox
+              checked={codOnly}
+              className="size-5 mt-0.5 pointer-events-none"
+              tabIndex={-1}
+            />
+            <div className="space-y-0.5">
+              <p className="font-medium text-sm">COD only</p>
+              <p className="text-xs text-muted-foreground">
+                Cash on delivery — customer can&apos;t pick Net 15 / Net 30
+              </p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            disabled={codOnly}
+            onClick={() => setDisableDiscount(!disableDiscount)}
+            className={cn(
+              "flex items-start gap-3 rounded-xl border p-4 text-left transition-colors",
+              disableDiscount
+                ? "border-primary bg-primary/5"
+                : "hover:bg-muted/40",
+              codOnly && "opacity-60 cursor-not-allowed"
+            )}
+          >
+            <Checkbox
+              checked={disableDiscount}
+              className="size-5 mt-0.5 pointer-events-none"
+              tabIndex={-1}
+              disabled={codOnly}
+            />
+            <div className="space-y-0.5">
+              <p className="font-medium text-sm">Custom pricing</p>
+              <p className="text-xs text-muted-foreground">
+                No payment term discounts applied to the prices above
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Details */}
+      <div className="rounded-xl border bg-card p-4 sm:p-5 space-y-4">
+        <h3 className="text-base font-medium">Details</h3>
+        <FieldGroup className="space-y-4">
           <Field>
-            <FieldLabel>Desired Delivery Date</FieldLabel>
+            <FieldLabel className="text-base">Desired delivery date</FieldLabel>
             <Input
               type="date"
               value={desiredDeliveryDate}
               onChange={(e) => setDesiredDeliveryDate(e.target.value)}
+              className="h-12 text-base rounded-xl"
             />
           </Field>
           <Field>
-            <FieldLabel>Notes to Customer</FieldLabel>
-            <textarea
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            <FieldLabel className="text-base">Notes to customer</FieldLabel>
+            <Textarea
               placeholder="Notes visible to the customer..."
               value={notesToVendor}
               onChange={(e) => setNotesToVendor(e.target.value)}
+              className="rounded-xl text-base min-h-[88px]"
             />
           </Field>
           <Field>
-            <FieldLabel>Internal Notes</FieldLabel>
-            <textarea
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            <FieldLabel className="text-base">Internal notes</FieldLabel>
+            <Textarea
               placeholder="Internal notes (not visible to customer)..."
               value={internalNotes}
               onChange={(e) => setInternalNotes(e.target.value)}
+              className="rounded-xl text-base min-h-[88px]"
             />
           </Field>
-          <div className="space-y-2 pt-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={codOnly} onChange={(e) => { setCodOnly(e.target.checked); if (e.target.checked) setDisableDiscount(true); }} className="rounded border-gray-300" />
-              COD only (no payment term selection for customer)
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={disableDiscount} onChange={(e) => setDisableDiscount(e.target.checked)} className="rounded border-gray-300" />
-              Disable payment term discount (custom pricing)
-            </label>
-          </div>
         </FieldGroup>
       </div>
 
-      {/* Submit */}
-      <div className="flex items-center justify-between pb-10">
-        <p className="text-sm text-muted-foreground">
+      {/* Submit — desktop inline */}
+      <div className="hidden sm:flex items-center justify-between gap-4 pb-10">
+        <p className="text-sm text-muted-foreground flex-1">
           {codOnly
             ? "Customer will receive a link to review and confirm the order (COD, no payment term selection)."
             : "Customer will receive a link to review, select payment terms (COD, Net 15, Net 30), and sign."}
         </p>
         <Button
-          size="lg"
           onClick={handleSubmit}
           disabled={submitting || !selectedCompanyId || items.length === 0}
+          className="h-14 px-8 text-base font-semibold rounded-xl"
         >
-          <SendIcon className="mr-2 size-4" />
-          {submitting ? "Creating..." : "Create & Send to Customer"}
+          <SendIcon className="mr-2 size-5" />
+          {submitting ? "Creating..." : "Create & send"}
+        </Button>
+      </div>
+
+      {/* Submit — mobile sticky bar */}
+      <div className="sm:hidden fixed bottom-0 inset-x-0 z-30 border-t bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+        {items.length > 0 && (
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-muted-foreground">
+              {items.length} item{items.length !== 1 ? "s" : ""} · subtotal
+            </span>
+            <span className="text-base font-semibold tabular-nums">
+              ${subtotal.toFixed(2)}
+            </span>
+          </div>
+        )}
+        <Button
+          onClick={handleSubmit}
+          disabled={submitting || !selectedCompanyId || items.length === 0}
+          className="h-14 w-full text-base font-semibold rounded-xl"
+        >
+          <SendIcon className="mr-2 size-5" />
+          {submitting ? "Creating..." : "Create & send"}
         </Button>
       </div>
     </div>

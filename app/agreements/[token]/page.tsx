@@ -538,6 +538,9 @@ function PaymentTermAgreementContent({
               <strong className="text-foreground">{order.order_number}</strong> on delivery.
             </p>
             <p>Payment accepted via ACH, bank transfer, or check.</p>
+            <p className="text-foreground font-medium">
+              All sales are final. No returns, refunds, or exchanges accepted.
+            </p>
           </div>
         </div>
       )}
@@ -560,6 +563,9 @@ function PaymentTermAgreementContent({
               Payment may be made via ACH transfer, direct bank transfer, or
               check. Late payments may result in a 1.5% monthly fee on overdue balances.
             </p>
+            <p className="font-medium">
+              All sales are final. No returns, refunds, or exchanges accepted.
+            </p>
           </div>
         </div>
       )}
@@ -578,6 +584,9 @@ function PaymentTermAgreementContent({
             <p className="text-muted-foreground">
               Payment may be made via ACH transfer, direct bank transfer, or
               check. Late payments may result in a 1.5% monthly fee on overdue balances.
+            </p>
+            <p className="font-medium">
+              All sales are final. No returns, refunds, or exchanges accepted.
             </p>
           </div>
         </div>

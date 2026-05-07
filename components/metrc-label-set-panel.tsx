@@ -209,15 +209,7 @@ export function MetrcLabelSetPanel({
                 />
               </Field>
               <p className="text-xs text-muted-foreground">
-                Paste METRC tag strings, one per line. These will be rendered as{" "}
-                {label.design?.metrc_zone?.render_as === "qr_code"
-                  ? "QR codes"
-                  : label.design?.metrc_zone?.render_as === "barcode"
-                    ? "barcodes"
-                    : label.design?.metrc_zone?.render_as === "text"
-                      ? "text"
-                      : "the configured format"}{" "}
-                on each label.
+                Paste METRC tag strings, one per line. These will be rendered as QR codes in the bottom-right METRC zone of each label.
               </p>
               <Button
                 onClick={handleTagsImport}

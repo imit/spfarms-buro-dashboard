@@ -43,8 +43,7 @@ export default function NewShipmentPage() {
 
     async function loadOrders() {
       try {
-        const orders = await apiClient.getOrders();
-        // Show fulfilled orders that could be added to a shipment
+        const orders = await apiClient.getOrders({ unassigned: true });
         const eligible = orders.filter(
           (o) => o.status === "fulfilled" || o.status === "confirmed" || o.status === "processing"
         );

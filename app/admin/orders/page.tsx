@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   apiClient,
   type Order,
+  type OrderType,
   type PaymentStatus,
   ORDER_STATUS_LABELS,
   ORDER_TYPE_LABELS,
@@ -14,7 +15,7 @@ import {
 import { statusBadgeClasses } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, RotateCcwIcon } from "lucide-react";
 
 const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
   unpaid: "bg-slate-100 text-slate-700",
@@ -29,11 +30,21 @@ function formatPrice(amount: string | number | null) {
   return `$${num.toFixed(2)}`;
 }
 
+type TypeFilter = "all" | OrderType;
+
+const TYPE_FILTERS: { value: TypeFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "standard", label: "Sales" },
+  { value: "preorder", label: "Pre-orders" },
+  { value: "return", label: "Returns" },
+];
+
 export default function AdminOrdersPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -57,6 +68,11 @@ export default function AdminOrdersPage() {
 
     load();
   }, [isAuthenticated]);
+
+  const filteredOrders = useMemo(
+    () => (typeFilter === "all" ? orders : orders.filter((o) => o.order_type === typeFilter)),
+    [orders, typeFilter],
+  );
 
   if (authLoading || !isAuthenticated) return null;
 
@@ -85,11 +101,40 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-1.5">
+        {TYPE_FILTERS.map((f) => {
+          const count =
+            f.value === "all"
+              ? orders.length
+              : orders.filter((o) => o.order_type === f.value).length;
+          const active = typeFilter === f.value;
+          return (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setTypeFilter(f.value)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                active
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-background text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {f.label}
+              <span className={`rounded-full px-1.5 text-[10px] ${active ? "bg-background/20" : "bg-muted"}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>
-      ) : orders.length === 0 ? (
+      ) : filteredOrders.length === 0 ? (
         <div className="rounded-lg border bg-card p-12 text-center">
-          <p className="text-muted-foreground">No orders yet.</p>
+          <p className="text-muted-foreground">
+            {typeFilter === "all" ? "No orders yet." : `No ${TYPE_FILTERS.find((t) => t.value === typeFilter)?.label.toLowerCase()} yet.`}
+          </p>
         </div>
       ) : (
         <div className="rounded-lg border">
@@ -107,64 +152,97 @@ export default function AdminOrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
-                <tr
-                  key={order.id}
-                  className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
-                  onClick={(e) => {
-                    if (e.metaKey || e.ctrlKey || e.button === 1) {
-                      window.open(`/admin/orders/${order.id}`, "_blank");
-                    } else {
-                      router.push(`/admin/orders/${order.id}`);
-                    }
-                  }}
-                  onAuxClick={(e) => {
-                    if (e.button === 1) {
-                      e.preventDefault();
-                      window.open(`/admin/orders/${order.id}`, "_blank");
-                    }
-                  }}
-                >
-                  <td className="px-4 py-3 font-medium">
-                    <Link href={`/admin/orders/${order.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
-                    {order.order_number}
-                    {order.order_type === "preorder" && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                        {ORDER_TYPE_LABELS.preorder}
+              {filteredOrders.map((order) => {
+                const isReturn = order.order_type === "return";
+                return (
+                  <tr
+                    key={order.id}
+                    className={`border-b last:border-0 cursor-pointer ${
+                      isReturn
+                        ? "bg-rose-50/60 hover:bg-rose-100/70 dark:bg-rose-950/30 dark:hover:bg-rose-950/50"
+                        : "hover:bg-muted/30"
+                    }`}
+                    onClick={(e) => {
+                      if (e.metaKey || e.ctrlKey || e.button === 1) {
+                        window.open(`/admin/orders/${order.id}`, "_blank");
+                      } else {
+                        router.push(`/admin/orders/${order.id}`);
+                      }
+                    }}
+                    onAuxClick={(e) => {
+                      if (e.button === 1) {
+                        e.preventDefault();
+                        window.open(`/admin/orders/${order.id}`, "_blank");
+                      }
+                    }}
+                  >
+                    <td className="px-4 py-3 font-medium">
+                      <Link href={`/admin/orders/${order.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+                        {order.order_number}
+                      </Link>
+                      {order.order_type === "preorder" && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                          {ORDER_TYPE_LABELS.preorder}
+                        </span>
+                      )}
+                      {isReturn && (
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-rose-200/70 px-2 py-0.5 text-[10px] font-semibold text-rose-800 dark:bg-rose-900/50 dark:text-rose-200">
+                          <RotateCcwIcon className="size-3" />
+                          {ORDER_TYPE_LABELS.return}
+                        </span>
+                      )}
+                      {order.items.length > 0 && order.items.every((i) => i.product_type === "bulk_flower") && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                          Bulk
+                        </span>
+                      )}
+                      {isReturn && order.parent_order && (
+                        <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">
+                          against{" "}
+                          <Link
+                            href={`/admin/orders/${order.parent_order.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="underline underline-offset-2 hover:text-foreground"
+                          >
+                            {order.parent_order.order_number}
+                          </Link>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">{order.company?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {order.items.length} / {order.items.reduce((sum, i) => sum + i.quantity, 0)} units
+                    </td>
+                    <td className={`px-4 py-3 ${isReturn ? "font-medium text-rose-700 dark:text-rose-400" : ""}`}>
+                      {isReturn ? `−${formatPrice(order.total)}` : formatPrice(order.total)}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {isReturn
+                        ? "—"
+                        : order.payment_term_name
+                          ? `${order.payment_term_name}${order.payment_term_days ? ` (Net ${order.payment_term_days})` : ""}`
+                          : "COD"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isReturn ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : (
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${PAYMENT_STATUS_COLORS[order.payment_status] || PAYMENT_STATUS_COLORS.unpaid}`}>
+                          {PAYMENT_STATUS_LABELS[order.payment_status] || "Unpaid"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
+                        {ORDER_STATUS_LABELS[order.status]}
                       </span>
-                    )}
-                    {order.items.length > 0 && order.items.every((i) => i.product_type === "bulk_flower") && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                        Bulk
-                      </span>
-                    )}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">{order.company?.name ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {new Date(order.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {order.items.length} / {order.items.reduce((sum, i) => sum + i.quantity, 0)} units
-                  </td>
-                  <td className="px-4 py-3">{formatPrice(order.total)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {order.payment_term_name
-                      ? `${order.payment_term_name}${order.payment_term_days ? ` (Net ${order.payment_term_days})` : ""}`
-                      : "COD"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${PAYMENT_STATUS_COLORS[order.payment_status] || PAYMENT_STATUS_COLORS.unpaid}`}>
-                      {PAYMENT_STATUS_LABELS[order.payment_status] || "Unpaid"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
-                      {ORDER_STATUS_LABELS[order.status]}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

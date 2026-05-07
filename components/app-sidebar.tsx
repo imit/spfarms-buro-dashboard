@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, UsersIcon, Settings2Icon, BoxIcon, UserPlusIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon, FolderIcon, BuildingIcon, ReceiptIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, UsersIcon, Settings2Icon, BoxIcon, UserPlusIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon, FolderIcon, BuildingIcon, ReceiptIcon, FlowerIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -207,6 +207,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const workspaceItems: NavItem[] = []
   if (canAccess("projects", role)) {
     workspaceItems.push({ title: "Labels", url: "/admin/projects", icon: <FolderIcon className="text-yellow-600" /> })
+    workspaceItems.push({ title: "Strain Images", url: "/admin/projects/strain-images", icon: <FlowerIcon className="text-fuchsia-500" /> })
   }
   if (canAccess("posts", role)) {
     workspaceItems.push({ title: "Tasks", url: "/admin/posts", icon: <MessageSquareIcon className="text-sky-500" /> })

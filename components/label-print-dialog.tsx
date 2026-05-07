@@ -45,10 +45,9 @@ export function LabelPrintDialog({
   const [isPrinting, setIsPrinting] = useState(false);
   const [error, setError] = useState("");
 
-  // METRC
-  const metrcEnabled = label.design?.metrc_zone?.enabled ?? false;
+  // METRC zone is always present in the new fixed design.
   const metrcSets: MetrcLabelSetSummary[] = label.metrc_label_sets ?? [];
-  const hasMetrcSets = metrcEnabled && metrcSets.length > 0;
+  const hasMetrcSets = metrcSets.length > 0;
   const [selectedMetrcSetId, setSelectedMetrcSetId] = useState<string>("");
 
   useEffect(() => {
@@ -195,11 +194,9 @@ export function LabelPrintDialog({
             </Field>
           )}
 
-          {metrcEnabled && metrcSets.length === 0 && (
+          {metrcSets.length === 0 && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              METRC zone is enabled but no label sets have been imported.
-              Import METRC tags from the label detail page to print with
-              unique identifiers.
+              No METRC label sets imported yet. Import METRC tags from the label detail page to print with unique identifiers.
             </div>
           )}
 

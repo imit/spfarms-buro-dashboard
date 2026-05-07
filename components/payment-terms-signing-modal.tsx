@@ -151,9 +151,9 @@ export function PaymentTermsSigningModal({
                 and signed receipt.
               </li>
               <li>
-                All sales are final. Claims for shortages or damage must be made
-                at time of delivery. No returns permitted except for
-                state-mandated recalls or verified defects.
+                All sales are final. No returns, refunds, or exchanges are
+                accepted. Claims for shortages or damage must be made and noted
+                on the delivery receipt at time of delivery.
               </li>
               <li>
                 Upon default, all outstanding invoices become immediately due and

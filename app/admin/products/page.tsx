@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ErrorAlert } from "@/components/ui/error-alert";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, PackageIcon } from "lucide-react";
 
 type TypeFilter = "all" | "cannabis" | "promo" | "bulk";
 type StatusFilter = "all" | ProductStatus;
@@ -112,12 +112,20 @@ function ProductsPage() {
             Manage cannabis and promotional products
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/products/new">
-            <PlusIcon className="mr-2 size-4" />
-            Add Product
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/admin/products/inventory">
+              <PackageIcon className="mr-2 size-4" />
+              Inventory
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/admin/products/new">
+              <PlusIcon className="mr-2 size-4" />
+              Add Product
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {error && <ErrorAlert message={error} />}
