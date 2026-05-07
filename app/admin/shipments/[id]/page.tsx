@@ -41,6 +41,20 @@ import { toast } from "sonner";
 import { showError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import { buildBoxLabelHtml } from "@/lib/box-label";
+import { extractMetrcTag, metrcTagSuffix } from "@/lib/metrc-filename";
+import { packBoxes, tagsForBoxItem, formatTagDisplay, type BoxPlan } from "@/lib/box-packing";
+
+const SHEET_LAYOUT_STORAGE_KEY = "spf:metrc:lastSheetLayoutSlug";
+
+function readStoredSheetLayout(): string {
+  if (typeof window === "undefined") return "";
+  try { return window.localStorage.getItem(SHEET_LAYOUT_STORAGE_KEY) || ""; } catch { return ""; }
+}
+
+function writeStoredSheetLayout(slug: string) {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(SHEET_LAYOUT_STORAGE_KEY, slug); } catch { /* ignore */ }
+}
 
 const STATUS_BADGE_COLORS: Record<ShipmentStatus, string> = {
   draft: "bg-slate-100 text-slate-700",
@@ -100,33 +114,50 @@ export default function AdminShipmentDetailPage({
   const [sheetLayouts, setSheetLayouts] = useState<SheetLayout[]>([]);
   const [labels, setLabels] = useState<LabelType[]>([]);
   const [showMetrcDialog, setShowMetrcDialog] = useState(false);
-  const [metrcSheetLayoutId, setMetrcSheetLayoutId] = useState("");
+  const [metrcSheetLayoutId, _setMetrcSheetLayoutId] = useState("");
+  const setMetrcSheetLayoutId = useCallback((v: string) => { _setMetrcSheetLayoutId(v); if (v) writeStoredSheetLayout(v); }, []);
   const [metrcPrinting, setMetrcPrinting] = useState(false);
 
   // Per-order METRC download
   const [metrcDownloadOrderId, setMetrcDownloadOrderId] = useState<number | null>(null);
   const [metrcDownloadOrderNumber, setMetrcDownloadOrderNumber] = useState("");
-  const [metrcDownloadLayoutId, setMetrcDownloadLayoutId] = useState("");
+  const [metrcDownloadLayoutId, _setMetrcDownloadLayoutId] = useState("");
+  const setMetrcDownloadLayoutId = useCallback((v: string) => { _setMetrcDownloadLayoutId(v); if (v) writeStoredSheetLayout(v); }, []);
   const [metrcDownloadPrinting, setMetrcDownloadPrinting] = useState(false);
 
   // Per-order METRC import (multi-file)
   const [metrcImportItemId, setMetrcImportItemId] = useState<number | null>(null);
   const [metrcImportOrderId, setMetrcImportOrderId] = useState<number | null>(null);
+  const [metrcImportItemQty, setMetrcImportItemQty] = useState<number>(0);
+  const [metrcImportItemHasTag, setMetrcImportItemHasTag] = useState<boolean>(false);
   const [metrcLabelId, setMetrcLabelId] = useState("");
   const [metrcFiles, setMetrcFiles] = useState<File[]>([]);
   const [metrcImporting, setMetrcImporting] = useState(false);
+  const [dragOverItemId, setDragOverItemId] = useState<number | null>(null);
+
+  const openMetrcImport = useCallback(
+    (orderId: number, item: { id: number; quantity: number; metrc_tag?: string | null }, prefilledFiles: File[] = []) => {
+      setMetrcImportOrderId(orderId);
+      setMetrcImportItemId(item.id);
+      setMetrcImportItemQty(item.quantity);
+      setMetrcImportItemHasTag(!!item.metrc_tag);
+      setMetrcLabelId("");
+      setMetrcFiles(prefilledFiles);
+    },
+    []
+  );
 
   // Per-set METRC print
   const [metrcPrintSetId, setMetrcPrintSetId] = useState<number | null>(null);
   const [metrcPrintOrderId, setMetrcPrintOrderId] = useState<number | null>(null);
-  const [perSetSheetLayoutId, setPerSetSheetLayoutId] = useState("");
+  const [perSetSheetLayoutId, _setPerSetSheetLayoutId] = useState("");
+  const setPerSetSheetLayoutId = useCallback((v: string) => { _setPerSetSheetLayoutId(v); if (v) writeStoredSheetLayout(v); }, []);
   const [perSetVariantId, setPerSetVariantId] = useState("");
   const [perSetPrinting, setPerSetPrinting] = useState(false);
 
-  // Sample METRC (multi-file)
+  // Sample METRC (multi-file). Phase 2: each file targets a per-strain Label.
   const [showSampleImport, setShowSampleImport] = useState(false);
-  const [sampleLabelId, setSampleLabelId] = useState("");
-  const [sampleFiles, setSampleFiles] = useState<{ file: File; variantId: string }[]>([]);
+  const [sampleFiles, setSampleFiles] = useState<{ file: File; labelId: string }[]>([]);
   const [sampleImporting, setSampleImporting] = useState(false);
   const [samplePrintSetId, setSamplePrintSetId] = useState<number | null>(null);
   const [samplePrintLayoutId, setSamplePrintLayoutId] = useState("");
@@ -220,10 +251,9 @@ export default function AdminShipmentDetailPage({
     setLoadingAvailableOrders(true);
     setAddOrderIds([]);
     try {
-      const orders = await apiClient.getOrders();
-      const existingIds = new Set(shipment?.orders.map((o) => o.id) ?? []);
+      const orders = await apiClient.getOrders({ unassigned: true });
       const eligible = orders.filter(
-        (o) => !existingIds.has(o.id) && (o.status === "fulfilled" || o.status === "confirmed" || o.status === "processing")
+        (o) => o.status === "fulfilled" || o.status === "confirmed" || o.status === "processing"
       );
       setAvailableOrders(eligible);
     } catch {
@@ -511,17 +541,31 @@ export default function AdminShipmentDetailPage({
     }
   };
 
-  const printBoxLabel = (order: ShipmentOrderSummary) => {
-    const win = window.open("", "_blank", "width=600,height=400");
+  const printBoxLabels = useCallback((order: ShipmentOrderSummary, only?: BoxPlan) => {
+    const unitsPerBox = order.units_per_box ?? 32;
+    const boxes = only ? [only] : packBoxes(order.items, unitsPerBox);
+    if (boxes.length === 0) {
+      toast.error("Nothing to box");
+      return;
+    }
+    const win = window.open("", "_blank", "width=900,height=600");
     if (!win) return;
-    win.document.write(buildBoxLabelHtml({
+    const inputs = boxes.map((box) => ({
+      box,
       orderNumber: order.order_number,
       companyName: order.company_name,
-      address: "",
+      shipmentNumber: shipment?.shipment_number ?? null,
       deliveryDate: order.desired_delivery_date ? new Date(order.desired_delivery_date).toLocaleDateString() : null,
-      items: order.items.map((i) => ({ name: i.product_name, qty: i.quantity })),
     }));
+    win.document.write(buildBoxLabelHtml(inputs));
     win.document.close();
+  }, [shipment]);
+
+  const updateUnitsPerBox = async (orderId: number, unitsPerBox: number) => {
+    try {
+      await apiClient.updateOrderUnitsPerBox(orderId, unitsPerBox);
+      await loadShipment();
+    } catch { showError("update units per box"); }
   };
 
   // Selected orders batch downloads
@@ -591,6 +635,18 @@ export default function AdminShipmentDetailPage({
     setMetrcImporting(true);
     try {
       await apiClient.batchImportOrderMetrc(metrcImportOrderId, metrcImportItemId, metrcLabelId, metrcFiles);
+
+      // Auto-fill the item's METRC tag from the first PDF's filename if it's not already set.
+      // Filename format: <hash>-<METRC_TAG>-<page>.pdf — see lib/metrc-filename.ts.
+      if (!metrcImportItemHasTag) {
+        const tag = extractMetrcTag(metrcFiles[0]?.name);
+        if (tag) {
+          try {
+            await apiClient.updateOrderItemMetrcTag(metrcImportOrderId, metrcImportItemId, tag);
+          } catch { /* non-fatal */ }
+        }
+      }
+
       await loadShipment();
       setMetrcImportItemId(null);
       setMetrcImportOrderId(null);
@@ -637,17 +693,16 @@ export default function AdminShipmentDetailPage({
 
   // Sample METRC import (multi-file)
   const handleSampleMetrcImport = async () => {
-    if (sampleFiles.length === 0 || sampleFiles.some((f) => !f.variantId)) return;
+    if (sampleFiles.length === 0 || sampleFiles.some((f) => !f.labelId)) return;
     setSampleImporting(true);
     try {
       await apiClient.batchImportShipmentSampleMetrc(
         Number(id),
-        sampleFiles.map((f) => ({ variantId: Number(f.variantId), pdf: f.file }))
+        sampleFiles.map((f) => ({ labelId: Number(f.labelId), pdf: f.file, isSample: true }))
       );
       await loadShipment();
       setShowSampleImport(false);
       setSampleFiles([]);
-      setSampleLabelId("");
       toast.success(`${sampleFiles.length} sample METRC file${sampleFiles.length !== 1 ? "s" : ""} imported`);
     } catch {
       showError("import sample METRC labels");
@@ -868,7 +923,7 @@ export default function AdminShipmentDetailPage({
               <DropdownMenuItem onClick={downloadBatchInvoices}>All Invoices</DropdownMenuItem>
               <DropdownMenuItem onClick={downloadBatchDeliveryAgreements}>All Delivery Agreements</DropdownMenuItem>
               <DropdownMenuItem onClick={downloadBatchPaymentTerms}>All Payment Terms</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setShowMetrcDialog(true); setMetrcSheetLayoutId(""); }}>
+              <DropdownMenuItem onClick={() => { setShowMetrcDialog(true); _setMetrcSheetLayoutId(readStoredSheetLayout()); }}>
                 All METRC Labels
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -1059,9 +1114,9 @@ export default function AdminShipmentDetailPage({
                         <DropdownMenuItem onClick={() => downloadOrderInvoice(order.id, order.order_number)}>Invoice</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => downloadOrderDeliveryAgreement(order.id, order.order_number)}>Delivery Agreement</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => downloadOrderPaymentTerms(order.id, order.order_number)}>Payment Terms</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => printBoxLabel(order)}>Box Label</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => printBoxLabels(order)}>Box Labels (all)</DropdownMenuItem>
                         {order.items.some((i) => i.metrc_label_sets && i.metrc_label_sets.length > 0) && (
-                          <DropdownMenuItem onClick={() => { setMetrcDownloadOrderId(order.id); setMetrcDownloadOrderNumber(order.order_number); setMetrcDownloadLayoutId(""); }}>
+                          <DropdownMenuItem onClick={() => { setMetrcDownloadOrderId(order.id); setMetrcDownloadOrderNumber(order.order_number); _setMetrcDownloadLayoutId(readStoredSheetLayout()); }}>
                             METRC Labels
                           </DropdownMenuItem>
                         )}
@@ -1136,11 +1191,59 @@ export default function AdminShipmentDetailPage({
 
                       {/* Line items */}
                       <div className="rounded-lg border divide-y">
-                        {order.items.map((item) => (
-                          <div key={item.id} className="px-3 py-2 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium">{item.product_name}</p>
+                        {order.items.map((item) => {
+                          const sets = item.metrc_label_sets ?? [];
+                          const totalImported = sets.filter((ms) => ms.processing_status !== "processing" && ms.processing_status !== "failed").reduce((s, ms) => s + ms.item_count, 0);
+                          const hasSets = sets.length > 0;
+                          const mismatch = totalImported > 0 && totalImported !== item.quantity;
+                          const isDragOver = dragOverItemId === item.id;
+                          return (
+                          <div
+                            key={item.id}
+                            className={cn(
+                              "px-3 py-2 space-y-2 relative transition-colors",
+                              isDragOver && "bg-primary/5 ring-2 ring-primary/40 ring-inset"
+                            )}
+                            onDragEnter={(e) => {
+                              if (Array.from(e.dataTransfer.types).includes("Files")) {
+                                e.preventDefault();
+                                setDragOverItemId(item.id);
+                              }
+                            }}
+                            onDragOver={(e) => {
+                              if (Array.from(e.dataTransfer.types).includes("Files")) {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = "copy";
+                              }
+                            }}
+                            onDragLeave={(e) => {
+                              if (e.currentTarget === e.target) setDragOverItemId(null);
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setDragOverItemId(null);
+                              const files = Array.from(e.dataTransfer.files).filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+                              if (files.length === 0) return;
+                              openMetrcImport(order.id, item, files);
+                            }}
+                          >
+                            {isDragOver && (
+                              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-primary/5 backdrop-blur-[1px]">
+                                <p className="text-xs font-medium text-primary">Drop METRC PDFs to import</p>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {item.strain_image_url ? (
+                                  <img
+                                    src={item.strain_image_url}
+                                    alt=""
+                                    className="size-9 rounded-full object-cover shrink-0 ring-1 ring-border"
+                                  />
+                                ) : (
+                                  <div className="size-9 rounded-full bg-muted shrink-0" />
+                                )}
+                                <p className="text-sm font-medium truncate">{item.product_name}</p>
                               </div>
                               <div className="text-right shrink-0 text-sm">
                                 <span className="text-muted-foreground">{item.quantity} x {formatPrice(item.unit_price)}</span>
@@ -1159,27 +1262,33 @@ export default function AdminShipmentDetailPage({
                             </div>
 
                             {/* METRC section */}
-                            {item.metrc_label_sets && item.metrc_label_sets.length > 0 && (() => {
-                              const totalImported = item.metrc_label_sets.filter((ms) => ms.processing_status !== "processing" && ms.processing_status !== "failed").reduce((s, ms) => s + ms.item_count, 0);
-                              const mismatch = totalImported > 0 && totalImported !== item.quantity;
-                              return (
+                            {hasSets && (
                               <div className="space-y-1">
-                                {item.metrc_label_sets.map((ms, msIdx) => (
+                                {sets.map((ms) => {
+                                  return (
                                   <div key={ms.id} className="flex items-center gap-2 text-xs">
-                                    <Badge variant="secondary" className="text-[10px]">
-                                      {(item.metrc_label_sets?.length ?? 0) > 1 ? `${msIdx + 1}/${item.metrc_label_sets!.length}` : "METRC"}
-                                    </Badge>
-                                    <span className="text-muted-foreground">
-                                      {ms.source_filename || ms.name}
-                                      {ms.default_variant_name && (
-                                        <span className="text-[10px] text-muted-foreground ml-1">[{ms.default_variant_name}]</span>
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "text-[10px] font-medium",
+                                        ms.is_sample
+                                          ? "border-purple-300 text-purple-700 bg-purple-50"
+                                          : "border-slate-300 text-slate-700 bg-slate-50"
                                       )}
-                                      {" "}
+                                    >
+                                      {ms.is_sample ? "Sample" : "Regular"}
+                                    </Badge>
+                                    <span className="font-mono text-[10px] text-muted-foreground truncate flex-1 min-w-0" title={ms.source_filename || ms.name}>
+                                      {ms.source_filename || ms.name}
+                                    </span>
+                                    <span className="shrink-0 text-xs">
                                       {ms.processing_status === "processing" ? (
                                         <span className="text-amber-600 animate-pulse">Processing...</span>
                                       ) : ms.processing_status === "failed" ? (
                                         <span className="text-destructive">Failed</span>
-                                      ) : <span className="font-medium text-foreground">{ms.item_count} tags</span>}
+                                      ) : (
+                                        <span className="font-medium text-foreground">{ms.item_count} tags</span>
+                                      )}
                                     </span>
                                     <Button
                                       variant="ghost"
@@ -1188,8 +1297,8 @@ export default function AdminShipmentDetailPage({
                                       onClick={() => {
                                         setMetrcPrintSetId(ms.id);
                                         setMetrcPrintOrderId(order.id);
-                                        setPerSetSheetLayoutId("");
-                                        setPerSetVariantId(ms.default_variant_id ? String(ms.default_variant_id) : "");
+                                        _setPerSetSheetLayoutId(readStoredSheetLayout());
+                                        setPerSetVariantId("");
                                       }}
                                     >
                                       <FileTextIcon className="mr-0.5 size-2.5" />
@@ -1210,34 +1319,106 @@ export default function AdminShipmentDetailPage({
                                       <Trash2Icon className="size-2.5" />
                                     </Button>
                                   </div>
-                                ))}
-                                {/* Total verification */}
-                                {item.metrc_label_sets.length > 1 && (
-                                  <div className={cn("text-xs px-1", mismatch ? "text-amber-600 font-medium" : "text-muted-foreground")}>
-                                    Total: {totalImported} / {item.quantity} tags {mismatch ? (totalImported < item.quantity ? "(missing " + (item.quantity - totalImported) + ")" : "(over by " + (totalImported - item.quantity) + ")") : ""}
-                                  </div>
-                                )}
+                                  );
+                                })}
+                                <div className={cn("text-[11px] px-1", mismatch ? "text-amber-600 font-medium" : "text-muted-foreground")}>
+                                  {totalImported} of {item.quantity} tags
+                                  {mismatch && (totalImported < item.quantity ? ` — short by ${item.quantity - totalImported}` : ` — over by ${totalImported - item.quantity}`)}
+                                  {!mismatch && totalImported === item.quantity && " ✓"}
+                                </div>
                               </div>
-                            ); })()}
+                            )}
                             <div className="flex gap-1">
                               <Button
                                 variant="ghost"
                                 size="xs"
                                 className="h-5 text-[10px] px-1.5"
-                                onClick={() => {
-                                  setMetrcImportItemId(item.id);
-                                  setMetrcImportOrderId(order.id);
-                                  setMetrcLabelId("");
-                                  setMetrcFiles([]);
-                                }}
+                                onClick={() => openMetrcImport(order.id, item)}
                               >
                                 <UploadIcon className="mr-0.5 size-2.5" />
                                 Import METRC
                               </Button>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
+
+                      {/* Boxing plan */}
+                      {(() => {
+                        const unitsPerBox = order.units_per_box ?? 32;
+                        const boxes = packBoxes(order.items, unitsPerBox);
+                        if (boxes.length === 0) return null;
+                        return (
+                          <div className="rounded-lg border bg-muted/20">
+                            <div className="px-3 py-2 border-b flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <PackageIcon className="size-3.5 text-muted-foreground" />
+                                <span className="text-sm font-semibold">Boxing</span>
+                                <span className="text-xs text-muted-foreground">{boxes.length} box{boxes.length !== 1 ? "es" : ""}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Units / box:</span>
+                                <Select
+                                  value={String(unitsPerBox)}
+                                  onValueChange={(v) => updateUnitsPerBox(order.id, parseInt(v, 10))}
+                                >
+                                  <SelectTrigger className="h-7 w-20 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="32">32</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button variant="outline" size="xs" className="h-7 text-xs" onClick={() => printBoxLabels(order)}>
+                                  <FileTextIcon className="mr-1 size-3" />
+                                  Print all
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="divide-y">
+                              {boxes.map((box) => {
+                                const allTags = box.items.flatMap((it) => tagsForBoxItem(it));
+                                const heroItem = box.items.slice().sort((a, b) => b.quantity - a.quantity)[0];
+                                return (
+                                  <div key={box.boxNumber} className="px-3 py-2 flex items-center gap-3 text-xs">
+                                    <Badge variant="outline" className="text-[10px] shrink-0">
+                                      Box {box.boxNumber}/{box.totalBoxes}
+                                    </Badge>
+                                    {heroItem?.strainImageUrl ? (
+                                      <img src={heroItem.strainImageUrl} alt="" className="size-7 rounded-full object-cover shrink-0 ring-1 ring-border" />
+                                    ) : (
+                                      <div className="size-7 rounded-full bg-muted shrink-0" />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-medium truncate">
+                                        {box.singleStrain
+                                          ? `${heroItem?.strainName || heroItem?.productName} × ${box.totalUnits}`
+                                          : box.items.map((it) => `${it.strainName || it.productName} × ${it.quantity}`).join(" + ")}
+                                      </div>
+                                      {allTags.length > 0 && (
+                                        <div className="font-mono text-[10px] text-muted-foreground truncate" title={allTags.join(", ")}>
+                                          {formatTagDisplay(allTags, 4)}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="xs"
+                                      className="h-6 text-[10px] px-1.5 shrink-0"
+                                      onClick={() => printBoxLabels(order, box)}
+                                    >
+                                      <FileTextIcon className="mr-0.5 size-2.5" />
+                                      Print
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1258,7 +1439,7 @@ export default function AdminShipmentDetailPage({
                 Download All
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => { setShowSampleImport(true); setSampleLabelId(""); setSampleFiles([]); }}>
+            <Button variant="outline" size="sm" onClick={() => { setShowSampleImport(true); setSampleFiles([]); }}>
               <UploadIcon className="mr-1.5 size-3.5" />
               Import
             </Button>
@@ -1728,30 +1909,6 @@ export default function AdminShipmentDetailPage({
                 </SelectContent>
               </Select>
             </div>
-            {/* Variant override */}
-            {(() => {
-              const currentSet = shipment?.orders.flatMap((o) => o.items.flatMap((i) => i.metrc_label_sets ?? [])).find((ms) => ms.id === metrcPrintSetId);
-              const labelForSet = labels.find((l) => l.id === currentSet?.label_id);
-              const variants = labelForSet?.strain_variants ?? [];
-              if (variants.length === 0) return null;
-              return (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Label variant:</p>
-                  <Select value={perSetVariantId} onValueChange={setPerSetVariantId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Auto-detect..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {variants.map((v) => (
-                        <SelectItem key={v.id} value={String(v.id)}>
-                          {v.strain_name}{v.is_sample ? " (sample)" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })()}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => { setMetrcPrintSetId(null); setMetrcPrintOrderId(null); }}>Cancel</Button>
               <Button onClick={handlePerSetMetrcPrint} disabled={!perSetSheetLayoutId || perSetPrinting}>
@@ -1766,7 +1923,10 @@ export default function AdminShipmentDetailPage({
       <Dialog open={metrcImportItemId !== null} onOpenChange={(open) => { if (!open) { setMetrcImportItemId(null); setMetrcImportOrderId(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import METRC Labels</DialogTitle>
+            <DialogTitle>
+              Import METRC Labels
+              {metrcImportItemQty > 0 && <span className="ml-2 text-sm font-normal text-muted-foreground">— {metrcImportItemQty} tag{metrcImportItemQty !== 1 ? "s" : ""} expected</span>}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -1808,13 +1968,22 @@ export default function AdminShipmentDetailPage({
                 </label>
               </div>
               {metrcFiles.length > 0 && (
-                <div className="rounded-lg border max-h-48 overflow-y-auto">
+                <div className="rounded-lg border max-h-56 overflow-y-auto">
                   <table className="w-full text-sm">
                     <tbody className="divide-y">
-                      {metrcFiles.map((file, idx) => (
+                      {metrcFiles.map((file, idx) => {
+                        const tag = metrcTagSuffix(file.name);
+                        return (
                         <tr key={idx} className="hover:bg-muted/30">
-                          <td className="px-3 py-1.5">
-                            <p className="font-mono text-xs truncate max-w-[300px]" title={file.name}>{file.name}</p>
+                          <td className="px-3 py-1.5 w-20 shrink-0">
+                            {tag ? (
+                              <span className="font-mono text-xs font-medium text-foreground">…{tag}</span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <p className="font-mono text-[10px] text-muted-foreground truncate max-w-[260px]" title={file.name}>{file.name}</p>
                           </td>
                           <td className="px-1 py-1.5 w-8">
                             <Button
@@ -1827,14 +1996,22 @@ export default function AdminShipmentDetailPage({
                             </Button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
-              {metrcFiles.length > 0 && (
-                <p className="text-xs text-muted-foreground">{metrcFiles.length} file{metrcFiles.length !== 1 ? "s" : ""} selected</p>
-              )}
+              {metrcFiles.length > 0 && metrcImportItemQty > 0 && (() => {
+                const matches = metrcFiles.length === metrcImportItemQty;
+                const short = metrcImportItemQty - metrcFiles.length;
+                return (
+                  <p className={cn("text-xs", matches ? "text-green-700" : "text-amber-600 font-medium")}>
+                    {metrcFiles.length} of {metrcImportItemQty} tags
+                    {matches ? " ✓" : short > 0 ? ` — short by ${short}` : ` — over by ${-short}`}
+                  </p>
+                );
+              })()}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => { setMetrcImportItemId(null); setMetrcImportOrderId(null); }}>Cancel</Button>
@@ -1853,72 +2030,55 @@ export default function AdminShipmentDetailPage({
             <DialogTitle>Import Sample METRC Labels</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 overflow-hidden">
-            <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0 space-y-1">
-                <p className="text-xs text-muted-foreground font-medium">Label Design</p>
-                <Select value={sampleLabelId} onValueChange={(v) => { setSampleLabelId(v); }}>
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="Select label..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {labels.map((label) => (
-                      <SelectItem key={label.id} value={label.slug}>
-                        {label.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {sampleLabelId && (
-                <div className="shrink-0 pt-4">
-                  <label className="cursor-pointer">
-                    <Button variant="outline" size="sm" asChild>
-                      <span>
-                        <UploadIcon className="mr-1.5 size-3.5" />
-                        Add Files
-                      </span>
-                    </Button>
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        setSampleFiles((prev) => [
-                          ...prev,
-                          ...files.map((f) => ({ file: f, variantId: "" })),
-                        ]);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                </div>
-              )}
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                Add the sample METRC PDFs and assign each to its per-strain Label.
+              </p>
+              <label className="cursor-pointer">
+                <Button variant="outline" size="sm" asChild>
+                  <span>
+                    <UploadIcon className="mr-1.5 size-3.5" />
+                    Add Files
+                  </span>
+                </Button>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setSampleFiles((prev) => [
+                      ...prev,
+                      ...files.map((f) => ({ file: f, labelId: "" })),
+                    ]);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
             </div>
 
-            {sampleLabelId && sampleFiles.length > 0 && (() => {
-              const selectedLabel = labels.find((l) => l.slug === sampleLabelId);
-              const variants = selectedLabel?.strain_variants ?? [];
-              const unassignedCount = sampleFiles.filter((f) => !f.variantId).length;
+            {sampleFiles.length > 0 && (() => {
+              const unassignedCount = sampleFiles.filter((f) => !f.labelId).length;
+              const labelOptions = labels;
               return (
                 <>
                   {/* Bulk assign */}
-                  {unassignedCount > 0 && variants.length > 0 && (
+                  {unassignedCount > 0 && labelOptions.length > 0 && (
                     <div className="rounded-lg bg-muted/50 px-3 py-2 space-y-1.5">
                       <span className="text-xs text-muted-foreground">{unassignedCount} unassigned — set all to:</span>
                       <div className="flex flex-wrap gap-1.5">
-                        {variants.map((v) => (
+                        {labelOptions.map((l) => (
                           <Button
-                            key={v.id}
+                            key={l.id}
                             variant="outline"
                             size="xs"
                             className="h-6 text-xs"
                             onClick={() => {
-                              setSampleFiles((prev) => prev.map((f) => f.variantId ? f : { ...f, variantId: String(v.id) }));
+                              setSampleFiles((prev) => prev.map((f) => f.labelId ? f : { ...f, labelId: String(l.id) }));
                             }}
                           >
-                            {v.strain_name}
+                            {l.strain_name ?? l.name}
                           </Button>
                         ))}
                       </div>
@@ -1931,13 +2091,13 @@ export default function AdminShipmentDetailPage({
                       <thead className="sticky top-0 bg-card z-10">
                         <tr className="border-b text-xs text-muted-foreground">
                           <th className="text-left font-medium px-3 py-2">File</th>
-                          <th className="text-left font-medium px-3 py-2 w-48">Variant</th>
+                          <th className="text-left font-medium px-3 py-2 w-56">Label</th>
                           <th className="w-8"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
                         {sampleFiles.map((entry, idx) => (
-                          <tr key={idx} className={cn("hover:bg-muted/30", !entry.variantId && "bg-amber-50/50")}>
+                          <tr key={idx} className={cn("hover:bg-muted/30", !entry.labelId && "bg-amber-50/50")}>
                             <td className="px-3 py-1.5">
                               <p className="text-sm font-mono truncate max-w-[280px]" title={entry.file.name}>
                                 {entry.file.name}
@@ -1945,18 +2105,18 @@ export default function AdminShipmentDetailPage({
                             </td>
                             <td className="px-3 py-1.5">
                               <Select
-                                value={entry.variantId}
+                                value={entry.labelId}
                                 onValueChange={(v) => {
-                                  setSampleFiles((prev) => prev.map((f, i) => i === idx ? { ...f, variantId: v } : f));
+                                  setSampleFiles((prev) => prev.map((f, i) => i === idx ? { ...f, labelId: v } : f));
                                 }}
                               >
                                 <SelectTrigger className="h-7 text-xs">
-                                  <SelectValue placeholder="Select..." />
+                                  <SelectValue placeholder="Select label..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {variants.map((v) => (
-                                    <SelectItem key={v.id} value={String(v.id)}>
-                                      {v.strain_name}{v.is_sample ? " (sample)" : ""}
+                                  {labelOptions.map((l) => (
+                                    <SelectItem key={l.id} value={String(l.id)}>
+                                      {l.strain_name ? `${l.strain_name} — ${l.name}` : l.name}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -1977,7 +2137,7 @@ export default function AdminShipmentDetailPage({
                       </tbody>
                     </table>
                   </div>
-                  <p className="text-xs text-muted-foreground">{sampleFiles.length} file{sampleFiles.length !== 1 ? "s" : ""}{unassignedCount > 0 ? ` (${unassignedCount} need variant)` : ""}</p>
+                  <p className="text-xs text-muted-foreground">{sampleFiles.length} file{sampleFiles.length !== 1 ? "s" : ""}{unassignedCount > 0 ? ` (${unassignedCount} need label)` : ""}</p>
                 </>
               );
             })()}
@@ -1986,7 +2146,7 @@ export default function AdminShipmentDetailPage({
               <Button variant="outline" onClick={() => setShowSampleImport(false)}>Cancel</Button>
               <Button
                 onClick={handleSampleMetrcImport}
-                disabled={sampleFiles.length === 0 || sampleFiles.some((f) => !f.variantId) || sampleImporting}
+                disabled={sampleFiles.length === 0 || sampleFiles.some((f) => !f.labelId) || sampleImporting}
               >
                 {sampleImporting ? "Importing..." : `Import ${sampleFiles.length} File${sampleFiles.length !== 1 ? "s" : ""}`}
               </Button>

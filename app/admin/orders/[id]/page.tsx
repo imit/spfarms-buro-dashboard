@@ -8,12 +8,12 @@ import {
   FileSignatureIcon, ExternalLinkIcon, ShieldAlertIcon, PencilIcon,
   PlusIcon, Trash2Icon, MailIcon, ChevronDownIcon, MessageSquareIcon,
   SendIcon, UploadIcon, ImageIcon, XIcon, FileTextIcon,
-  TruckIcon, CalendarIcon, ClockIcon, PackageIcon, AlertTriangleIcon,
+  TruckIcon, CalendarIcon, ClockIcon, PackageIcon, RotateCcwIcon,
 } from "lucide-react";
 import {
-  apiClient, type Order, type OrderStatus, type Comment, type Label as LabelType, type SheetLayout,
+  apiClient, type Order, type OrderStatus, type Comment,
   type Product, type PaymentStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
-  PAYMENT_STATUS_LABELS, PRODUCT_TYPE_LABELS,
+  PAYMENT_STATUS_LABELS, PRODUCT_TYPE_LABELS, SHIPMENT_STATUS_LABELS,
 } from "@/lib/api";
 import { statusBadgeClasses, STATUS_COLORS, TIMELINE_STEPS, getStepIndex } from "@/lib/order-utils";
 import { useAuth } from "@/contexts/auth-context";
@@ -35,13 +35,11 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
 import { EmailTimeline } from "@/components/email-timeline";
 import { buildBoxLabelHtml } from "@/lib/box-label";
+import { packBoxes } from "@/lib/box-packing";
 
 function formatPrice(amount: string | number | null) {
   if (amount === null || amount === undefined) return "$0.00";
@@ -117,20 +115,6 @@ export default function AdminOrderDetailPage({
   const [addingItems, setAddingItems] = useState(false);
   const [sendAddItemNotification, setSendAddItemNotification] = useState(true);
 
-  // METRC import state
-  const [labels, setLabels] = useState<LabelType[]>([]);
-  const [sheetLayouts, setSheetLayouts] = useState<SheetLayout[]>([]);
-  const [metrcImportItemId, setMetrcImportItemId] = useState<number | null>(null);
-  const [metrcLabelId, setMetrcLabelId] = useState("");
-  const [metrcFiles, setMetrcFiles] = useState<File[]>([]);
-  const [metrcImporting, setMetrcImporting] = useState(false);
-  const [metrcPrintSetId, setMetrcPrintSetId] = useState<number | null>(null);
-  const [metrcSheetLayoutId, setMetrcSheetLayoutId] = useState("");
-  const [metrcPrinting, setMetrcPrinting] = useState(false);
-  const [showPrintAllMetrc, setShowPrintAllMetrc] = useState(false);
-  const [printAllSheetLayoutId, setPrintAllSheetLayoutId] = useState("");
-  const [printAllPrinting, setPrintAllPrinting] = useState(false);
-
   useEffect(() => {
     if (!isAuthenticated) return;
     async function load() {
@@ -149,26 +133,7 @@ export default function AdminOrderDetailPage({
       }
     }
     load();
-    apiClient.getLabels().then(setLabels).catch(() => {});
-    apiClient.getSheetLayouts().then(setSheetLayouts).catch(() => {});
   }, [isAuthenticated, id]);
-
-  // Auto-poll when any METRC sets are still processing
-  useEffect(() => {
-    if (!order) return;
-    const hasProcessing = order.items?.some((i) =>
-      i.metrc_label_sets?.some((ms) => ms.processing_status === "processing")
-    );
-    if (!hasProcessing) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const data = await apiClient.getOrder(Number(id));
-        setOrder(data);
-      } catch { /* silent */ }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [order, id]);
 
   const updateStatus = async (newStatus: string, sendNotification = true) => {
     try {
@@ -243,19 +208,19 @@ export default function AdminOrderDetailPage({
 
   const printBoxLabel = () => {
     if (!order) return;
-    const shipping = order.shipping_location;
-    const win = window.open("", "_blank", "width=600,height=400");
+    const win = window.open("", "_blank", "width=900,height=600");
     if (!win) return;
-    const address = shipping
-      ? [shipping.address, [shipping.city, shipping.state, shipping.zip_code].filter(Boolean).join(", ")].filter(Boolean).join(", ")
-      : "";
-    win.document.write(buildBoxLabelHtml({
+    const unitsPerBox = order.units_per_box ?? 32;
+    const boxes = packBoxes(order.items, unitsPerBox);
+    if (boxes.length === 0) return;
+    const inputs = boxes.map((box) => ({
+      box,
       orderNumber: order.order_number,
       companyName: order.company?.name ?? "",
-      address,
+      shipmentNumber: order.shipment?.shipment_number ?? null,
       deliveryDate: order.desired_delivery_date ? new Date(order.desired_delivery_date).toLocaleDateString() : null,
-      items: order.items.map((i) => ({ name: i.product_name, qty: i.quantity })),
     }));
+    win.document.write(buildBoxLabelHtml(inputs));
     win.document.close();
   };
 
@@ -411,142 +376,6 @@ export default function AdminOrderDetailPage({
     finally { setForwardingSending(false); }
   };
 
-  const handleMetrcImport = async () => {
-    if (!order || !metrcImportItemId || !metrcLabelId || metrcFiles.length === 0) return;
-    setMetrcImporting(true);
-    try {
-      await apiClient.batchImportOrderMetrc(order.id, metrcImportItemId, metrcLabelId, metrcFiles);
-      const updated = await apiClient.getOrder(order.id);
-      setOrder(updated);
-      setMetrcImportItemId(null);
-      setMetrcFiles([]);
-      setMetrcLabelId("");
-      toast.success(`${metrcFiles.length} METRC file${metrcFiles.length !== 1 ? "s" : ""} imported`);
-    } catch (err) {
-      showError("import METRC labels");
-    } finally {
-      setMetrcImporting(false);
-    }
-  };
-
-  const handleMetrcPrint = async () => {
-    if (!order || !metrcPrintSetId || !metrcSheetLayoutId) return;
-    setMetrcPrinting(true);
-    const setId = metrcPrintSetId;
-    setMetrcPrintSetId(null);
-    toast.info("Generating PDF...");
-    try {
-      await apiClient.requestMetrcPrint(order.id, setId, metrcSheetLayoutId);
-      let status = "generating";
-      while (status === "generating") {
-        await new Promise((r) => setTimeout(r, 3000));
-        const res = await apiClient.getMetrcPrintStatus(order.id, setId);
-        status = res.print_status;
-      }
-      if (status === "done") {
-        const blob = await apiClient.downloadMetrcPrint(order.id, setId);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${order.order_number}-metrc-set-${setId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success("PDF downloaded");
-      } else {
-        toast.error("Failed to generate PDF");
-      }
-    } catch {
-      showError("print METRC labels");
-    } finally {
-      setMetrcPrinting(false);
-    }
-  };
-
-  const handleDeleteMetrcSet = async (setId: number) => {
-    if (!order) return;
-    try {
-      const updated = await apiClient.deleteOrderMetrcSet(order.id, setId);
-      setOrder(updated);
-      toast.success("METRC set deleted");
-    } catch {
-      showError("delete METRC set");
-    }
-  };
-
-  const handlePrintAllMetrc = async () => {
-    if (!order || !printAllSheetLayoutId) return;
-    setPrintAllPrinting(true);
-    try {
-      const blob = await apiClient.printAllOrderMetrcLabels(order.id, printAllSheetLayoutId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${order.order_number}-all-metrc-labels.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setShowPrintAllMetrc(false);
-      toast.success("PDF downloaded");
-    } catch {
-      showError("print all METRC labels");
-    } finally {
-      setPrintAllPrinting(false);
-    }
-  };
-
-  // Download each METRC set as a separate PDF (async)
-  const handlePrintEachMetrc = async () => {
-    if (!order || !printAllSheetLayoutId) return;
-    setPrintAllPrinting(true);
-    setShowPrintAllMetrc(false);
-    toast.info("Generating PDFs in background...");
-    try {
-      const allSets = order.items.flatMap((item) => {
-        const sets = (item.metrc_label_sets ?? []).filter((ms) => ms.processing_status !== "processing");
-        return sets.map((ms, idx) => ({
-          ...ms,
-          productName: item.product_name,
-          setIndex: idx + 1,
-          setTotal: sets.length,
-        }));
-      });
-      // Request all prints
-      for (const ms of allSets) {
-        await apiClient.requestMetrcPrint(order.id, ms.id, printAllSheetLayoutId);
-      }
-      // Poll and download each
-      for (const ms of allSets) {
-        let status = "generating";
-        while (status === "generating") {
-          await new Promise((r) => setTimeout(r, 3000));
-          const res = await apiClient.getMetrcPrintStatus(order.id, ms.id);
-          status = res.print_status;
-        }
-        if (status === "done") {
-          const blob = await apiClient.downloadMetrcPrint(order.id, ms.id);
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `${order.order_number}-${ms.productName}${ms.setTotal > 1 ? `-set${ms.setIndex}of${ms.setTotal}` : ""}-${ms.item_count}tags.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        } else {
-          toast.error(`Failed: ${ms.productName}`);
-        }
-      }
-      toast.success(`${allSets.length} PDFs downloaded`);
-    } catch {
-      showError("print METRC labels");
-    } finally {
-      setPrintAllPrinting(false);
-    }
-  };
-
   const openAddItemDialog = async () => {
     setShowAddItem(true);
     setAddItemSearch("");
@@ -577,10 +406,6 @@ export default function AdminOrderDetailPage({
     } catch { showError("add items to the order"); }
     finally { setAddingItems(false); }
   };
-
-  const totalMetrcLabels = order?.items.reduce((sum, item) =>
-    sum + (item.metrc_label_sets ?? []).reduce((s, ms) => s + ms.item_count, 0), 0
-  ) ?? 0;
 
   const startEditingPrices = () => {
     if (!order) return;
@@ -706,6 +531,16 @@ export default function AdminOrderDetailPage({
               <DropdownMenuItem onClick={printBoxLabel}>Box Label</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {order.order_type !== "return" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/admin/orders/new-return?parent_id=${order.id}`)}
+            >
+              <RotateCcwIcon className="mr-1.5 size-4" />
+              Create Return
+            </Button>
+          )}
         </div>
       </div>
 
@@ -717,6 +552,12 @@ export default function AdminOrderDetailPage({
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{order.order_number}</h2>
               {order.order_type === "preorder" && (
                 <Badge variant="secondary">Pre-order</Badge>
+              )}
+              {order.order_type === "return" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-200/70 px-2.5 py-0.5 text-xs font-semibold text-rose-800 dark:bg-rose-900/50 dark:text-rose-200">
+                  <RotateCcwIcon className="size-3" />
+                  Return
+                </span>
               )}
               <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClasses(order.status)}`}>
                 {ORDER_STATUS_LABELS[order.status]}
@@ -740,6 +581,35 @@ export default function AdminOrderDetailPage({
               {" · "}
               {new Date(order.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             </p>
+            {order.order_type === "return" && order.parent_order && (
+              <p className="text-sm mt-1">
+                <span className="text-muted-foreground">Return against </span>
+                <Link
+                  href={`/admin/orders/${order.parent_order.id}`}
+                  className="font-medium underline underline-offset-2 hover:text-foreground"
+                >
+                  {order.parent_order.order_number}
+                </Link>
+              </p>
+            )}
+            {order.order_type !== "return" && order.return_orders && order.return_orders.length > 0 && (
+              <p className="text-sm mt-1">
+                <span className="text-muted-foreground">
+                  {order.return_orders.length} return{order.return_orders.length !== 1 ? "s" : ""}:{" "}
+                </span>
+                {order.return_orders.map((ret, idx) => (
+                  <span key={ret.id}>
+                    {idx > 0 && ", "}
+                    <Link
+                      href={`/admin/orders/${ret.id}`}
+                      className="font-medium underline underline-offset-2 hover:text-foreground"
+                    >
+                      {ret.order_number}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            )}
           </div>
           <div className="text-left sm:text-right shrink-0">
             <p className="text-2xl sm:text-3xl font-bold tracking-tight">{formatPrice(order.total)}</p>
@@ -853,12 +723,6 @@ export default function AdminOrderDetailPage({
             <div className="px-3 sm:px-5 py-3.5 border-b flex items-center justify-between">
               <h3 className="font-semibold text-sm">Order Items</h3>
               <div className="flex items-center gap-1">
-                {!editingPrices && totalMetrcLabels > 0 && (
-                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowPrintAllMetrc(true); setPrintAllSheetLayoutId(""); }}>
-                    <FileTextIcon className="mr-1 size-3" />
-                    Print All ({totalMetrcLabels})
-                  </Button>
-                )}
                 {!editingPrices && (
                   <>
                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={openAddItemDialog}>
@@ -934,66 +798,12 @@ export default function AdminOrderDetailPage({
                           </>
                         )
                       ) : (
-                        <>
-                          <div className="font-medium text-sm tabular-nums">
-                            {formatPrice(item.line_total)}
-                          </div>
-                          <Button
-                            variant="outline" size="sm" className="h-7 text-xs shrink-0"
-                            onClick={() => { setMetrcImportItemId(item.id); setMetrcLabelId(""); setMetrcFiles([]); }}
-                          >
-                            <UploadIcon className="mr-1 size-3" />
-                            METRC
-                          </Button>
-                        </>
+                        <div className="font-medium text-sm tabular-nums">
+                          {formatPrice(item.line_total)}
+                        </div>
                       )}
                     </div>
                   </div>
-                  {/* Imported METRC sets for this item */}
-                  {(item.metrc_label_sets ?? []).length > 0 && (() => {
-                    const totalMetrc = item.metrc_label_sets!.reduce((s, ms) => s + ms.item_count, 0);
-                    const mismatch = totalMetrc !== item.quantity;
-                    return (
-                      <div className="ml-13 sm:ml-16 space-y-1">
-                        {item.metrc_label_sets!.map((ms, msIdx) => (
-                          <div key={ms.id} className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1">
-                            <FileTextIcon className="size-3 shrink-0" />
-                            {item.metrc_label_sets!.length > 1 && (
-                              <span className="font-medium text-foreground">{msIdx + 1}/{item.metrc_label_sets!.length}</span>
-                            )}
-                            <span className="truncate">{ms.label_name}</span>
-                            {ms.processing_status === "processing" ? (
-                              <span className="text-[10px] text-amber-600 animate-pulse font-medium">Processing...</span>
-                            ) : ms.processing_status === "failed" ? (
-                              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Failed</Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{ms.item_count} labels</Badge>
-                            )}
-                            <div className="ml-auto flex items-center gap-1">
-                              <Button
-                                variant="ghost" size="sm" className="h-5 text-[10px] px-1.5"
-                                onClick={() => { setMetrcPrintSetId(ms.id); setMetrcSheetLayoutId(""); }}
-                              >
-                                Print
-                              </Button>
-                              <Button
-                                variant="ghost" size="sm" className="h-5 text-[10px] px-1.5 text-destructive hover:text-destructive"
-                                onClick={() => handleDeleteMetrcSet(ms.id)}
-                              >
-                                <Trash2Icon className="size-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                        {mismatch && (
-                          <div className="flex items-center gap-1.5 text-[11px] text-amber-600 bg-amber-50 rounded px-2 py-1">
-                            <AlertTriangleIcon className="size-3 shrink-0" />
-                            METRC count mismatch: {totalMetrc} label{totalMetrc !== 1 ? "s" : ""} imported but order qty is {item.quantity}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
                 </div>
               );
               })}
@@ -1186,6 +996,48 @@ export default function AdminOrderDetailPage({
 
         {/* Sidebar */}
         <div className="space-y-4">
+          {/* Shipment */}
+          {order.shipment ? (
+            <Link
+              href={`/admin/shipments/${order.shipment.id}`}
+              className="block rounded-xl border bg-card p-4 sm:p-5 shadow-xs hover:bg-muted/30 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                  <TruckIcon className="size-4 text-muted-foreground" />
+                  Shipment
+                </h3>
+                <ExternalLinkIcon className="size-3.5 text-muted-foreground" />
+              </div>
+              <p className="font-medium text-sm">
+                {order.shipment.nickname || order.shipment.shipment_number}
+              </p>
+              {order.shipment.nickname && (
+                <p className="text-xs text-muted-foreground">{order.shipment.shipment_number}</p>
+              )}
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="secondary" className="text-xs">
+                  {SHIPMENT_STATUS_LABELS[order.shipment.status]}
+                </Badge>
+                {order.shipment.scheduled_date && (
+                  <span className="text-xs text-muted-foreground">
+                    {formatDate(order.shipment.scheduled_date)}
+                  </span>
+                )}
+              </div>
+            </Link>
+          ) : (
+            <div className="rounded-xl border border-dashed bg-card/50 p-4 sm:p-5">
+              <h3 className="font-semibold text-sm flex items-center gap-1.5 mb-1">
+                <TruckIcon className="size-4 text-muted-foreground" />
+                Shipment
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Not assigned to a shipment yet.
+              </p>
+            </div>
+          )}
+
           {/* People on order */}
           <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-xs">
             <div className="flex items-center justify-between mb-3">
@@ -1330,11 +1182,21 @@ export default function AdminOrderDetailPage({
                   )}
                 </div>
               )}
-              {order.payment_term_agreement.agreement_url && (
-                <a href={order.payment_term_agreement.agreement_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
-                  <ExternalLinkIcon className="size-3.5" />View Agreement
-                </a>
-              )}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <button
+                  type="button"
+                  onClick={downloadPaymentTerms}
+                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                >
+                  <DownloadIcon className="size-3.5" />
+                  {order.payment_term_agreement.signed ? "Download Signed Agreement" : "Download Agreement"}
+                </button>
+                {order.payment_term_agreement.agreement_url && (
+                  <a href={order.payment_term_agreement.agreement_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+                    <ExternalLinkIcon className="size-3.5" />View Agreement
+                  </a>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -1529,134 +1391,6 @@ export default function AdminOrderDetailPage({
         </DialogContent>
       </Dialog>
 
-      {/* METRC Import Dialog (Multi-file) */}
-      <Dialog open={metrcImportItemId !== null} onOpenChange={(open) => { if (!open) setMetrcImportItemId(null); }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Import METRC Labels</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Upload METRC PDFs for <strong>{order.items.find((i) => i.id === metrcImportItemId)?.product_name}</strong>
-          </p>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Label Template</Label>
-              <Select value={metrcLabelId} onValueChange={setMetrcLabelId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a label" />
-                </SelectTrigger>
-                <SelectContent>
-                  {labels.map((l) => {
-                    const variantCount = l.strain_variants?.length ?? 0;
-                    return (
-                      <SelectItem key={l.slug} value={l.slug}>
-                        {l.name}{l.strain_name ? ` (${l.strain_name})` : ""}{variantCount > 0 ? ` · ${variantCount} variant${variantCount > 1 ? "s" : ""}` : ""}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">METRC PDFs</Label>
-                <label className="cursor-pointer">
-                  <Button variant="outline" size="sm" asChild>
-                    <span>
-                      <UploadIcon className="mr-1.5 size-3.5" />
-                      Add Files
-                    </span>
-                  </Button>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files || []);
-                      setMetrcFiles((prev) => [...prev, ...files]);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-              </div>
-              {metrcFiles.length > 0 && (
-                <div className="rounded-lg border max-h-48 overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <tbody className="divide-y">
-                      {metrcFiles.map((file, idx) => (
-                        <tr key={idx} className="hover:bg-muted/30">
-                          <td className="px-3 py-1.5">
-                            <p className="font-mono text-xs truncate max-w-[300px]" title={file.name}>{file.name}</p>
-                          </td>
-                          <td className="px-1 py-1.5 w-8">
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              className="text-muted-foreground hover:text-destructive"
-                              onClick={() => setMetrcFiles((prev) => prev.filter((_, i) => i !== idx))}
-                            >
-                              <XIcon className="size-3" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {metrcFiles.length > 0 && (
-                <p className="text-xs text-muted-foreground">{metrcFiles.length} file{metrcFiles.length !== 1 ? "s" : ""} selected</p>
-              )}
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setMetrcImportItemId(null)}>Cancel</Button>
-              <Button
-                onClick={handleMetrcImport}
-                disabled={!metrcLabelId || metrcFiles.length === 0 || metrcImporting}
-              >
-                {metrcImporting ? "Importing..." : `Import ${metrcFiles.length} File${metrcFiles.length !== 1 ? "s" : ""}`}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* METRC Print Dialog */}
-      <Dialog open={metrcPrintSetId !== null} onOpenChange={(open) => { if (!open) setMetrcPrintSetId(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Print METRC Labels</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Sheet Layout</Label>
-              <Select value={metrcSheetLayoutId} onValueChange={setMetrcSheetLayoutId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select sheet layout" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sheetLayouts.map((sl) => (
-                    <SelectItem key={sl.slug} value={sl.slug}>
-                      {sl.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setMetrcPrintSetId(null)}>Cancel</Button>
-              <Button
-                onClick={handleMetrcPrint}
-                disabled={!metrcSheetLayoutId || metrcPrinting}
-              >
-                {metrcPrinting ? "Generating PDF..." : "Print"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Forward Order Dialog */}
       <Dialog open={showForwardDialog} onOpenChange={setShowForwardDialog}>
         <DialogContent>
@@ -1685,51 +1419,6 @@ export default function AdminOrderDetailPage({
               >
                 <SendIcon className="mr-1.5 size-4" />
                 {forwardingSending ? "Sending..." : "Send"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Print All METRC Labels Dialog */}
-      <Dialog open={showPrintAllMetrc} onOpenChange={setShowPrintAllMetrc}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Print All METRC Labels</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Combine all {totalMetrcLabels} labels from this order onto shared sheets. Labels from different strains will be tiled together to minimize paper waste.
-          </p>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Sheet Layout</Label>
-              <Select value={printAllSheetLayoutId} onValueChange={setPrintAllSheetLayoutId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select sheet layout" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sheetLayouts.map((sl) => (
-                    <SelectItem key={sl.slug} value={sl.slug}>
-                      {sl.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setShowPrintAllMetrc(false)}>Cancel</Button>
-              <Button
-                variant="outline"
-                onClick={handlePrintEachMetrc}
-                disabled={!printAllSheetLayoutId || printAllPrinting}
-              >
-                {printAllPrinting ? "Generating..." : "Download Each Separately"}
-              </Button>
-              <Button
-                onClick={handlePrintAllMetrc}
-                disabled={!printAllSheetLayoutId || printAllPrinting}
-              >
-                {printAllPrinting ? "Generating PDF..." : `Combined (${totalMetrcLabels})`}
               </Button>
             </div>
           </div>

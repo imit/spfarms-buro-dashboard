@@ -513,151 +513,34 @@ export interface ExtractedSheetLayout {
 
 // ---- Labels ----
 
-export interface LabelOverlayData {
-  id: number;
-  name: string | null;
-  position_x: string;
-  position_y: string;
-  width: string;
-  height: string;
-  rotation: string;
-  z_index: number;
-  opacity: string;
-  overlay_type: "image" | "svg_inline";
-  svg_content: string | null;
-  asset_url: string | null;
+export interface LabelCannabinoid {
+  label: string;
+  value: string;
 }
 
-export interface LabelDesign {
-  background_color?: string;
-  font_primary?: string;
-  qr?: {
-    enabled?: boolean;
-    data_source?: "product_url" | "custom";
-    custom_url?: string | null;
-    x?: number;
-    y?: number;
-    size?: number;
-    error_correction?: string;
-    fg_color?: string;
-    bg_color?: string;
-  };
-  logo?: {
-    visible?: boolean;
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-  };
-  metrc_zone?: {
-    enabled?: boolean;
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-    render_as?: "original_image" | "qr_code" | "barcode" | "text";
-  };
-  cannabinoid_info?: {
-    enabled?: boolean;
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-    font_size?: number;
-    text_color?: string;
-    label_color?: string;
-    columns?: CannabinoidColumn[];
-    label_font_weight?: string;
-    value_font_weight?: string;
-  };
-  product_info?: {
-    enabled?: boolean;
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-    font_size?: number;
-    text_color?: string;
-    left_text?: string;
-    font_weight?: string;
-  };
-  weight_info?: {
-    enabled?: boolean;
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-    font_size?: number;
-    text_color?: string;
-    text?: string;
-    font_weight?: string;
-    text_anchor?: string;
-  };
-  expiration_date?: LabelTextLayer;
-  batch_id?: LabelTextLayer;
-  product_id_text?: LabelTextLayer;
-  lot_number?: LabelTextLayer;
-  harvest_date?: LabelTextLayer;
+export interface LabelGenerativeConfig {
+  bg_file?: string;
+  fg_file?: string;
+  bg_color?: string;
+  fg_color?: string;
+  bg_gradient?: { from: string; to: string } | null;
+  seed?: string;
 }
 
-export interface LabelTextLayer {
-  enabled?: boolean;
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  font_size?: number;
-  text_color?: string;
-  text?: string;
-  font_weight?: string;
-  text_anchor?: string;
-}
+// ---- Strain Images (reusable L2+L3 composite) ----
 
-export type CannabinoidField =
-  | "category"
-  | "total_thc"
-  | "cbg"
-  | "cbd"
-  | "total_cannabinoids"
-  | "total_terpenes";
-
-export const CANNABINOID_FIELD_LABELS: Record<CannabinoidField, string> = {
-  category: "Category",
-  total_thc: "THC",
-  cbg: "CBG",
-  cbd: "CBD",
-  total_cannabinoids: "Total Cannabinoids",
-  total_terpenes: "Total Terpenes",
-};
-
-export interface CannabinoidColumn {
-  field: CannabinoidField;
-  label?: string;
-}
-
-// ---- Label Presets ----
-
-export interface LabelPreset {
+export interface StrainImage {
   id: number;
   name: string;
-  config: {
-    width_cm: number;
-    height_cm: number;
-    corner_radius_mm: number;
-    design: LabelDesign;
-    overlays: Array<{
-      name: string;
-      kind: string;
-      position_x: number;
-      position_y: number;
-      width: number;
-      height: number;
-      z_index: number;
-      rotation: number;
-      opacity: number;
-      svg_content: string | null;
-    }>;
-  };
+  slug: string;
+  strain_id: number;
+  strain_name: string | null;
+  strain_category: string | null;
+  generative_seed: string;
+  generative_config: LabelGenerativeConfig;
+  locked: boolean;
+  custom_layer_2_url: string | null;
+  custom_wordmark_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -693,20 +576,23 @@ export interface Label {
   id: number;
   name: string;
   slug: string;
-  strain_id: number | null;
+  strain_id: number;
   strain_name: string | null;
-  strain_title_image_url: string | null;
-  product_id: number | null;
-  product_name: string | null;
+  strain_category: string | null;
+  strain_image_id: number | null;
+  strain_image_name: string | null;
   width_cm: string;
   height_cm: string;
-  corner_radius_mm: string;
-  design: LabelDesign;
-  logo_url: string | null;
-  overlays: LabelOverlayData[];
-  render_data: Record<string, unknown>;
+  top_right_line_1: string | null;
+  top_right_line_2: string | null;
+  top_right_line_3: string | null;
+  harvest_batch: string | null;
+  batch_number: string | null;
+  expiration_date: string | null;
+  cannabinoids: LabelCannabinoid[];
+  metrc_qr_payload: string | null;
   metrc_label_sets: MetrcLabelSetSummary[];
-  strain_variants: LabelStrainVariant[];
+  variants: LabelStrainVariant[];
   created_at: string;
   updated_at: string;
 }
@@ -714,25 +600,8 @@ export interface Label {
 export interface LabelStrainVariant {
   id: number;
   strain_id: number;
-  strain_name: string | null;
-  image_x: number;
-  image_y: number;
-  image_width: number;
-  image_height: number;
-  text_overrides: Record<string, string>;
   is_sample: boolean;
-  background_color_override: string | null;
-  overlay_x: number;
-  overlay_y: number;
-  overlay_width: number;
-  overlay_height: number;
   metrc_qr_enabled: boolean;
-  metrc_qr_x: number;
-  metrc_qr_y: number;
-  metrc_qr_width: number;
-  metrc_qr_height: number;
-  strain_image_url: string | null;
-  overlay_image_url: string | null;
 }
 
 // ---- QR Codes ----
@@ -933,11 +802,20 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   overdue: "Overdue",
 };
 
-export type OrderType = "standard" | "preorder";
+export type OrderType = "standard" | "preorder" | "return";
 
 export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
   standard: "Standard",
   preorder: "Pre-order",
+  return: "Return",
+};
+
+export type ReturnDisposition = "restocked" | "destroyed" | "quarantined";
+
+export const RETURN_DISPOSITION_LABELS: Record<ReturnDisposition, string> = {
+  restocked: "Restocked",
+  destroyed: "Destroyed",
+  quarantined: "Quarantined",
 };
 
 export interface OrderItemMetrcSet {
@@ -949,8 +827,7 @@ export interface OrderItemMetrcSet {
   label_slug: string;
   label_name: string;
   source_filename?: string | null;
-  default_variant_id?: number | null;
-  default_variant_name?: string | null;
+  is_sample?: boolean;
   created_at: string;
 }
 
@@ -964,7 +841,10 @@ export interface OrderItem {
   unit_price: string;
   line_total: string;
   thumbnail_url: string | null;
+  strain_id?: number | null;
   strain_name: string | null;
+  strain_slug?: string | null;
+  strain_image_url?: string | null;
   bulk_grams: string | null;
   bulk_price_per_pound: string | null;
   metrc_label_sets?: OrderItemMetrcSet[];
@@ -1045,6 +925,24 @@ export interface Order {
   payment_method: string | null;
   payment_reference: string | null;
   delivered_at: string | null;
+  returned_at: string | null;
+  return_reason: string | null;
+  return_disposition: ReturnDisposition | null;
+  parent_order: {
+    id: number;
+    order_number: string;
+    order_type: OrderType;
+  } | null;
+  return_orders: Array<{
+    id: number;
+    order_number: string;
+    status: OrderStatus;
+    total: string;
+    return_reason: string | null;
+    return_disposition: ReturnDisposition | null;
+    returned_at: string | null;
+    created_at: string;
+  }>;
   payment_term_agreement: {
     signed: boolean;
     signer_name: string | null;
@@ -1075,6 +973,14 @@ export interface Order {
   company_details: OrderCompanyDetails | null;
   delivery_proofs: OrderAttachment[];
   payment_proofs: OrderAttachment[];
+  shipment: {
+    id: number;
+    shipment_number: string;
+    nickname: string | null;
+    status: ShipmentStatus;
+    scheduled_date: string | null;
+  } | null;
+  units_per_box?: number;
   created_at: string;
   updated_at: string;
 }
@@ -1640,7 +1546,11 @@ export interface ShipmentOrderItem {
   quantity: number;
   unit_price: string;
   metrc_tag?: string | null;
-  metrc_label_sets?: { id: number; name: string; item_count: number; processing_status?: string; label_id: number; label_slug: string; label_name: string; source_filename?: string | null; default_variant_id?: number | null; default_variant_name?: string | null }[];
+  metrc_label_sets?: { id: number; name: string; item_count: number; processing_status?: string; label_id: number; label_slug: string; label_name: string; source_filename?: string | null; is_sample?: boolean }[];
+  strain_id?: number | null;
+  strain_name?: string | null;
+  strain_slug?: string | null;
+  strain_image_url?: string | null;
 }
 
 export interface ShipmentOrderSummary {
@@ -1656,6 +1566,7 @@ export interface ShipmentOrderSummary {
   position: number;
   transfer_manifest_url?: string | null;
   transfer_id?: string | null;
+  units_per_box?: number;
 }
 
 export interface SampleMetrcSet {
@@ -1737,6 +1648,23 @@ export interface CreateBulkOrderParams {
   internal_notes?: string;
   disable_payment_term_discount?: boolean;
   items: { strain_id: number; grams: number; price_per_pound: number }[];
+}
+
+export interface CreateReturnOrderParams {
+  parent_order_id: number;
+  return_reason?: string;
+  return_disposition?: ReturnDisposition;
+  internal_notes?: string;
+  returned_at?: string;
+  items: {
+    product_id: number;
+    quantity: number;
+    unit_price?: number | string;
+    order_item_id?: number;
+    metrc_tag?: string;
+    bulk_grams?: number | string;
+    bulk_price_per_pound?: number | string;
+  }[];
 }
 
 // ---- Grow / Facility ----
@@ -2930,6 +2858,20 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
+  async bulkUpdateInventory(
+    updates: { id: number; inventory_count?: number; track_inventory?: boolean }[],
+    note?: string,
+  ): Promise<Product[]> {
+    const res = await this.request<JsonApiCollectionResponse<Product>>(
+      "/api/v1/products/bulk_update_inventory",
+      {
+        method: "POST",
+        body: JSON.stringify({ updates, note }),
+      },
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
   async deleteProduct(slug: string): Promise<void> {
     await this.request(`/api/v1/products/${slug}`, {
       method: "DELETE",
@@ -3167,6 +3109,14 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
+  async createLabelWithFormData(formData: FormData): Promise<Label> {
+    const res = await this.requestFormData<JsonApiResponse<Label>>(
+      "/api/v1/labels",
+      { method: "POST", body: formData }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
   async updateLabel(
     slug: string,
     data: Record<string, unknown>
@@ -3207,28 +3157,76 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
-  async copyTextLayers(
-    slug: string,
-    targetLabelIds: number[]
-  ): Promise<{ updated: string[]; count: number }> {
-    return this.request(`/api/v1/labels/${slug}/copy_text_layers`, {
-      method: "POST",
-      body: JSON.stringify({ target_label_ids: targetLabelIds }),
-    });
+  // ---- Strain Images ----
+
+  async getStrainImages(strainId?: number): Promise<StrainImage[]> {
+    const qs = strainId ? `?strain_id=${strainId}` : "";
+    const res = await this.request<JsonApiCollectionResponse<StrainImage>>(
+      `/api/v1/strain_images${qs}`
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
 
-  async getLabelSvgPreview(slug: string): Promise<string> {
-    const url = `${this.baseUrl}/api/v1/labels/${slug}/render_svg`;
+  async getStrainImage(slug: string): Promise<StrainImage> {
+    const res = await this.request<JsonApiResponse<StrainImage>>(
+      `/api/v1/strain_images/${slug}`
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async createStrainImage(formData: FormData): Promise<StrainImage> {
+    const res = await this.requestFormData<JsonApiResponse<StrainImage>>(
+      "/api/v1/strain_images",
+      { method: "POST", body: formData }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async updateStrainImage(slug: string, formData: FormData): Promise<StrainImage> {
+    const res = await this.requestFormData<JsonApiResponse<StrainImage>>(
+      `/api/v1/strain_images/${slug}`,
+      { method: "PATCH", body: formData }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteStrainImage(slug: string): Promise<void> {
+    await this.request(`/api/v1/strain_images/${slug}`, { method: "DELETE" });
+  }
+
+  async regenerateStrainImageSeed(slug: string): Promise<StrainImage> {
+    const res = await this.request<JsonApiResponse<StrainImage>>(
+      `/api/v1/strain_images/${slug}/regenerate_seed`,
+      { method: "POST" }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async getStrainImageSvg(slug: string, seedOverride?: string): Promise<string> {
+    const qs = seedOverride ? `?seed=${encodeURIComponent(seedOverride)}` : "";
+    const url = `${this.baseUrl}/api/v1/strain_images/${slug}/render_svg${qs}`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to render strain image SVG");
+    return res.text();
+  }
+
+  async getLabelSvgPreview(slug: string, variantId?: number, opts?: { debug?: boolean }): Promise<string> {
+    const qs = new URLSearchParams();
+    if (variantId) qs.set("variant_id", String(variantId));
+    if (opts?.debug) qs.set("debug", "1");
+    const url = `${this.baseUrl}/api/v1/labels/${slug}/render_svg${qs.toString() ? `?${qs}` : ""}`;
     const token =
       typeof window !== "undefined"
         ? localStorage.getItem("auth_token")
         : null;
     const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        "Content-Type": "application/json",
-      },
+      method: "GET",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       credentials: "include",
     });
     if (!res.ok) throw new Error("Failed to render label SVG");
@@ -3239,22 +3237,7 @@ export class ApiClient {
     slug: string,
     variantId: number
   ): Promise<string> {
-    const url = `${this.baseUrl}/api/v1/labels/${slug}/render_svg`;
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("auth_token")
-        : null;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({ variant_id: variantId }),
-    });
-    if (!res.ok) throw new Error("Failed to render variant SVG");
-    return res.text();
+    return this.getLabelSvgPreview(slug, variantId);
   }
 
   async getLabelPdf(slug: string): Promise<Blob> {
@@ -3264,11 +3247,8 @@ export class ApiClient {
         ? localStorage.getItem("auth_token")
         : null;
     const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        "Content-Type": "application/json",
-      },
+      method: "GET",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       credentials: "include",
     });
     if (!res.ok) throw new Error("Failed to render label PDF");
@@ -3306,132 +3286,6 @@ export class ApiClient {
     return res.blob();
   }
 
-  // Label Overlays
-
-  async createLabelOverlay(
-    labelSlug: string,
-    formData: FormData
-  ): Promise<Label> {
-    const res = await this.requestFormData<JsonApiResponse<Label>>(
-      `/api/v1/labels/${labelSlug}/label_overlays`,
-      { method: "POST", body: formData }
-    );
-    return { ...res.data.attributes, id: Number(res.data.id) };
-  }
-
-  async updateLabelOverlay(
-    labelSlug: string,
-    overlayId: number,
-    formData: FormData
-  ): Promise<Label> {
-    const res = await this.requestFormData<JsonApiResponse<Label>>(
-      `/api/v1/labels/${labelSlug}/label_overlays/${overlayId}`,
-      { method: "PATCH", body: formData }
-    );
-    return { ...res.data.attributes, id: Number(res.data.id) };
-  }
-
-  async deleteLabelOverlay(
-    labelSlug: string,
-    overlayId: number
-  ): Promise<Label> {
-    const res = await this.request<JsonApiResponse<Label>>(
-      `/api/v1/labels/${labelSlug}/label_overlays/${overlayId}`,
-      { method: "DELETE" }
-    );
-    return { ...res.data.attributes, id: Number(res.data.id) };
-  }
-
-  // Label Strain Variants
-
-  async createLabelStrainVariant(
-    labelSlug: string,
-    data: FormData
-  ): Promise<Label> {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("auth_token")
-        : null;
-    const res = await fetch(
-      `${this.baseUrl}/api/v1/labels/${labelSlug}/label_strain_variants`,
-      {
-        method: "POST",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        credentials: "include",
-        body: data,
-      }
-    );
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      throw new Error(
-        json.errors?.join(", ") || json.error || "Failed to create variant"
-      );
-    }
-    const json = await res.json();
-    return { ...json.data.attributes, id: Number(json.data.id) };
-  }
-
-  async updateLabelStrainVariant(
-    labelSlug: string,
-    variantId: number,
-    data: FormData
-  ): Promise<Label> {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("auth_token")
-        : null;
-    const res = await fetch(
-      `${this.baseUrl}/api/v1/labels/${labelSlug}/label_strain_variants/${variantId}`,
-      {
-        method: "PATCH",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        credentials: "include",
-        body: data,
-      }
-    );
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      throw new Error(
-        json.errors?.join(", ") || json.error || "Failed to update variant"
-      );
-    }
-    const json = await res.json();
-    return { ...json.data.attributes, id: Number(json.data.id) };
-  }
-
-  async deleteLabelStrainVariant(
-    labelSlug: string,
-    variantId: number
-  ): Promise<Label> {
-    const res = await this.request<JsonApiResponse<Label>>(
-      `/api/v1/labels/${labelSlug}/label_strain_variants/${variantId}`,
-      { method: "DELETE" }
-    );
-    return { ...res.data.attributes, id: Number(res.data.id) };
-  }
-
-  async duplicateLabelStrainVariant(
-    labelSlug: string,
-    variantId: number,
-    strainId?: number
-  ): Promise<Label> {
-    const body: Record<string, unknown> = {};
-    if (strainId) body.strain_id = strainId;
-    const res = await this.request<JsonApiResponse<Label>>(
-      `/api/v1/labels/${labelSlug}/label_strain_variants/${variantId}/duplicate`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      }
-    );
-    return { ...res.data.attributes, id: Number(res.data.id) };
-  }
-
   async printLabelVariant(
     labelSlug: string,
     variantId: number,
@@ -3463,38 +3317,6 @@ export class ApiClient {
       throw new Error(json.error || "Failed to print variant");
     }
     return res.blob();
-  }
-
-  // Label Presets
-
-  async getLabelPresets(): Promise<LabelPreset[]> {
-    const res = await this.request<JsonApiCollectionResponse<LabelPreset>>(
-      "/api/v1/label_presets"
-    );
-    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
-  }
-
-  async createLabelPreset(labelSlug: string, name: string): Promise<LabelPreset> {
-    const res = await this.request<JsonApiResponse<LabelPreset>>(
-      "/api/v1/label_presets",
-      {
-        method: "POST",
-        body: JSON.stringify({ label_slug: labelSlug, name }),
-      }
-    );
-    return { ...res.data.attributes, id: Number(res.data.id) };
-  }
-
-  async deleteLabelPreset(id: number): Promise<void> {
-    await this.request("/api/v1/label_presets/" + id, { method: "DELETE" });
-  }
-
-  async applyLabelPreset(slug: string, presetId: number): Promise<Label> {
-    const res = await this.request<JsonApiResponse<Label>>(
-      `/api/v1/labels/${slug}/apply_preset`,
-      { method: "POST", body: JSON.stringify({ preset_id: presetId }) }
-    );
-    return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
   // METRC Label Sets
@@ -4098,10 +3920,24 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
-  async getOrders(params?: { company_id?: number }): Promise<Order[]> {
-    const query = params?.company_id ? `?company_id=${params.company_id}` : "";
+  async createReturnOrder(params: CreateReturnOrderParams): Promise<Order> {
+    const res = await this.request<JsonApiResponse<Order>>(
+      "/api/v1/orders/create_return",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async getOrders(params?: { company_id?: number; unassigned?: boolean }): Promise<Order[]> {
+    const search = new URLSearchParams();
+    if (params?.company_id) search.set("company_id", String(params.company_id));
+    if (params?.unassigned) search.set("unassigned", "true");
+    const query = search.toString();
     const res = await this.request<JsonApiCollectionResponse<Order>>(
-      `/api/v1/orders${query}`
+      `/api/v1/orders${query ? `?${query}` : ""}`
     );
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
@@ -5690,14 +5526,14 @@ export class ApiClient {
 
   async importShipmentSampleMetrc(
     shipmentId: number,
-    variantId: number,
-    pdf: File
-  ): Promise<{ id: number; name: string; item_count: number; label_id: number; label_slug: string; label_name: string; strain_id: number; strain_name: string }> {
+    args: { labelId: number; pdf: File; isSample?: boolean }
+  ): Promise<{ id: number; name: string; item_count: number; label_id: number; label_slug: string; label_name: string; strain_id: number; strain_name: string; is_sample: boolean }> {
     const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/import_sample_metrc`;
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
     const form = new FormData();
-    form.append("variant_id", String(variantId));
-    form.append("pdf", pdf);
+    form.append("label_id", String(args.labelId));
+    form.append("is_sample", String(args.isSample ?? true));
+    form.append("pdf", args.pdf);
     const res = await fetch(url, {
       method: "POST",
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -5759,13 +5595,14 @@ export class ApiClient {
   // Batch import multiple sample METRC PDFs
   async batchImportShipmentSampleMetrc(
     shipmentId: number,
-    files: { variantId: number; pdf: File }[]
+    files: { labelId: number; pdf: File; isSample?: boolean }[]
   ): Promise<unknown> {
     const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/batch_import_sample_metrc`;
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
     const form = new FormData();
     files.forEach((entry, i) => {
-      form.append(`files[${i}][variant_id]`, String(entry.variantId));
+      form.append(`files[${i}][label_id]`, String(entry.labelId));
+      form.append(`files[${i}][is_sample]`, String(entry.isSample ?? true));
       form.append(`files[${i}][pdf]`, entry.pdf);
     });
     const res = await fetch(url, {
@@ -5959,6 +5796,21 @@ export class ApiClient {
       body: JSON.stringify({ transfer_id: transferId }),
     });
     if (!res.ok) throw new Error("Failed to update transfer ID");
+  }
+
+  async updateOrderUnitsPerBox(orderId: number, unitsPerBox: number): Promise<void> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/update_units_per_box`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ units_per_box: unitsPerBox }),
+    });
+    if (!res.ok) throw new Error("Failed to update units per box");
   }
 
   async updateSampleGroupTransferId(shipmentId: number, sampleGroupId: number, transferId: string): Promise<void> {

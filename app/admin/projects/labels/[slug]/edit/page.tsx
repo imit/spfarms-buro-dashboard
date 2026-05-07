@@ -4,15 +4,12 @@ import { use, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { apiClient, type Label, type LabelDesign } from "@/lib/api";
+import { apiClient, type Label } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { LabelForm } from "@/components/label-form";
-import { LabelOverlayPanel } from "@/components/label-overlay-panel";
 import { MetrcLabelSetPanel } from "@/components/metrc-label-set-panel";
-import { LabelStrainVariantPanel } from "@/components/label-strain-variant-panel";
-import { LabelCanvasEditor } from "@/components/label-canvas-editor";
-import { ArrowLeftIcon, RefreshCwIcon } from "lucide-react";
+import { ArrowLeftIcon } from "lucide-react";
 import { ErrorAlert } from "@/components/ui/error-alert";
 
 export default function EditLabelPage({
@@ -24,7 +21,6 @@ export default function EditLabelPage({
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [label, setLabel] = useState<Label | null>(null);
-  const [svgPreview, setSvgPreview] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -39,108 +35,19 @@ export default function EditLabelPage({
       const data = await apiClient.getLabel(slug);
       setLabel(data);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "We couldn't load the label"
-      );
+      setError(err instanceof Error ? err.message : "We couldn't load the label");
     } finally {
       setIsLoading(false);
-    }
-  }, [slug]);
-
-  const refreshPreview = useCallback(async () => {
-    try {
-      const svg = await apiClient.getLabelSvgPreview(slug);
-      setSvgPreview(svg);
-    } catch {
-      // Preview may not be available
     }
   }, [slug]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
     fetchLabel();
-    refreshPreview();
-  }, [isAuthenticated, fetchLabel, refreshPreview]);
-
-  function handleOverlayUpdated(updatedLabel: Label) {
-    setLabel(updatedLabel);
-    refreshPreview();
-  }
-
-  const handleElementMoved = useCallback(
-    async (element: string, x: number, y: number) => {
-      if (!label) return;
-
-      // Overlay move
-      if (element.startsWith("overlay:")) {
-        const overlayId = parseInt(element.split(":")[1], 10);
-        const fd = new FormData();
-        fd.append("label_overlay[position_x]", String(x));
-        fd.append("label_overlay[position_y]", String(y));
-        try {
-          const updated = await apiClient.updateLabelOverlay(label.slug, overlayId, fd);
-          setLabel(updated);
-          refreshPreview();
-        } catch {
-          // silently fail
-        }
-        return;
-      }
-
-      // Design element move — send full design with patched position
-      const design: LabelDesign = JSON.parse(JSON.stringify(label.design || {}));
-      const key = element as keyof LabelDesign;
-      if (key === "qr" && design.qr) {
-        design.qr.x = x;
-        design.qr.y = y;
-      } else if (key === "logo" && design.logo) {
-        design.logo.x = x;
-        design.logo.y = y;
-      } else if (key === "metrc_zone" && design.metrc_zone) {
-        design.metrc_zone.x = x;
-        design.metrc_zone.y = y;
-      } else if (key === "cannabinoid_info" && design.cannabinoid_info) {
-        design.cannabinoid_info.x = x;
-        design.cannabinoid_info.y = y;
-      } else if (key === "product_info" && design.product_info) {
-        design.product_info.x = x;
-        design.product_info.y = y;
-      } else if (key === "weight_info" && design.weight_info) {
-        design.weight_info.x = x;
-        design.weight_info.y = y;
-      } else if (key === "expiration_date" && design.expiration_date) {
-        design.expiration_date.x = x;
-        design.expiration_date.y = y;
-      } else if (key === "batch_id" && design.batch_id) {
-        design.batch_id.x = x;
-        design.batch_id.y = y;
-      } else if (key === "product_id_text" && design.product_id_text) {
-        design.product_id_text.x = x;
-        design.product_id_text.y = y;
-      } else if (key === "lot_number" && design.lot_number) {
-        design.lot_number.x = x;
-        design.lot_number.y = y;
-      } else if (key === "harvest_date" && design.harvest_date) {
-        design.harvest_date.x = x;
-        design.harvest_date.y = y;
-      }
-
-      try {
-        await apiClient.updateLabel(label.slug, { design: design as unknown as Record<string, unknown> });
-        await Promise.all([fetchLabel(), refreshPreview()]);
-      } catch {
-        // silently fail
-      }
-    },
-    [label, fetchLabel, refreshPreview]
-  );
+  }, [isAuthenticated, fetchLabel]);
 
   if (authLoading || !isAuthenticated) return null;
-
-  if (isLoading) {
-    return <p className="text-muted-foreground px-10">Loading...</p>;
-  }
-
+  if (isLoading) return <p className="text-muted-foreground px-10">Loading...</p>;
   if (error) {
     return (
       <div className="mx-10">
@@ -148,12 +55,10 @@ export default function EditLabelPage({
       </div>
     );
   }
-
   if (!label) return null;
 
   return (
     <div className="px-10 space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon-sm" asChild>
           <Link href={`/admin/projects/labels/${label.slug}`}>
@@ -166,69 +71,11 @@ export default function EditLabelPage({
         </div>
       </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8 items-start">
-        {/* Left: Sticky Preview */}
-        <div className="lg:sticky lg:top-4 space-y-3">
-          <div className="rounded-lg border bg-muted/30 p-4 flex items-center justify-center min-h-[250px]">
-            {svgPreview ? (
-              <LabelCanvasEditor
-                svgHtml={svgPreview}
-                label={label}
-                onElementMoved={handleElementMoved}
-              />
-            ) : (
-              <p className="text-muted-foreground">Loading preview...</p>
-            )}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refreshPreview}
-          >
-            <RefreshCwIcon className="mr-2 size-4" />
-            Refresh Preview
-          </Button>
-        </div>
+      <LabelForm key={label.updated_at} label={label} />
 
-        {/* Right: Form + Overlays */}
-        <div className="space-y-8 pb-28">
-          <LabelForm
-            key={label.updated_at}
-            label={label}
-            mode="edit"
-            onSaved={(updated) => {
-              if (updated.slug !== slug) {
-                router.replace(`/admin/projects/labels/${updated.slug}/edit`);
-              } else {
-                setLabel(updated);
-                refreshPreview();
-              }
-            }}
-          />
+      <Separator />
 
-          <Separator />
-
-          <LabelOverlayPanel
-            label={label}
-            onUpdated={handleOverlayUpdated}
-          />
-
-          <Separator />
-
-          <LabelStrainVariantPanel
-            label={label}
-            onUpdated={handleOverlayUpdated}
-          />
-
-          <Separator />
-
-          <MetrcLabelSetPanel
-            label={label}
-            onUpdated={fetchLabel}
-          />
-        </div>
-      </div>
+      <MetrcLabelSetPanel label={label} onUpdated={fetchLabel} />
     </div>
   );
 }
