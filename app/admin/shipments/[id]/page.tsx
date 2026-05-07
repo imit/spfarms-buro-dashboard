@@ -1025,7 +1025,10 @@ export default function AdminShipmentDetailPage({
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox checked={shipment.is_sample} onCheckedChange={toggleIsSample} />
-            <span className="text-xs text-muted-foreground">Sample Shipment</span>
+            <span className="text-xs text-muted-foreground">
+              Sample Shipment
+              <span className="ml-1 text-[10px] opacity-70">(prints labels as sample)</span>
+            </span>
           </label>
         </div>
       </div>
@@ -1267,17 +1270,28 @@ export default function AdminShipmentDetailPage({
                                 {sets.map((ms) => {
                                   return (
                                   <div key={ms.id} className="flex items-center gap-2 text-xs">
-                                    <Badge
-                                      variant="outline"
-                                      className={cn(
-                                        "text-[10px] font-medium",
-                                        ms.is_sample
-                                          ? "border-purple-300 text-purple-700 bg-purple-50"
-                                          : "border-slate-300 text-slate-700 bg-slate-50"
-                                      )}
+                                    <button
+                                      type="button"
+                                      title={`Click to toggle to ${ms.is_sample ? "regular" : "sample"}`}
+                                      onClick={async () => {
+                                        try {
+                                          await apiClient.toggleOrderMetrcSetSample(order.id, ms.id);
+                                          await loadShipment();
+                                        } catch { showError("toggle sample flag"); }
+                                      }}
                                     >
-                                      {ms.is_sample ? "Sample" : "Regular"}
-                                    </Badge>
+                                      <Badge
+                                        variant="outline"
+                                        className={cn(
+                                          "text-[10px] font-medium cursor-pointer hover:opacity-80 transition-opacity",
+                                          ms.is_sample
+                                            ? "border-purple-300 text-purple-700 bg-purple-50"
+                                            : "border-slate-300 text-slate-700 bg-slate-50"
+                                        )}
+                                      >
+                                        {ms.is_sample ? "Sample" : "Regular"}
+                                      </Badge>
+                                    </button>
                                     <span className="font-mono text-[10px] text-muted-foreground truncate flex-1 min-w-0" title={ms.source_filename || ms.name}>
                                       {ms.source_filename || ms.name}
                                     </span>

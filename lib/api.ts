@@ -5813,6 +5813,23 @@ export class ApiClient {
     if (!res.ok) throw new Error("Failed to update units per box");
   }
 
+  async toggleOrderMetrcSetSample(orderId: number, metrcLabelSetId: number): Promise<{ id: number; is_sample: boolean }> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/toggle_metrc_set_sample`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ metrc_label_set_id: metrcLabelSetId }),
+    });
+    if (!res.ok) throw new Error("Failed to toggle sample flag");
+    const body = await res.json();
+    return body.data;
+  }
+
   async updateSampleGroupTransferId(shipmentId: number, sampleGroupId: number, transferId: string): Promise<void> {
     const url = `${this.baseUrl}/api/v1/shipments/${shipmentId}/update_sample_group`;
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
