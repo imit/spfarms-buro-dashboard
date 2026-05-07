@@ -57,6 +57,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
     cannabis: product?.cannabis ?? true,
     coming_soon: product?.coming_soon ?? false,
     best_seller: product?.best_seller ?? false,
+    new_drop: product?.new_drop ?? false,
     product_type: (product?.product_type ?? "flower") as ProductType,
     status: (product?.status ?? "draft") as ProductStatus,
     strain_id: product?.strain_id?.toString() ?? "",
@@ -156,6 +157,7 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
       formData.append("product[cannabis]", String(form.cannabis));
       formData.append("product[coming_soon]", String(form.coming_soon));
       formData.append("product[best_seller]", String(form.best_seller));
+      formData.append("product[new_drop]", String(form.new_drop));
       formData.append("product[price_tbd]", String(form.price_tbd));
       formData.append("product[product_type]", form.product_type);
       formData.append("product[status]", form.status);
@@ -271,6 +273,23 @@ export function ProductForm({ product, mode = "create" }: ProductFormProps) {
             />
             <label htmlFor="best_seller" className="text-sm font-medium">
               Best seller
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 mb-2">
+            <Checkbox
+              id="new_drop"
+              checked={form.new_drop}
+              onCheckedChange={(checked) =>
+                updateField("new_drop", checked === true)
+              }
+              disabled={isSubmitting}
+            />
+            <label htmlFor="new_drop" className="text-sm font-medium">
+              New drop{" "}
+              <span className="text-xs font-normal text-muted-foreground">
+                — adds a lively badge to the product card
+              </span>
             </label>
           </div>
 

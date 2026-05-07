@@ -74,7 +74,7 @@ export function PublicFooter() {
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-6 border-t border-white/10">
             <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-white/60">
-              <span>&copy;{new Date().getFullYear()} Spfarms (dba Catskill Mountain Cannabis)</span>
+              <span>&copy;{new Date().getFullYear()} Catskill Mountain Cannabis (dba SPFarms)</span>
               <span>OCM-MICR-24-000028</span>
               <a href="mailto:info@spfarmsny.com" className="hover:text-white transition-colors">
                 info@spfarmsny.com

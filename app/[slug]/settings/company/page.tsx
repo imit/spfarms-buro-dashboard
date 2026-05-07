@@ -5,6 +5,8 @@ import {
   PlusIcon,
   PencilIcon,
   CheckIcon,
+  CheckCircle2Icon,
+  ExternalLinkIcon,
   XIcon,
   Loader2Icon,
   ImageIcon,
@@ -15,6 +17,11 @@ import {
   type Company,
   type Location,
 } from "@/lib/api";
+import {
+  validateOcmLicense,
+  ocmPublicSearchUrl,
+  prettyTypeName,
+} from "@/lib/ocm-license";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -244,14 +251,18 @@ export default function CompanySettingsPage({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="licenseNumber" className="text-base">License Number</Label>
+            <Label htmlFor="licenseNumber" className="text-base">OCM License Number</Label>
             <Input
               id="licenseNumber"
-              className="h-12 text-base"
+              className="h-12 text-base font-mono"
               value={licenseNumber}
               onChange={(e) => setLicenseNumber(e.target.value)}
-              placeholder="OCM-XXXXX"
+              placeholder="OCM-RETD-24-000123"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
             />
+            <LicenseFormatFeedback value={licenseNumber} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="companyEmail" className="text-base">Company Email</Label>
@@ -428,11 +439,15 @@ function LocationFormCard({
         <div className="space-y-2">
           <Label className="text-base">OCM License</Label>
           <Input
-            className="h-12 text-base"
+            className="h-12 text-base font-mono"
             value={form.license_number}
             onChange={(e) => onChange({ ...form, license_number: e.target.value })}
-            placeholder="OCM-XXXXX"
+            placeholder="OCM-RETD-24-000123"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
           />
+          <LicenseFormatFeedback value={form.license_number} compact />
         </div>
         <div className="space-y-2">
           <Label className="text-base">Address</Label>
@@ -497,5 +512,67 @@ function LocationFormCard({
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Inline OCM license format feedback. Soft validation only — never blocks
+ * submission. Format-only check (does not confirm the license actually exists
+ * in NY OCM's database). Tone is informational, not corrective.
+ *
+ * - Empty: small mono format tip
+ * - Invalid: muted note ("looks unusual"), no alert styling
+ * - Unusual type: muted note with optional OCM lookup link
+ * - Valid: subtle license-type acknowledgment
+ */
+function LicenseFormatFeedback({
+  value,
+  compact = false,
+}: {
+  value: string;
+  compact?: boolean;
+}) {
+  const result = validateOcmLicense(value);
+
+  if (result.level === "empty") {
+    if (compact) return null;
+    return (
+      <p className="text-xs text-muted-foreground font-mono">
+        Format: OCM-RETD-24-000123
+      </p>
+    );
+  }
+
+  if (result.level === "invalid") {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Format looks unusual — typical NY OCM is{" "}
+        <span className="font-mono">OCM-RETD-24-000123</span>.
+      </p>
+    );
+  }
+
+  if (result.level === "unusual_type") {
+    return (
+      <p className="text-xs text-muted-foreground">
+        <span className="font-mono">{result.type}</span> is uncommon for wholesale buyers.{" "}
+        <a
+          href={ocmPublicSearchUrl(value)}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-foreground"
+        >
+          Look up <ExternalLinkIcon className="size-3" />
+        </a>
+      </p>
+    );
+  }
+
+  // valid
+  return (
+    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <CheckCircle2Icon className="size-3.5 shrink-0 text-emerald-600/70" />
+      <span>{result.type ? prettyTypeName(result.type) : "OCM license"}</span>
+    </p>
   );
 }

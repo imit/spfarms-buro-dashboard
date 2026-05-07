@@ -1,10 +1,10 @@
 "use client";
 
 import { use, useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { apiClient, type Product, type Strain, type Cart, type Company, type Menu } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { ProductCard } from "@/components/storefront/product-card";
+import { StorefrontOnboarding } from "@/components/storefront/onboarding-steps";
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
 import posthog from "posthog-js";
@@ -62,11 +62,16 @@ export default function StorefrontPage({
             minimum_order_quantity: item.minimum_order_quantity,
             coming_soon: item.coming_soon,
             best_seller: item.best_seller,
+            new_drop: item.new_drop,
+            has_current_coa: item.has_current_coa,
             cannabis: item.cannabis,
             thc_content: item.thc_content,
             cbd_content: item.cbd_content,
             in_stock: item.in_stock,
-          } as Product));
+          } as Product))
+          // In-stock products first, out-of-stock pushed to the end.
+          // Stable sort preserves the menu's intended order within each group.
+          .sort((a, b) => Number(b.in_stock) - Number(a.in_stock));
         setProducts(menuProducts);
         setCompany(company);
 
@@ -132,7 +137,7 @@ export default function StorefrontPage({
     <div className="py-4">
       {/* Dispensary header */}
       {company && (
-        <div className="mb-10">
+        <div className="mb-8">
           <div className="flex items-start justify-between gap-6">
             <div>
               <h1 className="text-4xl font-bold tracking-tight mb-1">
@@ -162,29 +167,12 @@ export default function StorefrontPage({
               />
             )}
           </div>
-
-          {!company.license_number && (
-            <Link
-              href={`/${slug}/settings/company`}
-              className="mt-2 block text-xl font-medium text-amber-600 underline underline-offset-4 hover:text-amber-700"
-            >
-              Update license number to order
-            </Link>
-          )}
-          {company.locations.length === 0 && (
-            <Link
-              href={`/${slug}/settings/company`}
-              className="mt-2 block text-xl font-medium text-amber-600 underline underline-offset-4 hover:text-amber-700"
-            >
-              Add a location to order
-            </Link>
-          )}
-          {company.license_number && company.locations.length > 0 && (
-            <p className="mt-4 text-xl text-muted-foreground/50">
-              Add products to cart to order
-            </p>
-          )}
         </div>
+      )}
+
+      {/* Onboarding — renders nothing once setup is complete & cart has items, or after the first order */}
+      {company && (
+        <StorefrontOnboarding slug={slug} company={company} cart={cart} />
       )}
 
       {/* Products */}

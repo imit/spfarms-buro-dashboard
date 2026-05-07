@@ -371,6 +371,7 @@ export interface Product {
   cannabis: boolean;
   bulk: boolean;
   coming_soon: boolean;
+  new_drop: boolean;
   price_tbd: boolean;
   best_seller: boolean;
   product_type: ProductType;
@@ -389,6 +390,7 @@ export interface Product {
   low_stock_threshold: number;
   in_stock: boolean;
   low_stock: boolean;
+  has_current_coa: boolean;
   status: ProductStatus;
   tags: string[];
   meta_title: string | null;
@@ -441,6 +443,8 @@ export interface MenuItem {
   bulk: boolean;
   coming_soon: boolean;
   best_seller: boolean;
+  new_drop: boolean;
+  has_current_coa: boolean;
   cannabis: boolean;
   thc_content: string | null;
   cbd_content: string | null;

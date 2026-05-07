@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { DownloadIcon } from "lucide-react";
+import { DownloadIcon, SparklesIcon } from "lucide-react";
 import { type Product, type Strain, type CartDiscount, CATEGORY_LABELS } from "@/lib/api";
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -64,6 +64,15 @@ export function ProductCard({
   return (
     <div className={`rounded-xl relative border p-3 ${compact ? "" : "sm:p-4"} flex flex-row ${compact ? "" : "sm:flex-col"} gap-3 ${compact ? "" : "sm:gap-0"} overflow-visible`} style={{ backgroundColor: "#fff" }}>
 
+      {product.new_drop && (
+        <div className="absolute top-3 left-3 md:-top-2 md:-left-2 z-10 -rotate-6 motion-safe:animate-pulse">
+          <span className={`inline-flex items-center gap-1 rounded-full bg-linear-to-r from-emerald-500 via-lime-400 to-emerald-500 ${compact ? "px-2 py-0.5 text-[9px]" : "px-2.5 py-1 text-[10px]"} font-bold uppercase tracking-wider text-white shadow-lg ring-2 ring-white`}>
+            <SparklesIcon className={`${compact ? "size-2.5" : "size-3"} fill-yellow-200`} strokeWidth={2.5} />
+            New Drop
+          </span>
+        </div>
+      )}
+
       {product.best_seller && (
         <div className="absolute top-5 right-5 md:-top-[15px] md:-right-[15px] z-10">
           <div className={`relative ${compact ? "size-10" : "size-12 sm:size-16"}`}>
@@ -98,7 +107,7 @@ export function ProductCard({
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             {thc && <span>THC {thc}%</span>}
             {cbg && <span>CBG {cbg}%</span>}
-            {coaPdfUrl && (
+            {coaPdfUrl ? (
               <a
                 href={coaPdfUrl}
                 target="_blank"
@@ -109,6 +118,10 @@ export function ProductCard({
                 <DownloadIcon className="size-3.5" />
                 COA
               </a>
+            ) : (
+              <span className="text-xs italic text-muted-foreground/70">
+                COA coming soon
+              </span>
             )}
           </div>
           {strain?.category && (
@@ -227,7 +240,7 @@ export function ProductCard({
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
           {thc && <span>THC {thc}%</span>}
           {cbg && <span>CBG {cbg}%</span>}
-          {coaPdfUrl && (
+          {coaPdfUrl ? (
             <a
               href={coaPdfUrl}
               target="_blank"
@@ -238,6 +251,10 @@ export function ProductCard({
               <DownloadIcon className="size-3" />
               COA
             </a>
+          ) : (
+            <span className="text-[10px] italic text-muted-foreground/70">
+              COA coming soon
+            </span>
           )}
         </div>
 
