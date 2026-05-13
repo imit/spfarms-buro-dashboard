@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/auth-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,13 +14,68 @@ import { Toaster } from "sonner";
  * present in /public/fonts. No Google Fonts download.
  */
 
+// Canonical site origin. Override via NEXT_PUBLIC_SITE_URL in non-prod
+// environments (preview deploys, local dev) so OG/twitter URLs resolve
+// to the right host. Defaults to the production apex domain.
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://spfarmsny.com";
+
+const SITE_DESCRIPTION =
+  "SPFarms is a New York micro cannabis farm growing small-batch, indoor, living-soil flower in the Catskills. Find us at dispensaries across NY.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "SPFarms Wholesale Cannabis",
-    template: "SPFarms Wholesale Cannabis - %s",
+    default: "SPFarms — Craft Indoor Cannabis from the Catskills",
+    template: "%s — SPFarms",
   },
-  description:
-    "Wholesale cannabis management platform for micro farms — products, strains, samples, dispensary storefronts, and grow operations.",
+  description: SITE_DESCRIPTION,
+  applicationName: "SPFarms",
+  authors: [{ name: "SPFarms" }],
+  keywords: [
+    "cannabis",
+    "craft cannabis",
+    "indoor cannabis",
+    "living soil",
+    "New York cannabis",
+    "Catskills cannabis",
+    "small batch flower",
+    "micro farm",
+    "wholesale cannabis NY",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: SITE_URL,
+    siteName: "SPFarms",
+    title: "SPFarms — Craft Indoor Cannabis from the Catskills",
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SPFarms — Craft Indoor Cannabis from the Catskills",
+    description: SITE_DESCRIPTION,
+    site: "@spfarmsny",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#F7F7F4", // sf-cream — matches the public header background
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

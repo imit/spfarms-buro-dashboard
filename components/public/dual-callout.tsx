@@ -141,7 +141,7 @@ const DEFAULT_CARDS = [
   {
     label: "Let's work together",
     href: "/wholesale/register",
-    image: "/assets/h-bg.png",
+    image: "/assets/h-bg.jpg",
     labelPos: "top-left" as const,
     bg: "sky" as const,
     slides: [

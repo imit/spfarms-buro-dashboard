@@ -127,7 +127,7 @@ export function HeroParallax() {
         style={{ top: "-10%", bottom: "-10%" }}
       >
         <Image
-          src="/assets/h-bg.png"
+          src="/assets/h-bg.jpg"
           alt=""
           fill
           priority
