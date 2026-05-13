@@ -1,7 +1,22 @@
+import type { Metadata } from "next";
 import { AsteriskIcon, SparklesIcon, CloverIcon, WavesIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { MetaText, SectionLabel, FlowerShape, Marquee } from "@/components/public/style";
+
+export const metadata: Metadata = {
+  title: "About — A Catskills Micro Cannabis Farm",
+  description:
+    "SPFarms is a family-run micro cannabis farm in the Catskills. We grow indoor, living-soil flower in small batches with slow curing and a focus on terpene richness.",
+  alternates: { canonical: "/about" },
+  openGraph: {
+    title: "About SPFarms — A Catskills Micro Cannabis Farm",
+    description:
+      "A family-run micro cannabis farm in the Catskills, growing small-batch indoor flower with living soil.",
+    url: "/about",
+    type: "website",
+  },
+};
 
 /**
  * Public /about page.

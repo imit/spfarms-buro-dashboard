@@ -7,6 +7,7 @@ import { apiClient, type User } from "@/lib/api";
 import { ADMIN_LAYOUT_ROLES } from "@/lib/roles";
 import type { UserRole } from "@/lib/api";
 import { setSiteCookie } from "@/lib/cookies";
+import { clearActiveCompanySlug, preferredCompanySlug } from "@/lib/active-company";
 
 const SPF_EMAIL_MAX_AGE = 60 * 60 * 24 * 365;
 
@@ -43,8 +44,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function getRedirectPath(user: User): string {
-  if (user.role === "account" && user.company_slug) {
-    return `/${user.company_slug}`;
+  if (user.role === "account") {
+    // Multi-membership users get sent to their last-active dispensary if it's
+    // still a valid membership; otherwise fall back to the API's primary
+    // (`company_slug`). See lib/active-company.ts for the resolution order.
+    const slug = preferredCompanySlug(user);
+    if (slug) return `/${slug}`;
   }
   if (user.role === "user") {
     return "/";
@@ -218,6 +223,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("auth_user");
       localStorage.removeItem("impersonate_original_token");
       localStorage.removeItem("impersonate_original_user");
+      // Drop the remembered dispensary so the next user (or the same user
+      // with different memberships) doesn't get sent to a stale slug.
+      clearActiveCompanySlug();
       router.push("/login");
     }
   };

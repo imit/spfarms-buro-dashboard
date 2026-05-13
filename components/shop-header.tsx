@@ -7,6 +7,7 @@ import { Logo } from "@/components/shared/logo";
 import { useAuth } from "@/contexts/auth-context";
 import { apiClient } from "@/lib/api";
 import { openHelpDrawer } from "@/components/storefront/help-drawer";
+import { CompanySwitcher } from "@/components/company-switcher";
 
 export function ShopHeader({ slug }: { slug: string }) {
   const { logout } = useAuth();
@@ -15,6 +16,16 @@ export function ShopHeader({ slug }: { slug: string }) {
   const [hasDraftOrder, setHasDraftOrder] = useState(false);
 
   useEffect(() => {
+    // Reset immediately so a stale count from the previous dispensary never
+    // flashes during the swap. The fetch below populates the new values.
+    setCartCount(0);
+    setHasDraftOrder(false);
+
+    // `cancelled` guards against a race when the user switches companies
+    // mid-flight: the old slug's response shouldn't overwrite the new slug's
+    // state. Without this, the cart badge could briefly show the wrong count.
+    let cancelled = false;
+
     async function fetchCounts() {
       try {
         const companyData = await apiClient.getCompany(slug);
@@ -22,17 +33,23 @@ export function ShopHeader({ slug }: { slug: string }) {
           apiClient.getCart(companyData.id).catch(() => null),
           apiClient.getOrders({ company_id: companyData.id }).catch(() => []),
         ]);
+        if (cancelled) return;
         if (cart) setCartCount(cart.item_count);
         setHasDraftOrder(orders.some((o) => o.status === "draft"));
       } catch {
-        // ignore
+        // ignore — count just stays at 0 for this company
       }
     }
     fetchCounts();
 
-    const handler = () => fetchCounts();
+    const handler = () => {
+      if (!cancelled) fetchCounts();
+    };
     window.addEventListener("cart:updated", handler);
-    return () => window.removeEventListener("cart:updated", handler);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("cart:updated", handler);
+    };
   }, [slug]);
 
   return (
@@ -42,7 +59,9 @@ export function ShopHeader({ slug }: { slug: string }) {
           <Link href={`/${slug}/storefront`} className="w-32">
             <Logo />
           </Link>
-          <span className="text-sm text-muted-foreground">partner</span>
+          {/* Falls back to a static "partner" label for users with a single
+              membership; renders a dropdown when there are multiple. */}
+          <CompanySwitcher slug={slug} />
         </div>
 
         <nav className="flex items-center gap-8">

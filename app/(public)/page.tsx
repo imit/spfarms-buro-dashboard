@@ -1,9 +1,20 @@
+import type { Metadata } from "next";
 import { HeroCraft } from "@/components/public/hero-craft";
 import { Marquee } from "@/components/public/style";
 import { DualCallout } from "@/components/public/dual-callout";
 import { StrainShowcase } from "@/components/public/strain-showcase";
 import { FindUsSection } from "@/components/public/find-us-section";
 import { NewsletterBand } from "@/components/public/newsletter-band";
+
+export const metadata: Metadata = {
+  // Title intentionally not overridden — falls back to the root layout's
+  // default which already reads "SPFarms — Craft Indoor Cannabis from the
+  // Catskills". Using a more specific title here would push the brand
+  // name out of the visible <title> on most browsers.
+  description:
+    "SPFarms grows small-batch, living-soil indoor cannabis in the Catskills of New York. Find our flower at dispensaries across the state.",
+  alternates: { canonical: "/" },
+};
 
 /**
  * Public homepage — composes the new cream/lime design system.

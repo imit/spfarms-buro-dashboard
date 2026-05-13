@@ -10,6 +10,7 @@ import { PostHogPageTracker } from "@/components/public/posthog-page-tracker";
 import { useAuth } from "@/contexts/auth-context";
 import { ADMIN_LAYOUT_ROLES } from "@/lib/roles";
 import type { UserRole } from "@/lib/api";
+import { setActiveCompanySlug } from "@/lib/active-company";
 
 export default function PortalLayout({
   children,
@@ -39,6 +40,13 @@ export default function PortalLayout({
       const redirectTo = user.company_slug ? `/${user.company_slug}` : "/login";
       router.push(redirectTo);
       return;
+    }
+
+    // Remember this dispensary as the user's last-active context for next
+    // time they cold-load. Only persist for actual members — admins viewing
+    // someone else's storefront shouldn't poison the redirect target.
+    if (isOwnCompany) {
+      setActiveCompanySlug(slug);
     }
 
     posthog.group("company", slug);

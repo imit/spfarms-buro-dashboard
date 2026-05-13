@@ -1,3 +1,19 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Blog — Stories from the Farm",
+  description:
+    "Stories from the SPFarms grow, industry insights, and product updates from a Catskills micro cannabis farm.",
+  alternates: { canonical: "/blog" },
+  openGraph: {
+    title: "Blog — Stories from the Farm",
+    description:
+      "Stories from the SPFarms grow, industry insights, and product updates.",
+    url: "/blog",
+    type: "website",
+  },
+};
+
 export default function BlogPage() {
   return (
     <div className="px-6 lg:px-10 py-16 lg:py-24 max-w-4xl mx-auto">
