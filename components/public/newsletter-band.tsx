@@ -1,9 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowRightIcon } from "lucide-react";
+import confetti from "canvas-confetti";
 import { MetaText } from "./style";
 import { apiClient } from "@/lib/api";
+
+/**
+ * Fire a brand-colored confetti burst originating from the given DOM rect
+ * (so it shoots out from the submit button, not the page center). Brand
+ * palette = lime + forest-deep + cream. Capped at ~1.2s so it doesn't
+ * overstay its welcome.
+ */
+function fireSubscribeConfetti(rect: DOMRect) {
+  const x = (rect.left + rect.width / 2) / window.innerWidth;
+  const y = (rect.top + rect.height / 2) / window.innerHeight;
+  const colors = ["#C8E62F", "#B7D425", "#26251E", "#F7F7F4"];
+
+  // Two angled bursts → a fan shape coming out of the button
+  confetti({
+    particleCount: 80,
+    spread: 70,
+    startVelocity: 45,
+    decay: 0.92,
+    scalar: 0.9,
+    origin: { x, y },
+    colors,
+  });
+  confetti({
+    particleCount: 40,
+    angle: 60,
+    spread: 55,
+    startVelocity: 50,
+    decay: 0.92,
+    scalar: 0.9,
+    origin: { x: Math.max(0, x - 0.05), y },
+    colors,
+  });
+  confetti({
+    particleCount: 40,
+    angle: 120,
+    spread: 55,
+    startVelocity: 50,
+    decay: 0.92,
+    scalar: 0.9,
+    origin: { x: Math.min(1, x + 0.05), y },
+    colors,
+  });
+}
 
 /**
  * Lime newsletter band — full-width across the page (no rounded corners).
@@ -23,6 +67,7 @@ export function NewsletterBand() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "ok" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const submitButtonRef = useRef<HTMLButtonElement | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +79,9 @@ export function NewsletterBand() {
       await apiClient.subscribeToNewsletter({ email: trimmed, source: "homepage" });
       setStatus("ok");
       setEmail("");
+      // Celebrate — confetti burst originating from the submit button.
+      const rect = submitButtonRef.current?.getBoundingClientRect();
+      if (rect) fireSubscribeConfetti(rect);
     } catch (err) {
       setStatus("error");
       setErrorMessage(
@@ -73,6 +121,7 @@ export function NewsletterBand() {
               className="h-12 w-full rounded-md border border-sf-forest-deep/80 bg-sf-cream pl-4 pr-14 font-mono text-xs uppercase tracking-[0.18em] text-sf-forest-deep placeholder:text-sf-forest-deep/40 focus:border-sf-forest-deep focus:outline-none focus:ring-2 focus:ring-sf-forest-deep/15 disabled:opacity-60"
             />
             <button
+              ref={submitButtonRef}
               type="submit"
               aria-label="Subscribe"
               disabled={status === "submitting"}

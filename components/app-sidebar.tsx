@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, UsersIcon, Settings2Icon, BoxIcon, UserPlusIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon, FolderIcon, BuildingIcon, ReceiptIcon, FlowerIcon, MegaphoneIcon, MapPinIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, UsersIcon, Settings2Icon, BoxIcon, UserPlusIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon, FolderIcon, BuildingIcon, ReceiptIcon, FlowerIcon, MegaphoneIcon, MapPinIcon, MailIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -49,6 +49,12 @@ const navPeopleCompanies: NavItem[] = [
     title: "Users",
     url: "/admin/users",
     icon: <UsersIcon className="text-indigo-500" />,
+    resource: "users",
+  },
+  {
+    title: "Subscribers",
+    url: "/admin/subscribers",
+    icon: <MailIcon className="text-teal-500" />,
     resource: "users",
   },
 ]

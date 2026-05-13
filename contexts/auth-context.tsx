@@ -6,6 +6,9 @@ import posthog from "posthog-js";
 import { apiClient, type User } from "@/lib/api";
 import { ADMIN_LAYOUT_ROLES } from "@/lib/roles";
 import type { UserRole } from "@/lib/api";
+import { setSiteCookie } from "@/lib/cookies";
+
+const SPF_EMAIL_MAX_AGE = 60 * 60 * 24 * 365;
 
 const PUBLIC_ROUTES = [
   "/",
@@ -13,6 +16,7 @@ const PUBLIC_ROUTES = [
   "/products",
   "/contact",
   "/find-us",
+  "/strains",
   "/blog",
   "/login",
   "/auth/invitation",
@@ -130,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("auth_user", JSON.stringify(user));
       posthog.identify(String(user.id), { email: user.email, name: user.full_name, role: user.role });
       if (POSTHOG_EXCLUDED_EMAILS.includes(user.email)) posthog.opt_out_capturing();
-      document.cookie = `spf_email=${encodeURIComponent(user.email)};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+      setSiteCookie("spf_email", user.email, { maxAge: SPF_EMAIL_MAX_AGE });
       router.push(getRedirectPath(user));
     } catch (error) {
       throw error;
@@ -143,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("auth_user", JSON.stringify(authenticatedUser));
     posthog.identify(String(authenticatedUser.id), { email: authenticatedUser.email, name: authenticatedUser.full_name, role: authenticatedUser.role });
     if (POSTHOG_EXCLUDED_EMAILS.includes(authenticatedUser.email)) posthog.opt_out_capturing();
-    document.cookie = `spf_email=${encodeURIComponent(authenticatedUser.email)};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+    setSiteCookie("spf_email", authenticatedUser.email, { maxAge: SPF_EMAIL_MAX_AGE });
     router.push(getRedirectPath(authenticatedUser));
   }, [router]);
 

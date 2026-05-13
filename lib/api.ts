@@ -222,6 +222,34 @@ export interface Stockist {
   orders_count?: number;
 }
 
+/**
+ * Newsletter subscriber — public opt-in via the homepage band. Backed by
+ * /api/v1/public/newsletter_subscriptions (write-only) and
+ * /api/v1/admin/newsletter_subscriptions (admin list / unsubscribe).
+ */
+export type NewsletterSubscriptionStatus = "active" | "unsubscribed";
+
+export interface NewsletterSubscription {
+  id: number;
+  email: string;
+  status: NewsletterSubscriptionStatus;
+  source: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  subscribed_at: string | null;
+  unsubscribed_at: string | null;
+  created_at: string;
+  /** Populated when this subscriber email also matches a User in the workspace. */
+  user?: { id: number; full_name: string | null; role: string } | null;
+}
+
+export interface NewsletterSubscriptionsMeta {
+  total: number;
+  active_count: number;
+  unsubscribed_count: number;
+  sources: string[];
+}
+
 export interface Company {
   id: number;
   name: string;
@@ -5252,6 +5280,76 @@ export class ApiClient {
     return this.request("/api/v1/public/partnership_registrations", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  // ---- Contact form (support tickets, public) ----
+
+  /**
+   * Public contact form on /contact. Submits a support ticket without
+   * requiring auth — the visitor's contact details are persisted directly
+   * on the ticket row so info@ can reply.
+   *
+   * Server-side abuse controls: a `website` honeypot (silently accepted),
+   * plus Rails 8 `rate_limit` macros at 3/hour per IP and 2/10min per email.
+   * The 429 response surfaces as a thrown Error with a friendly message that
+   * we re-render in the form.
+   */
+  async submitContactRequest(payload: {
+    name: string;
+    email: string;
+    phone?: string;
+    subject?: string;
+    message: string;
+    /** Honeypot — must remain blank. Bots typically autofill anything named like a field. */
+    website?: string;
+  }): Promise<{ status: { code: number; message: string } }> {
+    return this.request("/api/v1/public/support_tickets", {
+      method: "POST",
+      body: JSON.stringify({
+        support_ticket: {
+          name: payload.name,
+          email: payload.email,
+          phone: payload.phone,
+          subject: payload.subject,
+          message: payload.message,
+        },
+        website: payload.website,
+      }),
+    });
+  }
+
+  // ---- Newsletter ----
+
+  /**
+   * Public newsletter opt-in (homepage band). Idempotent — re-submitting the
+   * same email flips an unsubscribed row back to active rather than 422-ing.
+   */
+  async subscribeToNewsletter(payload: { email: string; source?: string }): Promise<{ status: { code: number; message: string } }> {
+    return this.request("/api/v1/public/newsletter_subscriptions", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getAdminNewsletterSubscriptions(filters?: {
+    status?: NewsletterSubscriptionStatus | "all";
+    source?: string;
+    q?: string;
+  }): Promise<{ data: NewsletterSubscription[]; meta: NewsletterSubscriptionsMeta }> {
+    const qs = new URLSearchParams();
+    if (filters?.status && filters.status !== "all") qs.set("status", filters.status);
+    if (filters?.source && filters.source !== "all") qs.set("source", filters.source);
+    if (filters?.q) qs.set("q", filters.q);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return this.request<{ data: NewsletterSubscription[]; meta: NewsletterSubscriptionsMeta }>(
+      `/api/v1/admin/newsletter_subscriptions${suffix}`,
+    );
+  }
+
+  async unsubscribeNewsletterSubscription(id: number): Promise<NewsletterSubscription> {
+    return this.request<NewsletterSubscription>(`/api/v1/admin/newsletter_subscriptions/${id}`, {
+      method: "DELETE",
     });
   }
 

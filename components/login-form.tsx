@@ -106,7 +106,7 @@ export function LoginForm() {
           <button
             type="button"
             onClick={() => setError("")}
-            className="bg-red-100 text-red-800 rounded-xl p-3 text-sm text-center relative group cursor-pointer"
+            className="bg-[#03602E]/10 text-[#03602E] rounded-xl p-3 text-sm text-center relative group cursor-pointer"
           >
             <XIcon className="absolute top-2.5 right-2.5 size-3.5 opacity-0 group-hover:opacity-60 transition-opacity" />
             <p>{error}</p>

@@ -74,8 +74,8 @@
   --sf-cream: #F7F7F4;          /* page background */
   --sf-cream-soft: #F0EFEC;     /* slightly inset card surface */
   --sf-cream-deep: #E6E5E1;     /* secondary button bg / hairline borders */
-  --sf-lime: #C8E62F;           /* accent button / marquee */
-  --sf-lime-dark: #B7D425;      /* accent hover */
+  --sf-lime: #F9EB65;           /* accent button / marquee */
+  --sf-lime-dark: #E8D74F;      /* accent hover */
   --sf-forest: #26251E;         /* alias → ink (legacy text token) */
   --sf-forest-deep: #26251E;    /* alias → ink (primary text + primary button bg) */
   --sf-orange: #F95624;         /* flower / product accent */
