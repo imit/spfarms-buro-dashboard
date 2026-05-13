@@ -112,7 +112,7 @@ export default function WholesaleRegisterPage() {
         contact: {
           full_name: form.contact_name,
           email: form.contact_email,
-          phone_number: form.contact_phone,
+          phone_number: form.contact_phone || undefined,
           title: form.contact_title || undefined,
         },
       });
@@ -284,7 +284,6 @@ export default function WholesaleRegisterPage() {
                 <Field
                   id="contact_phone"
                   label="Phone"
-                  required
                   value={form.contact_phone}
                   onChange={(v) => update("contact_phone", v)}
                 />
@@ -320,7 +319,8 @@ export default function WholesaleRegisterPage() {
             </div>
 
             <p className="mt-4 text-xs text-sf-forest-deep/50">
-              <span aria-hidden="true">*</span> Required fields.
+              <span aria-hidden="true">*</span> Required: company name, your name,
+              and email. Everything else helps us route your application faster.
             </p>
           </form>
         </div>

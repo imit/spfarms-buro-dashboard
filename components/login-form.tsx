@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, type FormEvent } from "react"
+import Link from "next/link"
 import posthog from "posthog-js"
-import { EyeIcon, EyeOffIcon, MailIcon, XIcon } from "lucide-react"
+import { ArrowRightIcon, EyeIcon, EyeOffIcon, MailIcon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
@@ -134,12 +135,14 @@ export function LoginForm() {
             <Input
               ref={emailRef}
               id="email"
+              name="email"
               type="email"
               placeholder="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={isLoading}
+              autoComplete="email"
               className="h-14 rounded-xl border-0 bg-white text-base px-5 shadow-none"
             />
 
@@ -149,12 +152,14 @@ export function LoginForm() {
                   <Input
                     ref={passwordRef}
                     id="password"
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     disabled={isLoading}
+                    autoComplete="current-password"
                     className="h-14 rounded-xl border-0 bg-white text-base px-5 pr-12 shadow-none"
                   />
                   <button
@@ -194,6 +199,37 @@ export function LoginForm() {
           </>
         )}
       </form>
+
+      {/* New-visitor CTA — outside the form so it doesn't render inside the
+          magic-link success card. Hidden once the user has typed an email
+          they've used before (saved cookie) — at that point they're returning,
+          not net-new. */}
+      {!savedEmail && !success && (
+        <div className="w-full mt-10">
+          <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-[#050403]/40">
+            <span className="h-px flex-1 bg-[#050403]/15" />
+            <span>New here?</span>
+            <span className="h-px flex-1 bg-[#050403]/15" />
+          </div>
+          <Link
+            href="/wholesale/register"
+            onClick={() =>
+              posthog.capture("login_to_wholesale_register_clicked")
+            }
+            className="group mt-4 flex items-center justify-between rounded-xl bg-white/70 hover:bg-white px-5 py-4 transition-colors"
+          >
+            <div className="text-left">
+              <p className="text-sm font-medium text-[#050403]">
+                Apply to be a wholesale partner
+              </p>
+              <p className="text-xs text-[#050403]/60 mt-0.5">
+                Carry SPFarms in your dispensary.
+              </p>
+            </div>
+            <ArrowRightIcon className="size-4 text-[#050403]/50 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+      )}
     </div>
   )
 }
