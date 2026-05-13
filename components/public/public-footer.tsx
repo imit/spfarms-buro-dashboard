@@ -45,9 +45,9 @@ const SOCIAL_LINKS = [
 
 export function PublicFooter() {
   return (
-    <footer className="mt-20">
-      <div className="rounded-t-3xl py-12 px-8" style={{ backgroundColor: "#00602E" }}>
-        <div className="max-w-7xl mx-auto">
+    <footer className="mt-0">
+      <div className="rounded-t-[28px] bg-sf-forest-deep px-6 py-12 md:px-8 md:py-16">
+        <div className="max-w-[1400px] mx-auto">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 mb-12">
             {NAV_SECTIONS.map((section) => (
               <div key={section.title}>

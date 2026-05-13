@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, UsersIcon, Settings2Icon, BoxIcon, UserPlusIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon, FolderIcon, BuildingIcon, ReceiptIcon, FlowerIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, UsersIcon, Settings2Icon, BoxIcon, UserPlusIcon, BellIcon, FlaskConicalIcon, SproutIcon, ShoppingCartIcon, MessageSquareIcon, ImageIcon, TicketIcon, DollarSignIcon, ShieldIcon, StoreIcon, LeafIcon, ShieldAlertIcon, TruckIcon, ActivityIcon, FolderIcon, BuildingIcon, ReceiptIcon, FlowerIcon, MegaphoneIcon, MapPinIcon } from "lucide-react"
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +37,12 @@ const navPeopleCompanies: NavItem[] = [
     title: "Companies",
     url: "/admin/companies",
     icon: <BuildingIcon className="text-blue-500" />,
+    resource: "companies",
+  },
+  {
+    title: "Stockists",
+    url: "/admin/stockists",
+    icon: <MapPinIcon className="text-rose-500" />,
     resource: "companies",
   },
   {
@@ -217,6 +223,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }
   if (canAccess("notifications", role)) {
     workspaceItems.push({ title: "Notifications", url: "/admin/notifications", icon: <BellIcon className="text-amber-500" /> })
+  }
+  if (canAccess("broadcasts", role)) {
+    workspaceItems.push({ title: "Broadcasts", url: "/admin/broadcasts", icon: <MegaphoneIcon className="text-lime-600" /> })
   }
   if (canAccess("support_tickets", role)) {
     workspaceItems.push({ title: "Support Tickets", url: "/admin/support-tickets", icon: <TicketIcon className="text-violet-500" /> })

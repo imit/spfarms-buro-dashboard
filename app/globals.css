@@ -7,8 +7,26 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Circular Std", var(--font-work-sans), sans-serif;
-  --font-mono: var(--font-ibm-plex-mono);
+  --font-sans: "Circular Std", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Suisse Intl Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: "Circular Std", ui-sans-serif, system-ui, sans-serif;
+
+  /* ============================================================
+     STOREFRONT (PUBLIC SITE) DESIGN TOKENS
+     Use these via Tailwind:  bg-sf-cream, text-sf-forest, etc.
+     Or via CSS:              var(--sf-cream)
+     ============================================================ */
+  --color-sf-cream: var(--sf-cream);
+  --color-sf-cream-soft: var(--sf-cream-soft);
+  --color-sf-cream-deep: var(--sf-cream-deep);
+  --color-sf-lime: var(--sf-lime);
+  --color-sf-lime-dark: var(--sf-lime-dark);
+  --color-sf-forest: var(--sf-forest);
+  --color-sf-forest-deep: var(--sf-forest-deep);
+  --color-sf-orange: var(--sf-orange);
+  --color-sf-orange-deep: var(--sf-orange-deep);
+  --color-sf-ink: var(--sf-ink);
+  --color-sf-sky: var(--sf-sky);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,6 +66,23 @@
 }
 
 :root {
+  /* ---- Storefront palette (the public site) ----
+     Minimalist neutral system: off-white base, charcoal text/primary,
+     stone secondary, lime accent. Forest tokens are kept as aliases
+     onto the charcoal so legacy class usages (text-sf-forest-deep,
+     bg-sf-forest-deep CTAs) carry the new palette without rewrites. */
+  --sf-cream: #F7F7F4;          /* page background */
+  --sf-cream-soft: #F0EFEC;     /* slightly inset card surface */
+  --sf-cream-deep: #E6E5E1;     /* secondary button bg / hairline borders */
+  --sf-lime: #C8E62F;           /* accent button / marquee */
+  --sf-lime-dark: #B7D425;      /* accent hover */
+  --sf-forest: #26251E;         /* alias → ink (legacy text token) */
+  --sf-forest-deep: #26251E;    /* alias → ink (primary text + primary button bg) */
+  --sf-orange: #F95624;         /* flower / product accent */
+  --sf-orange-deep: #D9421A;    /* hover */
+  --sf-ink: #26251E;            /* charcoal — body text + primary button */
+  --sf-sky: #BCDFF1;            /* hero image surround */
+
   --background: #fff;
   --foreground: oklch(0.13 0.028 261.692);
   --card: #fff;
@@ -140,10 +175,21 @@
   font-display: swap;
 }
 
+/* Suisse Intl Mono — drop the woff2 files into /public/fonts/.
+   Until they're present, the stack falls back to system mono (ui-monospace). */
 @font-face {
-  font-family: "Sardin";
-  src: url("/fonts/Sardin.otf") format("opentype");
+  font-family: "Suisse Intl Mono";
+  src: url("/fonts/SuisseIntlMono-Regular.woff2") format("woff2"),
+       url("/fonts/SuisseIntlMono-Regular.woff") format("woff");
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Suisse Intl Mono";
+  src: url("/fonts/SuisseIntlMono-Bold.woff2") format("woff2"),
+       url("/fonts/SuisseIntlMono-Bold.woff") format("woff");
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
@@ -152,6 +198,18 @@
   0% { transform: translateX(-100%); }
   15% { transform: translateX(100%); }
   100% { transform: translateX(100%); }
+}
+
+/* Storefront marquee — looping ticker bar */
+@keyframes sf-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.sf-marquee-track {
+  animation: sf-marquee var(--sf-marquee-duration, 40s) linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-marquee-track { animation: none; }
 }
 
 @layer base {

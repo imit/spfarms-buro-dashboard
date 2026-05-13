@@ -191,6 +191,37 @@ export interface CompanyReferrer {
   email: string;
 }
 
+/**
+ * Stockist — a Location flagged for the public Find Us map. Backed by
+ * /api/v1/public/stockists (read-only) and /api/v1/admin/stockists (manage).
+ *
+ * The admin response includes the extra `public_listing_*` fields and
+ * `orders_count` (anything past the basic ones is admin-only).
+ */
+export type StockistSource = "manual" | "auto_from_order";
+
+export interface Stockist {
+  id: number;
+  name: string;
+  company_id: number;
+  company_name: string;
+  company_slug: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  region: string | null;
+  phone_number: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  website: string | null;
+  // Admin-only — present when fetched via getAdminStockists().
+  public_listing?: boolean;
+  public_listing_source?: StockistSource;
+  public_listing_added_at?: string | null;
+  orders_count?: number;
+}
+
 export interface Company {
   id: number;
   name: string;
@@ -313,6 +344,7 @@ export interface Strain {
   smell_tags: string[];
   effect_tags: string[];
   active: boolean;
+  featured: boolean;
   image_url: string | null;
   title_image_url: string | null;
   coas_count: number;
@@ -2343,6 +2375,33 @@ export interface UpdatePostParams {
   notify?: boolean;
 }
 
+export interface Broadcast {
+  id: number;
+  subject: string;
+  body: string;
+  cta_text: string | null;
+  cta_url: string | null;
+  recipient_count: number | null;
+  sent: boolean;
+  sent_at: string | null;
+  sent_by: { id: number; name: string } | null;
+  created_at: string;
+}
+
+export interface CreateBroadcastParams {
+  subject: string;
+  body: string;
+  cta_text?: string | null;
+  cta_url?: string | null;
+}
+
+export const BROADCAST_SHORTCODES: Array<{ code: string; description: string }> = [
+  { code: "{{magic_link}}", description: "One-click login link (lands the recipient on their storefront)" },
+  { code: "{{storefront_url}}", description: "Storefront URL without auto-login" },
+  { code: "{{first_name}}", description: "Recipient's first name" },
+  { code: "{{company_name}}", description: "Recipient's company name" },
+];
+
 export class ApiClient {
   private baseUrl: string;
 
@@ -2803,6 +2862,21 @@ export class ApiClient {
         method: "PATCH",
         body: formData,
       }
+    );
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  /** Patch a single strain field (e.g. `featured`) — JSON, no multipart. */
+  async patchStrain(
+    id: number,
+    attrs: Partial<Pick<Strain, "featured" | "active">>,
+  ): Promise<Strain> {
+    const res = await this.request<JsonApiResponse<Strain>>(
+      `/api/v1/strains/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ strain: attrs }),
+      },
     );
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
@@ -5073,8 +5147,89 @@ export class ApiClient {
     return { ...res.data.attributes, id: Number(res.data.id) };
   }
 
-  async getPublicStrains(): Promise<Strain[]> {
-    const res = await this.request<JsonApiCollectionResponse<Strain>>("/api/v1/public/strains");
+  // ---- Stockists (public Find Us map) ----
+
+  async getPublicStockists(): Promise<Stockist[]> {
+    const res = await this.request<JsonApiCollectionResponse<Stockist>>("/api/v1/public/stockists");
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async getAdminStockists(filters?: {
+    visibility?: "visible" | "hidden" | "all";
+    source?: "manual" | "auto_from_order" | "all";
+    q?: string;
+  }): Promise<Stockist[]> {
+    const qs = new URLSearchParams();
+    if (filters?.visibility && filters.visibility !== "all") qs.set("visibility", filters.visibility);
+    if (filters?.source && filters.source !== "all") qs.set("source", filters.source);
+    if (filters?.q) qs.set("q", filters.q);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    const res = await this.request<JsonApiCollectionResponse<Stockist>>(
+      `/api/v1/admin/stockists${suffix}`,
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  /**
+   * Feature an existing Company on the public Find Us map. Promotes every
+   * location of the company to public_listing: true (source: manual).
+   * Returns the affected stockists. Idempotent — already-listed locations
+   * pass through unchanged.
+   *
+   * To add a Company that doesn't exist yet, use the Companies admin page
+   * first; then come back here to feature it.
+   */
+  async createStockist(payload: { company_id: number }): Promise<Stockist[]> {
+    const res = await this.request<JsonApiCollectionResponse<Stockist>>(
+      "/api/v1/admin/stockists",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
+    return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
+  }
+
+  async updateStockist(
+    id: number,
+    payload: Partial<{
+      public_listing: boolean;
+      name: string;
+      address: string;
+      city: string;
+      state: string;
+      zip_code: string;
+      region: string;
+      phone_number: string;
+      latitude: number;
+      longitude: number;
+    }>,
+  ): Promise<Stockist> {
+    const res = await this.request<JsonApiResponse<Stockist>>(`/api/v1/admin/stockists/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    return { ...res.data.attributes, id: Number(res.data.id) };
+  }
+
+  async deleteStockist(id: number): Promise<void> {
+    await this.request(`/api/v1/admin/stockists/${id}`, { method: "DELETE" });
+  }
+
+  /**
+   * Public strain catalog.
+   *
+   * @param opts.featured  When true, only returns strains an admin has
+   *   toggled "On Website" — used by the public /strains page and the
+   *   homepage showcase. Default (omitted) returns the full catalog,
+   *   which is what wholesale/bulk/product-storefront pages need to
+   *   resolve product → strain lookups.
+   */
+  async getPublicStrains(opts: { featured?: boolean } = {}): Promise<Strain[]> {
+    const url = opts.featured
+      ? "/api/v1/public/strains?featured=true"
+      : "/api/v1/public/strains";
+    const res = await this.request<JsonApiCollectionResponse<Strain>>(url);
     return res.data.map((d) => ({ ...d.attributes, id: Number(d.id) }));
   }
 
@@ -5987,6 +6142,40 @@ export class ApiClient {
       { method: "POST", body: JSON.stringify(params) }
     );
     return res.data;
+  }
+
+  // Broadcasts (newsletter / promotional emails via Postmark broadcast stream)
+
+  async getBroadcasts(): Promise<Broadcast[]> {
+    const res = await this.request<{ data: Broadcast[] }>("/api/v1/broadcasts");
+    return res.data;
+  }
+
+  async getBroadcast(id: number): Promise<Broadcast> {
+    const res = await this.request<{ data: Broadcast }>(`/api/v1/broadcasts/${id}`);
+    return res.data;
+  }
+
+  async createBroadcast(params: CreateBroadcastParams): Promise<Broadcast> {
+    const res = await this.request<{ data: Broadcast }>("/api/v1/broadcasts", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+    return res.data;
+  }
+
+  async sendBroadcastTest(id: number): Promise<{ message: string }> {
+    return await this.request<{ message: string }>(
+      `/api/v1/broadcasts/${id}/send_test`,
+      { method: "POST" }
+    );
+  }
+
+  async sendBroadcast(id: number): Promise<{ data: Broadcast; message: string }> {
+    return await this.request<{ data: Broadcast; message: string }>(
+      `/api/v1/broadcasts/${id}/send_broadcast`,
+      { method: "POST" }
+    );
   }
 }
 

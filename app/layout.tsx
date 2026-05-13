@@ -1,20 +1,18 @@
 import type { Metadata } from "next";
-import { Work_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/auth-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { Toaster } from "sonner";
-const workSans = Work_Sans({
-  variable: "--font-work-sans",
-  subsets: ["latin"],
-});
 
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-ibm-plex-mono",
-  weight: ["400", "500", "600"],
-  subsets: ["latin"],
-});
+/**
+ * Site fonts:
+ *   Circular Std    — body + display (loaded via @font-face in globals.css)
+ *   Suisse Intl Mono — mono labels (loaded via @font-face in globals.css)
+ *
+ * Both font stacks fall back to system fonts gracefully if the files aren't
+ * present in /public/fonts. No Google Fonts download.
+ */
 
 export const metadata: Metadata = {
   title: {
@@ -32,9 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${workSans.className} ${ibmPlexMono.variable} antialiased`}
-      >
+      <body className="font-sans antialiased">
         <TooltipProvider>
           <AuthProvider>
             <ImpersonationBanner />

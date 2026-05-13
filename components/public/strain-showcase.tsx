@@ -2,40 +2,56 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRightIcon } from "lucide-react";
 import { apiClient, type Strain, CATEGORY_LABELS } from "@/lib/api";
+import { FlowerShape, MetaText } from "./style";
+import { cn } from "@/lib/utils";
 
+/**
+ * Browse-our-strains horizontal-scrollable gallery (cream aesthetic).
+ *
+ * Each card stacks:
+ *   1. Pill chip with category (Hybrid / Sativa / Indica) — top-left
+ *   2. Orange 5-petal "flower" silhouette
+ *   3. Strain name in deep forest, drawn over the flower
+ *   4. Mono THC/CBG line at the bottom
+ *
+ * Layout uses a CSS-snap horizontal scroller on small screens and a 4-up grid
+ * on desktop, matching the sketch where you can peek into the next card.
+ */
 export function StrainShowcase() {
   const [strains, setStrains] = useState<Strain[]>([]);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await apiClient.getPublicStrains();
-        setStrains(data.filter((s) => s.active && s.image_url));
-      } catch {
-        // Silently fail
-      }
-    }
-    load();
+    apiClient
+      .getPublicStrains({ featured: true })
+      .then((data) => setStrains(data.filter((s) => s.active)))
+      .catch(() => {});
   }, []);
 
   if (strains.length === 0) return null;
 
   return (
-    <section className="px-6 lg:px-10 py-20 lg:py-28 max-w-7xl mx-auto">
-      <div className="flex items-baseline gap-4 mb-12">
-        <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-          Our Strains
+    <section className="py-12 md:py-20">
+      {/* Header row */}
+      <div className="mx-auto flex max-w-[1400px] items-baseline justify-between px-5 pb-6 md:px-8 md:pb-10">
+        <h2 className="text-[42px] font-bold leading-[1.05] tracking-tight text-sf-forest-deep">
+          browse our strains
         </h2>
-        <span className="font-mono text-xs text-foreground/30 tabular-nums">
-          ({strains.length})
-        </span>
+        <Link
+          href="/strains"
+          className="font-bold text-sf-forest hover:text-sf-forest-deep transition-colors"
+        >
+          See all
+        </Link>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {strains.map((strain) => (
-          <StrainCard key={strain.id} strain={strain} />
-        ))}
+
+      {/* Horizontal scroller */}
+      <div className="overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mx-auto flex max-w-[1400px] gap-4 px-5 md:px-8">
+          {strains.map((strain) => (
+            <StrainCard key={strain.id} strain={strain} />
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -49,54 +65,59 @@ function StrainCard({ strain }: { strain: Strain }) {
   return (
     <Link
       href={`/strains/${strain.slug || strain.id}`}
-      className="group relative rounded-3xl bg-white overflow-hidden transition-shadow hover:shadow-lg"
+      className="group relative flex w-[260px] shrink-0 snap-start flex-col overflow-hidden rounded-[24px] bg-sf-cream-soft transition-shadow hover:shadow-md md:w-[300px]"
     >
-      {/* Top row: category + arrow */}
-      <div className="flex items-start justify-between p-5 pb-0">
+      {/* Top: category chip */}
+      <div className="flex items-center justify-between px-4 pt-4">
         {category && (
-          <span className="text-sm font-medium opacity-70">{category}</span>
-        )}
-        <div className="size-9 rounded-full border border-current/10 flex items-center justify-center opacity-50 group-hover:opacity-100 transition-opacity ml-auto">
-          <ArrowUpRightIcon className="size-4" />
-        </div>
-      </div>
-
-      {/* Bud image */}
-      <div className="flex items-center justify-center px-8 py-4">
-        <img
-          src={strain.image_url!}
-          alt={strain.name}
-          className="h-[220px] w-auto object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-500"
-        />
-      </div>
-
-      {/* Title image or text name */}
-      <div className="px-5 pb-2">
-        {strain.title_image_url ? (
-          <img
-            src={strain.title_image_url}
-            alt={strain.name}
-            className="h-16 md:h-20 w-auto object-contain"
-          />
-        ) : (
-          <h3 className="text-3xl md:text-4xl font-black leading-none">
-            {strain.name}
-          </h3>
+          <span className="rounded-full bg-sf-cream px-3 py-1 text-xs font-semibold text-sf-forest-deep">
+            {category}
+          </span>
         )}
       </div>
 
-      {/* Cannabinoid stats */}
+      {/* Flower-mask + image + name overlay */}
+      <div className="relative aspect-square">
+        <FlowerShape color="orange" className="absolute inset-4">
+          {strain.image_url ? (
+            <img
+              src={strain.image_url}
+              alt={strain.name}
+              className="absolute inset-0 m-auto h-[80%] w-[80%] object-contain transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : null}
+        </FlowerShape>
+
+        {/* Strain name overlaid across the flower */}
+        <h3
+          className={cn(
+            "absolute inset-x-0 top-1/2 -translate-y-1/2 text-center font-display italic",
+            "text-3xl md:text-4xl text-sf-forest-deep px-4 leading-[0.9]",
+            "drop-shadow-[0_1px_0_rgba(255,255,255,0.5)]",
+          )}
+        >
+          {strain.name}
+        </h3>
+      </div>
+
+      {/* Bottom: cannabinoid stats */}
       {(thc || cbg) && (
-        <div className="flex items-center gap-3 px-5 pb-5 pt-2 font-mono text-xs text-foreground/50">
+        <div className="flex items-center gap-4 border-t border-sf-cream-deep/60 px-4 py-3">
           {thc && (
-            <span>
-              THC <span className="font-semibold text-foreground/80 tabular-nums">{parseFloat(thc).toFixed(1)}%</span>
-            </span>
+            <MetaText size="xs" className="tracking-widest! text-sf-forest-deep/70">
+              THC{" "}
+              <span className="font-semibold text-sf-forest-deep">
+                {parseFloat(thc).toFixed(0)}%
+              </span>
+            </MetaText>
           )}
           {cbg && (
-            <span>
-              CBG <span className="font-semibold text-foreground/80 tabular-nums">{parseFloat(cbg).toFixed(1)}%</span>
-            </span>
+            <MetaText size="xs" className="tracking-widest! text-sf-forest-deep/70">
+              CBG{" "}
+              <span className="font-semibold text-sf-forest-deep">
+                {parseFloat(cbg).toFixed(0)}%
+              </span>
+            </MetaText>
           )}
         </div>
       )}

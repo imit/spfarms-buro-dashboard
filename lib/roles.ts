@@ -18,6 +18,7 @@ export type Resource =
   | "carts"
   | "products"
   | "notifications"
+  | "broadcasts"
   | "quick_onboard"
   | "settings"
   | "gallery"
@@ -47,6 +48,7 @@ export const ROLE_ACCESS: RoleAccessMap = {
   carts:         { admin: "full", observer_admin: "read", editor: "full", account: "send_only" },
   products:      { admin: "full", observer_admin: "read", editor: "full_no_delete", account: "read" },
   notifications: { admin: "full", observer_admin: "read", editor: "full", sales: "send_only", account: "read" },
+  broadcasts:    { admin: "full", observer_admin: "read", editor: "full" },
   quick_onboard: { admin: "full", editor: "full", sales: "full" },
   settings:      { admin: "full", observer_admin: "read", account: "read" },
   gallery:       { admin: "full", observer_admin: "read", editor: "full", cultivator: "read", processing: "read", sales: "read" },

@@ -12,8 +12,12 @@ export default function StrainsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const data = await apiClient.getPublicStrains();
-        setStrains(data.filter((s) => s.active && s.image_url));
+        // Only the admin-curated set ("On Website" toggle in /admin/strains).
+        // The image_url filter is a belt-and-suspenders guard: the admin
+        // Switch is already disabled when no image is attached, but this
+        // protects against stale state on the card layout.
+        const data = await apiClient.getPublicStrains({ featured: true });
+        setStrains(data.filter((s) => s.image_url));
       } catch {
         // Silently fail
       } finally {
