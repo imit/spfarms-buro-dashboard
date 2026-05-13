@@ -12,15 +12,21 @@ import { SUPPORT_EMAIL } from "@/lib/errors"
 
 type LoginMode = "password" | "magic_link"
 
-function getSavedEmail(): string {
+function readSavedEmailCookie(): string {
   if (typeof document === "undefined") return "";
   const match = document.cookie.match(/(?:^|; )spf_email=([^;]*)/);
   return match ? decodeURIComponent(match[1]) : "";
 }
 
 export function LoginForm() {
-  const savedEmail = getSavedEmail()
-  const [email, setEmail] = useState(savedEmail)
+  // `savedEmail` MUST be state, not a value computed during render. Reading
+  // `document.cookie` directly in the render body produces different output
+  // on the server (no document → "") vs the client (cookie present), which
+  // crashes React 19 with a hydration mismatch. We initialize empty and
+  // populate from the cookie in the mount effect — first paint matches
+  // server, post-hydration the form upgrades to "welcome back" mode.
+  const [savedEmail, setSavedEmail] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
@@ -35,6 +41,11 @@ export function LoginForm() {
 
   useEffect(() => {
     setMounted(true)
+    const saved = readSavedEmailCookie()
+    if (saved) {
+      setSavedEmail(saved)
+      setEmail(saved)
+    }
   }, [])
 
   // Auto-focus: password if in password mode with saved email, email otherwise
@@ -200,11 +211,12 @@ export function LoginForm() {
         )}
       </form>
 
-      {/* New-visitor CTA — outside the form so it doesn't render inside the
-          magic-link success card. Hidden once the user has typed an email
-          they've used before (saved cookie) — at that point they're returning,
-          not net-new. */}
-      {!savedEmail && !success && (
+      {/* Wholesale registration CTA — always shown alongside login (except
+          inside the magic-link success card, which is its own focused state).
+          The previous `!savedEmail` gate was wrong: the `spf_email` cookie
+          stores the last email typed, not whether the user has an account,
+          so a returning visitor with no SPFarms account would never see it. */}
+      {!success && (
         <div className="w-full mt-10">
           <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-[#050403]/40">
             <span className="h-px flex-1 bg-[#050403]/15" />
