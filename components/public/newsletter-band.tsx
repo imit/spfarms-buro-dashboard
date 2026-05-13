@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { ArrowRightIcon } from "lucide-react";
 import confetti from "canvas-confetti";
+import posthog from "posthog-js";
 import { MetaText } from "./style";
 import { apiClient } from "@/lib/api";
 
@@ -75,18 +76,21 @@ export function NewsletterBand() {
     if (!trimmed) return;
     setStatus("submitting");
     setErrorMessage(null);
+    posthog.capture("newsletter_submitted", { source: "homepage" });
     try {
       await apiClient.subscribeToNewsletter({ email: trimmed, source: "homepage" });
+      posthog.capture("newsletter_subscribed", { source: "homepage" });
       setStatus("ok");
       setEmail("");
       // Celebrate — confetti burst originating from the submit button.
       const rect = submitButtonRef.current?.getBoundingClientRect();
       if (rect) fireSubscribeConfetti(rect);
     } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Something went wrong, try again.";
+      posthog.capture("newsletter_failed", { source: "homepage", error: message });
       setStatus("error");
-      setErrorMessage(
-        err instanceof Error ? err.message : "Something went wrong, try again.",
-      );
+      setErrorMessage(message);
     }
   }
 

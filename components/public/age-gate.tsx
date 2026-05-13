@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import posthog from "posthog-js";
 import { MetaText, FlowerPath } from "./style";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ export function AgeGate({ initiallyVerified }: { initiallyVerified: boolean }) {
   // mismatch). We never *re-open* once dismissed in this session, even if the
   // cookie expires mid-visit.
   const [open, setOpen] = useState(!initiallyVerified);
+  const shownAtRef = useRef<number | null>(null);
 
   // Lock background scroll while the modal is up.
   useEffect(() => {
@@ -45,12 +47,29 @@ export function AgeGate({ initiallyVerified }: { initiallyVerified: boolean }) {
     };
   }, [open]);
 
+  // Fire `age_gate_shown` once when the modal becomes visible.
+  // Skipped entirely for returning visitors with the cookie set (SSR
+  // initiallyVerified=true), which is what we want.
+  useEffect(() => {
+    if (!open || shownAtRef.current != null) return;
+    shownAtRef.current = Date.now();
+    posthog.capture("age_gate_shown");
+  }, [open]);
+
   function onYes() {
+    posthog.capture("age_gate_accepted", {
+      time_to_decide_ms:
+        shownAtRef.current != null ? Date.now() - shownAtRef.current : null,
+    });
     setVerifiedCookie();
     setOpen(false);
   }
 
   function onNo() {
+    posthog.capture("age_gate_rejected", {
+      time_to_decide_ms:
+        shownAtRef.current != null ? Date.now() - shownAtRef.current : null,
+    });
     window.location.href = EXIT_URL;
   }
 

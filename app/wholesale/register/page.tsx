@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { apiClient } from "@/lib/api";
 import { PublicHeader } from "@/components/public/public-header";
 import { PublicFooter } from "@/components/public/public-footer";
@@ -43,13 +44,53 @@ export default function WholesaleRegisterPage() {
     contact_title: "",
   });
 
-  const update = (field: string, value: string) =>
+  // Funnel tracking. We fire `wholesale_register_viewed` once on mount
+  // and `wholesale_register_started` the first time the visitor touches
+  // any field — this distinguishes "QR scanners who bounced before
+  // typing" from "QR scanners who got into the form but didn't submit."
+  const viewedRef = useRef(false);
+  const startedRef = useRef(false);
+  const formStartTime = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (viewedRef.current) return;
+    viewedRef.current = true;
+    posthog.capture("wholesale_register_viewed");
+  }, []);
+
+  const update = (field: string, value: string) => {
+    if (!startedRef.current && value.length > 0) {
+      startedRef.current = true;
+      formStartTime.current = Date.now();
+      posthog.capture("wholesale_register_started", { first_field: field });
+    }
     setForm((f) => ({ ...f, [field]: value }));
+  };
+
+  /** Field-count + has_* flags for analytics. Never sends raw values. */
+  function formMetrics() {
+    const entries = Object.entries(form);
+    const filled = entries.filter(([, v]) => v.trim().length > 0).map(([k]) => k);
+    return {
+      fields_filled_count: filled.length,
+      has_company_email: !!form.company_email,
+      has_company_phone: !!form.company_phone,
+      has_company_website: !!form.company_website,
+      has_license_number: !!form.license_number,
+      has_address: !!form.address,
+      has_contact_title: !!form.contact_title,
+      time_to_submit_ms:
+        formStartTime.current != null ? Date.now() - formStartTime.current : null,
+    };
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
     setError("");
+
+    const metrics = formMetrics();
+    posthog.capture("wholesale_register_submitted", metrics);
 
     try {
       await apiClient.registerPartnership({
@@ -75,11 +116,13 @@ export default function WholesaleRegisterPage() {
           title: form.contact_title || undefined,
         },
       });
+      posthog.capture("wholesale_register_succeeded", metrics);
       setIsSuccess(true);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Registration failed. Please try again.",
-      );
+      const message =
+        err instanceof Error ? err.message : "Registration failed. Please try again.";
+      posthog.capture("wholesale_register_failed", { ...metrics, error: message });
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
