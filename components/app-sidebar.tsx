@@ -209,9 +209,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const showQuickOnboard = canAccess("quick_onboard", role)
 
   // Top-level items
-  const topItems: NavItem[] = [
-    { title: "Dashboard", url: "/admin", icon: <LayoutDashboardIcon className="text-blue-600" /> },
-  ]
+  const topItems: NavItem[] = []
+  if (canAccess("dashboard", role)) {
+    topItems.push({ title: "Dashboard", url: "/admin", icon: <LayoutDashboardIcon className="text-blue-600" /> })
+  }
   if (canAccess("root_dashboard", role)) {
     topItems.push({ title: "Root Dashboard", url: "/admin/root", icon: <ShieldIcon className="text-red-600" /> })
   }

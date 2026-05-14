@@ -26,7 +26,8 @@ export type UserRole =
   | "processing"
   | "delivery"
   | "default"
-  | "user";
+  | "user"
+  | "m_sale";
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Admin",
@@ -39,6 +40,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   account: "Account",
   default: "Default",
   user: "User",
+  m_sale: "M-Sale",
 };
 
 export interface UserCompanyMembership {

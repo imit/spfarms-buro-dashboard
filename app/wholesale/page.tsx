@@ -1,29 +1,52 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { apiClient, type Product, type Strain } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
+import { preferredCompanySlug } from "@/lib/active-company";
+import { PublicHeader } from "@/components/public/public-header";
+import { PublicFooter } from "@/components/public/public-footer";
 import { PublicProductCard } from "@/components/storefront/public-product-card";
-import { PandaSymbol } from "@/components/shared/panda-symbol";
-import { Logo } from "@/components/shared/logo";
-import { Button } from "@/components/ui/button";
-import { UserPlusIcon, PhoneIcon, MailIcon, MapPinIcon } from "lucide-react";
+import { Marquee, MetaText, SectionLabel } from "@/components/public/style";
 
+/**
+ * Public wholesale landing page.
+ *
+ * Re-skinned to match the cream/lime/forest design system used by the rest of
+ * the marketing site (home, /strains, /about, /wholesale/register). Sections
+ * top-to-bottom:
+ *
+ *   1. PublicHeader — same nav as the rest of the public site
+ *   2. Hero — section eyebrow + italic-emphasis headline + intro + dual CTA
+ *   3. Marquee — looping lime ticker of brand values (matches home page)
+ *   4. Value-prop trio — what dispensaries get when they partner with us
+ *   5. Product menu — current strains, no pricing (gated until verified)
+ *   6. Closing lime callout — final apply CTA
+ *   7. PublicFooter — full forest-deep footer with nav + social
+ *
+ * Authenticated `account` users are redirected straight to their storefront
+ * via {@link preferredCompanySlug} so multi-membership users land on the
+ * dispensary they last worked in.
+ */
 export default function WholesalePage() {
   const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [strainMap, setStrainMap] = useState<Record<number, Strain>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [bulkPhone, setBulkPhone] = useState("");
 
-  // If user is already authenticated as account, redirect to their storefront
+  // Authenticated account users skip the marketing — straight to their
+  // dashboard. Uses preferredCompanySlug so multi-membership users land on
+  // their last-active dispensary, not the oldest membership.
   useEffect(() => {
-    if (isAuthenticated && user) {
-      if (user.role === "account" && user.companies?.length > 0) {
-        router.push(`/${user.companies[0].slug}/storefront`);
-      }
-    }
+    if (!isAuthenticated || !user) return;
+    if (user.role !== "account") return;
+    const slug = preferredCompanySlug(user);
+    if (slug) router.push(`/${slug}/storefront`);
   }, [isAuthenticated, user, router]);
 
   useEffect(() => {
@@ -34,7 +57,6 @@ export default function WholesalePage() {
           apiClient.getPublicStrains(),
         ]);
         setProducts(productData.filter((p) => p.product_type !== "bulk_flower"));
-
         const map: Record<number, Strain> = {};
         for (const strain of strains) {
           map[strain.id] = strain;
@@ -46,116 +68,148 @@ export default function WholesalePage() {
         setIsLoading(false);
       }
     }
-
     load();
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen">
-        <div className="flex-1 flex items-center justify-center px-8">
-          <p style={{ color: "#050403", opacity: 0.5 }}>Loading products...</p>
-        </div>
-        <div className="hidden lg:flex flex-1 items-center justify-center">
-          <PandaSymbol />
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    apiClient.getPublicSettings()
+      .then((s) => setBulkPhone(s.bulk_sales_phone || ""))
+      .catch((err) => console.error("Failed to load public settings:", err));
+  }, []);
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b">
-        <div className="mx-auto max-w-7xl flex items-center justify-between px-4 py-4 sm:px-8">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <div className="w-32">
-                <Logo />
-              </div>
-              <span className="text-lg font-semibold text-muted-foreground">Wholesale</span>
+    <div className="min-h-screen flex flex-col bg-sf-cream text-sf-forest-deep">
+      <PublicHeader />
+
+      <main className="flex-1">
+        {/* ── Hero ─────────────────────────────────────────────────────── */}
+        <section className="px-4 pt-10 pb-8 md:px-8 md:pt-20 md:pb-12">
+          <div className="mx-auto max-w-[1400px]">
+           
+
+            <div className="mt-8 flex flex-wrap items-center gap-6 md:mt-10">
+              <PrimaryCTA href="/wholesale/register" label="Apply to be a partner" />
+              <Link
+                href="/login"
+                className="text-sm font-medium text-sf-forest-deep/70 underline underline-offset-4 hover:text-sf-forest-deep"
+              >
+                Already a partner? Log in →
+              </Link>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Indoor, live-soil, craft cannabis products for licensed dispensaries
-            </p>
           </div>
-          <Button onClick={() => router.push("/wholesale/register")}>
-            <UserPlusIcon className="mr-2 size-4" />
-            Become a Partner
-          </Button>
-        </div>
-      </header>
+        </section>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8">
-        {products.length === 0 ? (
-          <p style={{ opacity: 0.5 }}>No products available.</p>
-        ) : (
-          <div className="space-y-2">
-            {products.map((product) => (
-              <PublicProductCard
-                key={product.id}
-                product={product}
-                strain={product.strain_id ? strainMap[product.strain_id] : undefined}
-                onRegister={() => router.push("/wholesale/register")}
-                showPrice={false}
-              />
-            ))}
-          </div>
-        )}
+       
 
-        {products.length > 0 && (
-          <div className="mt-12 rounded-lg border bg-card p-8 text-center">
-            <h2 className="text-xl font-bold mb-2">Ready to order?</h2>
-            <p className="text-muted-foreground mb-4">
-              Register as a wholesale partner to access pricing, place orders, and download COAs.
-            </p>
-            <Button size="lg" onClick={() => router.push("/wholesale/register")}>
-              <UserPlusIcon className="mr-2 size-4" />
-              Register Your Dispensary
-            </Button>
+        {/* ── Current menu ────────────────────────────────────────────── */}
+        <section className="px-4 pb-12 md:px-8 md:pb-20" id="menu">
+          <div className="mx-auto max-w-[1400px]">
+            <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <SectionLabel>current menu</SectionLabel>
+                <h2 className="mt-3 text-[32px] font-bold leading-[1.05] tracking-tight md:text-[42px]">
+                  What we&rsquo;re growing.
+                </h2>
+              </div>
+              <p className="max-w-md text-sm text-sf-forest-deep/70 md:text-right">
+                Pricing and COAs unlock once you&rsquo;re verified.
+              </p>
+            </div>
+
+            {isLoading ? (
+              <MenuPlaceholder>Loading menu…</MenuPlaceholder>
+            ) : products.length === 0 ? (
+              <MenuPlaceholder>
+                No products available right now. Check back soon.
+              </MenuPlaceholder>
+            ) : (
+              <div className="space-y-2">
+                {products.map((product) => (
+                  <PublicProductCard
+                    key={product.id}
+                    product={product}
+                    strain={
+                      product.strain_id ? strainMap[product.strain_id] : undefined
+                    }
+                    onRegister={() => router.push("/wholesale/register")}
+                    showPrice={false}
+                  />
+                ))}
+              </div>
+            )}
           </div>
+        </section>
+
+        {/* ── Closing CTA ─────────────────────────────────────────────── */}
+        {!isLoading && products.length > 0 && (
+          <section className="px-4 pb-16 md:px-8 md:pb-24">
+            <div className="mx-auto max-w-[1400px]">
+              <div className="rounded-[28px] bg-sf-lime p-8 text-center md:rounded-[40px] md:p-16">
+                <SectionLabel className="text-sf-forest-deep">
+                  ready to order?
+                </SectionLabel>
+                <h2 className="mt-4 text-[32px] font-bold leading-[1.05] tracking-tight text-sf-forest-deep md:text-[52px]">
+                  Let&rsquo;s <span className="italic font-bold">work</span> together.
+                </h2>
+               
+                <div className="mt-8 flex justify-center md:mt-10">
+                  <PrimaryCTA href="/wholesale/register" label="Apply now" />
+                </div>
+              </div>
+            </div>
+          </section>
         )}
+        <section className="px-4 pb-12 md:px-8 md:pb-16">
+          <div className="mx-auto max-w-[1400px]">
+            <div className="rounded-[20px] bg-sf-forest-deep px-6 py-5 text-center text-sf-cream md:rounded-[24px] md:px-10 md:py-6">
+              <p className="text-base md:text-lg">
+                For bulk deals, call{" "}
+                <a href={`tel:${bulkPhone.replace(/[^\d+]/g, "")}`} className="font-bold underline underline-offset-4">
+                  {bulkPhone || "—"}
+                </a>
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="border-t mt-12 bg-muted/30">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-8">
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-3">
-              <div className="w-28">
-                <Logo />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Indoor, live-soil, craft cannabis grown in New York for licensed dispensaries.
-              </p>
-            </div>
+      <PublicFooter />
+    </div>
+  );
+}
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Contact Us</h3>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <a href="tel:+18187906988" className="flex items-center gap-2 hover:text-foreground transition-colors">
-                  <PhoneIcon className="size-4 shrink-0" />
-                  (917) 254-7061
-                </a>
-                <a href="mailto:info@spfarmsny.com" className="flex items-center gap-2 hover:text-foreground transition-colors">
-                  <MailIcon className="size-4 shrink-0" />
-                  info@spfarmsny.com
-                </a>
-              </div>
-            </div>
+/* ───────────────────────────────────────────────────────────────────────── */
+/*  Local primitives                                                          */
+/* ───────────────────────────────────────────────────────────────────────── */
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Location</h3>
-              <p className="flex items-start gap-2 text-sm text-muted-foreground">
-                <MapPinIcon className="size-4 shrink-0 mt-0.5" />
-                New York
-              </p>
-            </div>
-          </div>
+/** Pill-style primary CTA with the design system's signature cursor.png hover.
+ *  Mirrors the pattern used on the dual-callout cards on the home page. */
+function PrimaryCTA({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href} className="group inline-flex items-center gap-3">
+      <span className="inline-flex h-12 items-center justify-center rounded-md bg-sf-ink px-8 text-sf-cream transition-colors hover:bg-sf-forest-deep">
+        <MetaText size="sm" className="text-sf-cream">
+          {label}
+        </MetaText>
+      </span>
+      <Image
+        src="/assets/cursor.png"
+        alt=""
+        width={28}
+        height={28}
+        aria-hidden="true"
+        className="size-3.5 shrink-0 transition-transform duration-300 ease-out group-hover:translate-x-1.5"
+      />
+    </Link>
+  );
+}
 
-          <div className="border-t mt-8 pt-6 text-center text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} SPFarms. All rights reserved.
-          </div>
-        </div>
-      </footer>
+/** Empty/loading state for the product menu. Matches the cream-soft surface
+ *  used elsewhere so it doesn't look like an error. */
+function MenuPlaceholder({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-[28px] bg-sf-cream-soft p-12 text-center">
+      <p className="text-sm text-sf-forest-deep/50">{children}</p>
     </div>
   );
 }

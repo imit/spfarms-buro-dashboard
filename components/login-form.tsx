@@ -3,12 +3,40 @@
 import { useState, useEffect, useRef, type FormEvent } from "react"
 import Link from "next/link"
 import posthog from "posthog-js"
-import { ArrowRightIcon, EyeIcon, EyeOffIcon, MailIcon, XIcon } from "lucide-react"
+import {
+  AlertCircleIcon,
+  ArrowRightIcon,
+  EyeIcon,
+  EyeOffIcon,
+  ExternalLinkIcon,
+  MailIcon,
+  XIcon,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
 import { apiClient } from "@/lib/api"
 import { SUPPORT_EMAIL } from "@/lib/errors"
+
+/** Quick-jump links shown in the magic-link success card so users don't have
+ *  to hunt for their inbox. Only the providers that cover ~95% of mail. */
+function inboxLinkFor(email: string): { label: string; href: string } | null {
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (!domain) return null;
+  if (/^(gmail|googlemail)\.com$/.test(domain)) {
+    return { label: "Open Gmail", href: "https://mail.google.com" };
+  }
+  if (/^(outlook|hotmail|live|msn)\./.test(domain) || domain === "outlook.com") {
+    return { label: "Open Outlook", href: "https://outlook.live.com/mail" };
+  }
+  if (/^(yahoo|ymail)\./.test(domain)) {
+    return { label: "Open Yahoo Mail", href: "https://mail.yahoo.com" };
+  }
+  if (/^icloud\.com$/.test(domain) || /^me\.com$/.test(domain)) {
+    return { label: "Open iCloud Mail", href: "https://www.icloud.com/mail" };
+  }
+  return null;
+}
 
 type LoginMode = "password" | "magic_link"
 
@@ -106,40 +134,94 @@ export function LoginForm() {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/panda-symbol.svg" alt="SPFarms" className="w-20 h-auto mb-6" />
 
-      <h1 className="text-4xl font-light tracking-tight text-[#050403] mb-10">
+      <h1 className="text-4xl font-light tracking-tight text-[#050403] mb-2">
         {savedEmail ? "Welcome back" : "Welcome friend"}
       </h1>
+      <p className="text-sm text-[#050403]/60 mb-10 text-center max-w-xs">
+        {mode === "magic_link"
+          ? "We'll email you a one-tap login link — no password needed."
+          : "Sign in with your password."}
+      </p>
 
       <form
         onSubmit={mode === "password" ? handlePasswordSubmit : handleMagicLinkSubmit}
         className="w-full flex flex-col gap-4"
       >
         {error && (
-          <button
-            type="button"
-            onClick={() => setError("")}
-            className="bg-[#03602E]/10 text-[#03602E] rounded-xl p-3 text-sm text-center relative group cursor-pointer"
+          <div
+            role="alert"
+            className="relative flex items-start gap-3 rounded-xl bg-red-50 px-4 py-3 pr-9 text-sm text-red-900"
           >
-            <XIcon className="absolute top-2.5 right-2.5 size-3.5 opacity-0 group-hover:opacity-60 transition-opacity" />
-            <p>{error}</p>
-            <p className="mt-1 text-xs opacity-70">Need help? Contact {SUPPORT_EMAIL}</p>
-          </button>
+            <AlertCircleIcon
+              className="mt-0.5 size-4 shrink-0 text-red-600"
+              strokeWidth={2.25}
+              aria-hidden="true"
+            />
+            <div className="flex-1 text-left">
+              <p>{error}</p>
+              <p className="mt-1 text-xs text-red-700/70">
+                Need help?{" "}
+                <a
+                  href={`mailto:${SUPPORT_EMAIL}`}
+                  className="underline underline-offset-2"
+                >
+                  {SUPPORT_EMAIL}
+                </a>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setError("")}
+              aria-label="Dismiss error"
+              className="absolute right-2.5 top-2.5 text-red-700/60 hover:text-red-900 transition-colors"
+            >
+              <XIcon className="size-4" />
+            </button>
+          </div>
         )}
 
         {success ? (
-          <div className="bg-green-50 text-green-800 rounded-xl p-6 text-center space-y-3">
+          <div className="rounded-xl bg-green-50 p-6 text-center text-green-800 space-y-3">
             <MailIcon className="size-10 mx-auto text-green-600" />
             <p className="text-lg font-medium">Check your inbox</p>
             <p className="text-sm text-green-700">
-              We sent a login link to <span className="font-medium">{email}</span>. Click the link in the email to sign in.
+              We sent a login link to{" "}
+              <span className="font-medium break-all">{email}</span>. The link
+              works for 15 minutes — open it on this device for the best
+              experience.
             </p>
-            <button
-              type="button"
-              onClick={() => { setSuccess(""); }}
-              className="text-sm text-green-600 underline hover:text-green-800 mt-2"
-            >
-              Try again
-            </button>
+
+            {/* Quick-jump to a recognized inbox provider, when we can guess one */}
+            {(() => {
+              const inbox = inboxLinkFor(email);
+              if (!inbox) return null;
+              return (
+                <a
+                  href={inbox.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() =>
+                    posthog.capture("login_inbox_link_clicked", {
+                      provider: inbox.label,
+                    })
+                  }
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-green-800 underline underline-offset-2 hover:text-green-900"
+                >
+                  {inbox.label}
+                  <ExternalLinkIcon className="size-3.5" />
+                </a>
+              );
+            })()}
+
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => { setSuccess(""); }}
+                className="text-xs text-green-700/70 underline underline-offset-2 hover:text-green-900"
+              >
+                Use a different email
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -154,7 +236,7 @@ export function LoginForm() {
               required
               disabled={isLoading}
               autoComplete="email"
-              className="h-14 rounded-xl border-0 bg-white text-base px-5 shadow-none"
+              className="h-14 rounded-xl border-0 bg-white text-base px-5 shadow-none focus-visible:ring-2 focus-visible:ring-[#48A848]/40 focus-visible:ring-offset-0"
             />
 
             {mode === "password" && (
@@ -171,11 +253,12 @@ export function LoginForm() {
                     required
                     disabled={isLoading}
                     autoComplete="current-password"
-                    className="h-14 rounded-xl border-0 bg-white text-base px-5 pr-12 shadow-none"
+                    className="h-14 rounded-xl border-0 bg-white text-base px-5 pr-12 shadow-none focus-visible:ring-2 focus-visible:ring-[#48A848]/40 focus-visible:ring-offset-0"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-[#050403]/30 hover:text-[#050403]/60 transition-colors"
                     tabIndex={-1}
                   >
@@ -187,12 +270,12 @@ export function LoginForm() {
 
             <Button
               type="submit"
-              disabled={isLoading}
-              className="w-full h-14 rounded-xl text-lg font-medium mt-2"
+              disabled={isLoading || !email}
+              className="w-full h-14 rounded-xl text-lg font-medium mt-2 transition-[background-color,transform] active:scale-[0.99] hover:brightness-105 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#48A848" }}
             >
               {isLoading
-                ? (mode === "magic_link" ? "Sending link..." : "Logging in...")
+                ? (mode === "magic_link" ? "Sending link…" : "Logging in…")
                 : (mode === "magic_link" ? "Send login link" : "Login")}
             </Button>
 
@@ -203,8 +286,8 @@ export function LoginForm() {
                 className="text-sm text-[#050403]/50 hover:text-[#050403] transition-colors"
               >
                 {mode === "magic_link"
-                  ? <>Have a password? <span className="underline font-medium">Login with password</span></>
-                  : <>Back to <span className="underline font-medium">magic link login</span></>}
+                  ? <>Have a password? <span className="underline font-medium">Sign in with password</span></>
+                  : <>Prefer a magic link? <span className="underline font-medium">Email me a link</span></>}
               </button>
             </div>
           </>

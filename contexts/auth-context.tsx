@@ -54,6 +54,9 @@ function getRedirectPath(user: User): string {
   if (user.role === "user") {
     return "/";
   }
+  if (user.role === "m_sale") {
+    return "/admin/onboard";
+  }
   if (ADMIN_LAYOUT_ROLES.includes(user.role as UserRole)) {
     return "/admin";
   }

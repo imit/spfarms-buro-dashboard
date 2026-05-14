@@ -49,7 +49,7 @@ export const ROLE_ACCESS: RoleAccessMap = {
   products:      { admin: "full", observer_admin: "read", editor: "full_no_delete", account: "read" },
   notifications: { admin: "full", observer_admin: "read", editor: "full", sales: "send_only", account: "read" },
   broadcasts:    { admin: "full", observer_admin: "read", editor: "full" },
-  quick_onboard: { admin: "full", editor: "full", sales: "full" },
+  quick_onboard: { admin: "full", editor: "full", sales: "full", m_sale: "full" },
   settings:      { admin: "full", observer_admin: "read", account: "read" },
   gallery:       { admin: "full", observer_admin: "read", editor: "full", cultivator: "read", processing: "read", sales: "read" },
   support_tickets: { admin: "full", observer_admin: "read", editor: "full", account: "send_only" },
@@ -58,7 +58,7 @@ export const ROLE_ACCESS: RoleAccessMap = {
 };
 
 export const ADMIN_LAYOUT_ROLES: UserRole[] = [
-  "admin", "observer_admin", "editor", "cultivator", "processing", "delivery", "sales", "default",
+  "admin", "observer_admin", "editor", "cultivator", "processing", "delivery", "sales", "m_sale", "default",
 ];
 
 function accessLevel(resource: Resource, role: UserRole | undefined): AccessLevel {

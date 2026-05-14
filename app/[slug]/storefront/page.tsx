@@ -8,7 +8,7 @@ import { StorefrontOnboarding } from "@/components/storefront/onboarding-steps";
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
 import posthog from "posthog-js";
-import { MapPinIcon } from "lucide-react";
+import { MapPinIcon, PhoneIcon } from "lucide-react";
 
 export default function StorefrontPage({
   params,
@@ -23,6 +23,13 @@ export default function StorefrontPage({
   const [strainMap, setStrainMap] = useState<Record<number, Strain>>({});
   const [cart, setCart] = useState<Cart | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
+  const [bulkPhone, setBulkPhone] = useState("");
+
+  useEffect(() => {
+    apiClient.getPublicSettings()
+      .then((s) => setBulkPhone(s.bulk_sales_phone || ""))
+      .catch(() => { /* ignore */ });
+  }, []);
 
   const fetchCart = useCallback(async (cId: number) => {
     try {
@@ -195,6 +202,23 @@ export default function StorefrontPage({
           </div>
         </>
       )}
+
+      <div className="mt-12 mb-4">
+        <div className="rounded-2xl bg-linear-to-r from-emerald-700 to-emerald-900 px-6 py-6 text-center text-emerald-50 shadow-sm md:px-10 md:py-8">
+          <div className="inline-flex items-center justify-center size-10 rounded-full bg-white/10 mb-3">
+            <PhoneIcon className="size-5" />
+          </div>
+          <p className="text-base md:text-lg">
+            For special deals call:{" "}
+            <a
+              href={`tel:${bulkPhone.replace(/[^\d+]/g, "")}`}
+              className="font-bold text-white underline underline-offset-4"
+            >
+              {bulkPhone || "—"}
+            </a>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
