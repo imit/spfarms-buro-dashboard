@@ -10,7 +10,7 @@ import { CodPromoBanner } from "@/components/storefront/cod-promo-banner";
 import { toast } from "sonner";
 import { showError } from "@/lib/errors";
 import posthog from "posthog-js";
-import { MapPinIcon } from "lucide-react";
+import { MapPinIcon, ChevronDownIcon } from "lucide-react";
 
 export default function StorefrontPage({
   params,
@@ -27,6 +27,7 @@ export default function StorefrontPage({
   const [menu, setMenu] = useState<Menu | null>(null);
   const [bulkPhone, setBulkPhone] = useState("");
   const [paymentTerms, setPaymentTerms] = useState<PaymentTerm[]>([]);
+  const [showOldStrains, setShowOldStrains] = useState(false);
 
   useEffect(() => {
     apiClient.getPublicSettings()
@@ -206,21 +207,64 @@ export default function StorefrontPage({
       {products.length === 0 ? (
         <p className="text-lg text-muted-foreground">No products available.</p>
       ) : (
-        <>
-          <h2 className="text-lg font-semibold mb-4">Our strains</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                slug={slug}
-                strain={product.strain_id ? strainMap[product.strain_id] : undefined}
-                discounts={cart?.discounts}
-                onAddToCart={handleAddToCart}
-              />
-            ))}
-          </div>
-        </>
+        (() => {
+          const inStock = products.filter((p) => p.in_stock);
+          const outOfStock = products.filter((p) => !p.in_stock);
+          return (
+            <>
+              {inStock.length > 0 && (
+                <>
+                  <h2 className="text-lg font-semibold mb-4">Our strains</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    {inStock.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        slug={slug}
+                        strain={product.strain_id ? strainMap[product.strain_id] : undefined}
+                        discounts={cart?.discounts}
+                        onAddToCart={handleAddToCart}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {outOfStock.length > 0 && (
+                <div className="mt-10">
+                  <button
+                    type="button"
+                    onClick={() => setShowOldStrains((v) => !v)}
+                    aria-expanded={showOldStrains}
+                    className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+                  >
+                    <ChevronDownIcon
+                      className={`size-4 transition-transform ${showOldStrains ? "rotate-180" : ""}`}
+                    />
+                    {showOldStrains
+                      ? `Hide older strains (${outOfStock.length})`
+                      : `See older strains (${outOfStock.length})`}
+                  </button>
+
+                  {showOldStrains && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mt-5">
+                      {outOfStock.map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          slug={slug}
+                          strain={product.strain_id ? strainMap[product.strain_id] : undefined}
+                          discounts={cart?.discounts}
+                          onAddToCart={handleAddToCart}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          );
+        })()
       )}
 
     </div>
