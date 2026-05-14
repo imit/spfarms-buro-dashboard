@@ -95,8 +95,13 @@ export default function NewManualOrderPage() {
         c.slug?.toLowerCase().includes(companySearch.toLowerCase()))
   );
 
+  // Only exclude products that genuinely can't be ordered here:
+  //   - archived → retired, intentionally hidden
+  //   - bulk / bulk_flower → handled through the bulk-flower order flow, not this form
+  // Draft and coming-soon products stay searchable; we surface their state via
+  // a small badge in the dropdown so the admin can see why a product looks odd.
   const filteredProducts = products
-    .filter((p) => p.status === "active" && !p.coming_soon && !p.bulk && p.product_type !== "bulk_flower")
+    .filter((p) => p.status !== "archived" && !p.bulk && p.product_type !== "bulk_flower")
     .filter(
       (p) =>
         !productSearch ||
@@ -396,11 +401,21 @@ export default function NewManualOrderPage() {
                       ) : (
                         <div className="size-9 rounded-md bg-muted" />
                       )}
-                      <span className="text-base">
+                      <span className="text-base flex items-center gap-2 flex-wrap">
                         <span className="font-medium">{p.name}</span>
                         {p.strain_name && (
                           <span className="text-muted-foreground">
-                            {" "}({p.strain_name})
+                            ({p.strain_name})
+                          </span>
+                        )}
+                        {p.status === "draft" && (
+                          <span className="rounded-full bg-neutral-200 text-neutral-700 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
+                            Draft
+                          </span>
+                        )}
+                        {p.coming_soon && (
+                          <span className="rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
+                            Coming soon
                           </span>
                         )}
                       </span>
