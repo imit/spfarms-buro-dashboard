@@ -2967,7 +2967,12 @@ export class ApiClient {
   }
 
   async bulkUpdateInventory(
-    updates: { id: number; inventory_count?: number; track_inventory?: boolean }[],
+    updates: {
+      id: number;
+      inventory_count?: number;
+      track_inventory?: boolean;
+      default_price?: string | null;
+    }[],
     note?: string,
   ): Promise<Product[]> {
     const res = await this.request<JsonApiCollectionResponse<Product>>(

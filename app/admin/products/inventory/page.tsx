@@ -36,6 +36,8 @@ import { cn } from "@/lib/utils";
 type Edit = {
   inventory_count?: number;
   track_inventory?: boolean;
+  // null = explicit clear (price_tbd / no price); undefined = no change.
+  default_price?: string | null;
 };
 
 type EditMap = Record<number, Edit>;
@@ -45,6 +47,29 @@ const QUICK_DELTAS = [-5, -1, +1, +5] as const;
 function clampInt(n: number) {
   if (!Number.isFinite(n)) return 0;
   return Math.max(0, Math.floor(n));
+}
+
+function normalizePrice(input: string): string {
+  // Strip leading zeros, keep one decimal point, allow empty.
+  const cleaned = input.replace(/[^\d.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  if (firstDot === -1) return cleaned;
+  return cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, "");
+}
+
+function pricesEqual(a: string | null | undefined, b: string | null | undefined): boolean {
+  const an = a == null || a === "" ? null : parseFloat(a);
+  const bn = b == null || b === "" ? null : parseFloat(b);
+  if (an === null && bn === null) return true;
+  if (an === null || bn === null) return false;
+  return Math.abs(an - bn) < 0.005;
+}
+
+function formatPrice(p: string | null | undefined): string {
+  if (p == null || p === "") return "—";
+  const n = parseFloat(p);
+  if (!Number.isFinite(n)) return "—";
+  return `$${n.toFixed(2)}`;
 }
 
 export default function InventoryPage() {
@@ -122,7 +147,9 @@ export default function InventoryPage() {
         edit.inventory_count !== undefined && edit.inventory_count !== p.inventory_count;
       const trackChanged =
         edit.track_inventory !== undefined && edit.track_inventory !== p.track_inventory;
-      return countChanged || trackChanged ? acc + 1 : acc;
+      const priceChanged =
+        edit.default_price !== undefined && !pricesEqual(edit.default_price, p.default_price);
+      return countChanged || trackChanged || priceChanged ? acc + 1 : acc;
     }, 0);
   }, [edits, products]);
 
@@ -138,15 +165,37 @@ export default function InventoryPage() {
     return p.track_inventory;
   }
 
+  function effectivePrice(p: Product): string {
+    const edit = edits[p.id];
+    if (edit?.default_price !== undefined) return edit.default_price ?? "";
+    return p.default_price ?? "";
+  }
+
+  // Remove a row entirely if no fields are dirty anymore. Keeps the edit map
+  // lean and the pending counter honest.
+  function pruneRow(map: EditMap, id: number): EditMap {
+    const row = map[id];
+    if (!row) return map;
+    if (
+      row.inventory_count === undefined &&
+      row.track_inventory === undefined &&
+      row.default_price === undefined
+    ) {
+      const { [id]: _drop, ...rest } = map;
+      void _drop;
+      return rest;
+    }
+    return map;
+  }
+
   function setCount(p: Product, count: number) {
     const next = clampInt(count);
     setEdits((current) => {
       const updated = { ...current, [p.id]: { ...current[p.id], inventory_count: next } };
       if (updated[p.id].inventory_count === p.inventory_count) {
         delete updated[p.id].inventory_count;
-        if (updated[p.id].track_inventory === undefined) delete updated[p.id];
       }
-      return updated;
+      return pruneRow(updated, p.id);
     });
   }
 
@@ -155,9 +204,21 @@ export default function InventoryPage() {
       const updated = { ...current, [p.id]: { ...current[p.id], track_inventory: track } };
       if (updated[p.id].track_inventory === p.track_inventory) {
         delete updated[p.id].track_inventory;
-        if (updated[p.id].inventory_count === undefined) delete updated[p.id];
       }
-      return updated;
+      return pruneRow(updated, p.id);
+    });
+  }
+
+  function setPrice(p: Product, raw: string) {
+    const cleaned = normalizePrice(raw);
+    // Treat empty string as "clear the price" (null on save).
+    const nextValue: string | null = cleaned === "" ? null : cleaned;
+    setEdits((current) => {
+      const updated = { ...current, [p.id]: { ...current[p.id], default_price: nextValue } };
+      if (pricesEqual(updated[p.id].default_price, p.default_price)) {
+        delete updated[p.id].default_price;
+      }
+      return pruneRow(updated, p.id);
     });
   }
 
@@ -180,24 +241,33 @@ export default function InventoryPage() {
   }
 
   async function handleSave() {
-    const payload = Object.entries(edits)
+    type Update = {
+      id: number;
+      inventory_count?: number;
+      track_inventory?: boolean;
+      default_price?: string | null;
+    };
+    const payload: Update[] = Object.entries(edits)
       .map(([id, edit]) => {
         const p = products.find((x) => x.id === Number(id));
         if (!p) return null;
-        const updates: { id: number; inventory_count?: number; track_inventory?: boolean } = {
-          id: Number(id),
-        };
+        const updates: Update = { id: Number(id) };
         if (edit.inventory_count !== undefined && edit.inventory_count !== p.inventory_count) {
           updates.inventory_count = edit.inventory_count;
         }
         if (edit.track_inventory !== undefined && edit.track_inventory !== p.track_inventory) {
           updates.track_inventory = edit.track_inventory;
         }
-        return updates.inventory_count !== undefined || updates.track_inventory !== undefined
-          ? updates
-          : null;
+        if (edit.default_price !== undefined && !pricesEqual(edit.default_price, p.default_price)) {
+          updates.default_price = edit.default_price;
+        }
+        const dirty =
+          updates.inventory_count !== undefined ||
+          updates.track_inventory !== undefined ||
+          updates.default_price !== undefined;
+        return dirty ? updates : null;
       })
-      .filter((x): x is { id: number; inventory_count?: number; track_inventory?: boolean } => x !== null);
+      .filter((x): x is Update => x !== null);
 
     if (payload.length === 0) return;
 
@@ -239,10 +309,11 @@ export default function InventoryPage() {
       <div>
         <div className="flex items-center gap-2">
           <PackageIcon className="size-5 text-amber-600" />
-          <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Inventory &amp; Pricing</h1>
         </div>
         <p className="text-sm text-muted-foreground mt-1">
-          Bulk-edit product unit counts. Each saved change is logged as an audit event.
+          Bulk-edit product unit counts and default prices. Each saved change is
+          logged as an audit event (inventory and price changes audited separately).
         </p>
       </div>
 
@@ -288,14 +359,25 @@ export default function InventoryPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium">Product</th>
-                <th className="px-4 py-3 text-left font-medium">Type</th>
-                <th className="px-4 py-3 text-center font-medium">Track</th>
-                <th className="px-4 py-3 text-right font-medium">Current</th>
-                <th className="px-4 py-3 text-center font-medium">Quick</th>
-                <th className="px-4 py-3 text-right font-medium">New count</th>
-                <th className="px-4 py-3 text-right font-medium">Δ</th>
-                <th className="px-4 py-3"></th>
+                <th className="px-4 py-3 text-left font-medium" rowSpan={2}>Product</th>
+                <th className="px-4 py-3 text-left font-medium" rowSpan={2}>Type</th>
+                <th className="px-3 py-2 text-center font-medium text-xs uppercase tracking-wider text-muted-foreground border-l" colSpan={5}>
+                  Inventory
+                </th>
+                <th className="px-3 py-2 text-center font-medium text-xs uppercase tracking-wider text-muted-foreground border-l" colSpan={3}>
+                  Price
+                </th>
+                <th className="px-4 py-3" rowSpan={2}></th>
+              </tr>
+              <tr className="border-b bg-muted/50">
+                <th className="px-4 py-2 text-center font-medium border-l">Track</th>
+                <th className="px-4 py-2 text-right font-medium">Current</th>
+                <th className="px-4 py-2 text-center font-medium">Quick</th>
+                <th className="px-4 py-2 text-right font-medium">New count</th>
+                <th className="px-4 py-2 text-right font-medium">Δ</th>
+                <th className="px-4 py-2 text-right font-medium border-l">Current</th>
+                <th className="px-4 py-2 text-right font-medium">New price</th>
+                <th className="px-4 py-2 text-right font-medium">Δ</th>
               </tr>
             </thead>
             <tbody>
@@ -308,8 +390,22 @@ export default function InventoryPage() {
                 const isZero = tracking && newCount === 0;
                 const dirty = !!edits[p.id] && (
                   edits[p.id].inventory_count !== undefined ||
-                  edits[p.id].track_inventory !== undefined
+                  edits[p.id].track_inventory !== undefined ||
+                  edits[p.id].default_price !== undefined
                 );
+
+                const currentPriceRaw = p.default_price;
+                const newPriceRaw = effectivePrice(p);
+                const currentPriceNum =
+                  currentPriceRaw != null && currentPriceRaw !== ""
+                    ? parseFloat(currentPriceRaw)
+                    : null;
+                const newPriceNum =
+                  newPriceRaw !== "" ? parseFloat(newPriceRaw) : null;
+                const priceDelta =
+                  currentPriceNum != null && newPriceNum != null
+                    ? newPriceNum - currentPriceNum
+                    : null;
 
                 return (
                   <tr
@@ -402,6 +498,42 @@ export default function InventoryPage() {
                         </span>
                       )}
                     </td>
+
+                    {/* Price: current */}
+                    <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground border-l">
+                      {formatPrice(currentPriceRaw)}
+                    </td>
+                    {/* Price: new (editable) */}
+                    <td className="px-4 py-2.5 text-right">
+                      <div className="relative ml-auto w-28">
+                        <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="—"
+                          value={newPriceRaw}
+                          onChange={(e) => setPrice(p, e.target.value)}
+                          className="h-8 pl-5 pr-2 text-right tabular-nums"
+                        />
+                      </div>
+                    </td>
+                    {/* Price: delta */}
+                    <td className="px-4 py-2.5 text-right tabular-nums">
+                      {priceDelta == null || Math.abs(priceDelta) < 0.005 ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <span
+                          className={cn(
+                            "font-semibold",
+                            priceDelta > 0 ? "text-emerald-700" : "text-rose-700",
+                          )}
+                        >
+                          {priceDelta > 0 ? "+" : ""}
+                          {priceDelta.toFixed(2)}
+                        </span>
+                      )}
+                    </td>
+
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1">
                         {dirty && (
