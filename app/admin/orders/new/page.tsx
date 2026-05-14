@@ -100,14 +100,23 @@ export default function NewManualOrderPage() {
   //   - bulk / bulk_flower → handled through the bulk-flower order flow, not this form
   // Draft and coming-soon products stay searchable; we surface their state via
   // a small badge in the dropdown so the admin can see why a product looks odd.
+  const q = productSearch.trim().toLowerCase();
   const filteredProducts = products
     .filter((p) => p.status !== "archived" && !p.bulk && p.product_type !== "bulk_flower")
-    .filter(
-      (p) =>
-        !productSearch ||
-        p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-        p.strain_name?.toLowerCase().includes(productSearch.toLowerCase())
-    );
+    .filter((p) => {
+      if (!q) return true;
+      const haystack = [
+        p.name,
+        p.strain_name,
+        p.sku,
+        p.product_uid,
+        p.description,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
 
   function addItem(product: Product) {
     if (items.some((i) => i.product_id === product.id)) return;
