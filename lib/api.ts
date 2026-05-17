@@ -4405,6 +4405,40 @@ export class ApiClient {
     return res.blob();
   }
 
+  async printMixedSampleLabelSheet(
+    sheetLayoutId: string,
+    selections: Array<{ label_id: number; count: number }>
+  ): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/sample_batches/print_mixed_sheet`;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("auth_token")
+        : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        sheet_layout_id: sheetLayoutId,
+        selections,
+      }),
+    });
+    if (!res.ok) {
+      let msg = "Failed to generate mixed sample labels PDF";
+      try {
+        const data = await res.json();
+        if (data?.error) msg = data.error;
+      } catch {
+        // ignore
+      }
+      throw new Error(msg);
+    }
+    return res.blob();
+  }
+
   // Sample Inventory
 
   async getSampleInventory(): Promise<SampleInventoryRow[]> {

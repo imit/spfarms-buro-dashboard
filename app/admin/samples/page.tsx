@@ -13,7 +13,13 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PackageIcon, SendIcon, CheckCircleIcon } from "lucide-react";
+import { MixedSampleLabelPrintDialog } from "@/components/mixed-sample-label-print-dialog";
+import {
+  PackageIcon,
+  SendIcon,
+  CheckCircleIcon,
+  PrinterIcon,
+} from "lucide-react";
 
 export default function SamplesPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -22,6 +28,7 @@ export default function SamplesPage() {
   const [batches, setBatches] = useState<SampleBatch[]>([]);
   const [handoffs, setHandoffs] = useState<SampleHandoff[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [mixedPrintOpen, setMixedPrintOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -79,8 +86,17 @@ export default function SamplesPage() {
               Drop
             </Link>
           </Button>
+          <Button variant="outline" onClick={() => setMixedPrintOpen(true)}>
+            <PrinterIcon className="mr-2 size-4" />
+            Print Mixed Sheet
+          </Button>
         </div>
       </div>
+
+      <MixedSampleLabelPrintDialog
+        open={mixedPrintOpen}
+        onOpenChange={setMixedPrintOpen}
+      />
 
       {isLoading ? (
         <p className="text-muted-foreground">Loading...</p>
