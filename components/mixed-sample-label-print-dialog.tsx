@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiClient, type Label, type SheetLayout } from "@/lib/api";
+import {
+  apiClient,
+  type Label,
+  type SheetLayout,
+  type StrainImage,
+} from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorAlert } from "@/components/ui/error-alert";
@@ -30,14 +35,14 @@ interface MixedSampleLabelPrintDialogProps {
 
 type Row = {
   key: string;
-  labelId: string;
+  strainImageId: string;
   count: string;
 };
 
 function newRow(): Row {
   return {
     key: crypto.randomUUID(),
-    labelId: "",
+    strainImageId: "",
     count: "1",
   };
 }
@@ -48,7 +53,9 @@ export function MixedSampleLabelPrintDialog({
 }: MixedSampleLabelPrintDialogProps) {
   const [layouts, setLayouts] = useState<SheetLayout[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
+  const [strainImages, setStrainImages] = useState<StrainImage[]>([]);
   const [selectedLayoutSlug, setSelectedLayoutSlug] = useState<string>("");
+  const [selectedLabelId, setSelectedLabelId] = useState<string>("");
   const [rows, setRows] = useState<Row[]>([newRow()]);
   const [isPrinting, setIsPrinting] = useState(false);
   const [error, setError] = useState("");
@@ -56,8 +63,12 @@ export function MixedSampleLabelPrintDialog({
   useEffect(() => {
     if (!open) return;
 
-    Promise.all([apiClient.getSheetLayouts(), apiClient.getLabels()])
-      .then(([layoutData, labelData]) => {
+    Promise.all([
+      apiClient.getSheetLayouts(),
+      apiClient.getLabels(),
+      apiClient.getStrainImages(),
+    ])
+      .then(([layoutData, labelData, imageData]) => {
         setLayouts(layoutData);
         const defaultLayout = layoutData.find((l) => l.default);
         if (defaultLayout) {
@@ -65,9 +76,15 @@ export function MixedSampleLabelPrintDialog({
         } else if (layoutData.length > 0) {
           setSelectedLayoutSlug(layoutData[0].slug);
         }
+
         setLabels(labelData);
+        if (labelData.length > 0) {
+          setSelectedLabelId(String(labelData[0].id));
+        }
+
+        setStrainImages(imageData);
       })
-      .catch(() => setError("We couldn't load layouts or labels"));
+      .catch(() => setError("We couldn't load layouts, labels, or strain images"));
   }, [open]);
 
   useEffect(() => {
@@ -107,19 +124,19 @@ export function MixedSampleLabelPrintDialog({
 
     const selections = rows
       .map((r) => ({
-        label_id: parseInt(r.labelId, 10),
+        strain_image_id: parseInt(r.strainImageId, 10),
         count: parseInt(r.count, 10),
       }))
       .filter(
         (s) =>
-          Number.isFinite(s.label_id) &&
-          s.label_id > 0 &&
+          Number.isFinite(s.strain_image_id) &&
+          s.strain_image_id > 0 &&
           Number.isFinite(s.count) &&
           s.count > 0
       );
 
     if (selections.length === 0) {
-      setError("Add at least one label row");
+      setError("Add at least one strain image row");
       return;
     }
     if (!selectedLayoutSlug) {
@@ -131,7 +148,10 @@ export function MixedSampleLabelPrintDialog({
     try {
       const blob = await apiClient.printMixedSampleLabelSheet(
         selectedLayoutSlug,
-        selections
+        selections,
+        selectedLabelId
+          ? { label_id: parseInt(selectedLabelId, 10) }
+          : undefined
       );
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -159,7 +179,8 @@ export function MixedSampleLabelPrintDialog({
         <DialogHeader>
           <DialogTitle>Print Mixed Sample Label Sheet</DialogTitle>
           <DialogDescription>
-            Pick labels and counts. Each label is printed in sample mode.
+            Pick strain images and counts. Each is printed in sample mode
+            using the base label below.
           </DialogDescription>
         </DialogHeader>
 
@@ -185,22 +206,47 @@ export function MixedSampleLabelPrintDialog({
             </Select>
           </Field>
 
+          {labels.length > 1 && (
+            <Field>
+              <FieldLabel htmlFor="base_label">Base Label</FieldLabel>
+              <Select
+                value={selectedLabelId}
+                onValueChange={setSelectedLabelId}
+              >
+                <SelectTrigger id="base_label" className="w-full">
+                  <SelectValue placeholder="Select base label" />
+                </SelectTrigger>
+                <SelectContent>
+                  {labels.map((l) => (
+                    <SelectItem key={l.id} value={String(l.id)}>
+                      {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+
           <div className="space-y-2">
-            <FieldLabel>Labels</FieldLabel>
+            <FieldLabel>Strain Images</FieldLabel>
             <div className="space-y-2">
               {rows.map((row) => (
                 <div key={row.key} className="flex items-center gap-2">
                   <Select
-                    value={row.labelId}
-                    onValueChange={(v) => updateRow(row.key, { labelId: v })}
+                    value={row.strainImageId}
+                    onValueChange={(v) =>
+                      updateRow(row.key, { strainImageId: v })
+                    }
                   >
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Label" />
+                      <SelectValue placeholder="Strain image" />
                     </SelectTrigger>
                     <SelectContent>
-                      {labels.map((l) => (
-                        <SelectItem key={l.id} value={String(l.id)}>
-                          {l.name}
+                      {strainImages.map((si) => (
+                        <SelectItem key={si.id} value={String(si.id)}>
+                          {si.strain_name
+                            ? `${si.strain_name} — ${si.name}`
+                            : si.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -235,7 +281,7 @@ export function MixedSampleLabelPrintDialog({
               onClick={() => setRows((prev) => [...prev, newRow()])}
             >
               <PlusIcon className="mr-2 size-4" />
-              Add label
+              Add strain image
             </Button>
           </div>
 

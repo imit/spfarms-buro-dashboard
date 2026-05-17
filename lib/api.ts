@@ -4407,7 +4407,8 @@ export class ApiClient {
 
   async printMixedSampleLabelSheet(
     sheetLayoutId: string,
-    selections: Array<{ label_id: number; count: number }>
+    selections: Array<{ strain_image_id: number; count: number }>,
+    opts?: { label_id?: number }
   ): Promise<Blob> {
     const url = `${this.baseUrl}/api/v1/sample_batches/print_mixed_sheet`;
     const token =
@@ -4424,6 +4425,7 @@ export class ApiClient {
       body: JSON.stringify({
         sheet_layout_id: sheetLayoutId,
         selections,
+        ...(opts?.label_id ? { label_id: opts.label_id } : {}),
       }),
     });
     if (!res.ok) {
