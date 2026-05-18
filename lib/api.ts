@@ -4319,6 +4319,40 @@ export class ApiClient {
     return res.blob();
   }
 
+  async requestAllOrderMetrcPrint(orderId: number, sheetLayoutId: string): Promise<{ id: number; print_status: string }> {
+    const res = await this.request<{ data: { id: number; print_status: string } }>(
+      `/api/v1/orders/${orderId}/request_all_metrc_print`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheet_layout_id: sheetLayoutId }),
+      }
+    );
+    return res.data;
+  }
+
+  async getAllOrderMetrcPrintStatus(orderId: number): Promise<{ id: number; print_status: string | null; has_file: boolean }> {
+    const res = await this.request<{ data: { id: number; print_status: string | null; has_file: boolean } }>(
+      `/api/v1/orders/${orderId}/all_metrc_print_status`
+    );
+    return res.data;
+  }
+
+  async downloadAllOrderMetrcPrint(orderId: number): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/download_all_metrc_print`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || "Download failed");
+    }
+    return res.blob();
+  }
+
   async printAllOrderMetrcLabels(
     orderId: number,
     sheetLayoutId: string

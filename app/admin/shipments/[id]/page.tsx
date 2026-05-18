@@ -419,24 +419,41 @@ export default function AdminShipmentDetailPage({
     }
   };
 
-  // Download all METRC labels for a single order
+  // Download all METRC labels for a single order — async flow:
+  // request the job, poll status, then download when ready.
   const downloadOrderMetrcLabels = async () => {
     if (!metrcDownloadOrderId || !metrcDownloadLayoutId) return;
+    const orderId = metrcDownloadOrderId;
+    const orderNumber = metrcDownloadOrderNumber;
     setMetrcDownloadPrinting(true);
     try {
-      const blob = await apiClient.printAllOrderMetrcLabels(metrcDownloadOrderId, metrcDownloadLayoutId);
+      await apiClient.requestAllOrderMetrcPrint(orderId, metrcDownloadLayoutId);
+      toast.info("Generating PDF — this may take a minute…");
+
+      // Poll up to ~3 minutes (1.5s intervals).
+      let status: string | null = "generating";
+      for (let i = 0; i < 120; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const s = await apiClient.getAllOrderMetrcPrintStatus(orderId);
+        status = s.print_status;
+        if (status === "done") break;
+        if (status === "failed") throw new Error("PDF generation failed");
+      }
+      if (status !== "done") throw new Error("PDF generation timed out");
+
+      const blob = await apiClient.downloadAllOrderMetrcPrint(orderId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${metrcDownloadOrderNumber}-all-metrc-labels.pdf`;
+      a.download = `${orderNumber}-all-metrc-labels.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setMetrcDownloadOrderId(null);
       toast.success("PDF downloaded");
-    } catch {
-      showError("download order METRC labels");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "download order METRC labels");
     } finally {
       setMetrcDownloadPrinting(false);
     }
