@@ -140,6 +140,9 @@ export default function AdminShipmentDetailPage({
   const setMetrcDownloadLayoutId = useCallback((v: string) => { _setMetrcDownloadLayoutId(v); if (v) writeStoredSheetLayout(v); }, []);
   const [metrcDownloadPrinting, setMetrcDownloadPrinting] = useState(false);
 
+  // Box-label sheet layout (persisted across renders; defaults to first sheet)
+  const [boxLabelLayoutSlug, setBoxLabelLayoutSlug] = useState<string>("");
+
   // Per-order METRC import (multi-file)
   const [metrcImportItemId, setMetrcImportItemId] = useState<number | null>(null);
   const [metrcImportOrderId, setMetrcImportOrderId] = useState<number | null>(null);
@@ -223,7 +226,14 @@ export default function AdminShipmentDetailPage({
   useEffect(() => {
     if (!isAuthenticated) return;
     loadShipment();
-    apiClient.getSheetLayouts().then(setSheetLayouts).catch(() => {});
+    apiClient.getSheetLayouts().then((layouts) => {
+      setSheetLayouts(layouts);
+      // Default the box-label layout to the first available so the buttons
+      // always have a usable target without an extra click.
+      if (layouts.length > 0) {
+        setBoxLabelLayoutSlug((cur) => cur || layouts[0].slug);
+      }
+    }).catch(() => {});
     apiClient.getLabels().then(setLabels).catch(() => {});
     apiClient.getStrainImages().then(setStrainImages).catch(() => {});
     apiClient.getCompanies({ per_page: 500 }).then((r) => setCompanies(r.data)).catch(() => {});
@@ -477,15 +487,25 @@ export default function AdminShipmentDetailPage({
     }
   };
 
-  // Print box labels onto a chosen sheet template.
-  const printBoxLabelsToSheet = async (order: ShipmentOrderSummary, layoutSlug: string) => {
+  // Print box labels onto a chosen sheet template. If `onlyBox` is set, only
+  // that single box is printed; otherwise the entire boxing plan is tiled.
+  const printBoxLabelsToSheet = async (
+    order: ShipmentOrderSummary,
+    layoutSlug: string,
+    onlyBox?: BoxPlan
+  ) => {
+    if (!layoutSlug) {
+      toast.error("Pick a sheet layout first");
+      return;
+    }
     const unitsPerBox = order.units_per_box ?? 32;
-    const boxes = packBoxes(order.items, unitsPerBox);
-    if (boxes.length === 0) {
+    const allBoxes = packBoxes(order.items, unitsPerBox);
+    const target = onlyBox ? [onlyBox] : allBoxes;
+    if (target.length === 0) {
       toast.error("Nothing to box");
       return;
     }
-    const payload = boxes.map((b) => {
+    const payload = target.map((b) => {
       const allTags = b.items.flatMap((it) => tagsForBoxItem(it));
       const heroItem = b.items.slice().sort((a, bb) => bb.quantity - a.quantity)[0];
       return {
@@ -503,7 +523,7 @@ export default function AdminShipmentDetailPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${order.order_number}-box-labels.pdf`;
+      a.download = `${order.order_number}-box-labels${onlyBox ? `-${onlyBox.boxNumber}` : ""}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1493,9 +1513,9 @@ export default function AdminShipmentDetailPage({
                                     <SelectItem value="50">50</SelectItem>
                                   </SelectContent>
                                 </Select>
-                                <Select onValueChange={(v) => printBoxLabelsToSheet(order, v)}>
+                                <Select value={boxLabelLayoutSlug} onValueChange={setBoxLabelLayoutSlug}>
                                   <SelectTrigger className="h-7 w-44 text-xs">
-                                    <SelectValue placeholder="Print to sheet…" />
+                                    <SelectValue placeholder="Sheet layout" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {sheetLayouts.map((l) => (
@@ -1505,9 +1525,12 @@ export default function AdminShipmentDetailPage({
                                     ))}
                                   </SelectContent>
                                 </Select>
-                                <Button variant="outline" size="xs" className="h-7 text-xs" onClick={() => printBoxLabels(order)}>
+                                <Button variant="outline" size="xs" className="h-7 text-xs" onClick={() => printBoxLabelsToSheet(order, boxLabelLayoutSlug)}>
                                   <FileTextIcon className="mr-1 size-3" />
                                   Print all
+                                </Button>
+                                <Button variant="ghost" size="xs" className="h-7 text-xs text-muted-foreground" onClick={() => printBoxLabels(order)} title="Print classic 8.5×5.5in HTML format">
+                                  HTML
                                 </Button>
                               </div>
                             </div>
@@ -1541,7 +1564,7 @@ export default function AdminShipmentDetailPage({
                                       variant="ghost"
                                       size="xs"
                                       className="h-6 text-[10px] px-1.5 shrink-0"
-                                      onClick={() => printBoxLabels(order, box)}
+                                      onClick={() => printBoxLabelsToSheet(order, boxLabelLayoutSlug, box)}
                                     >
                                       <FileTextIcon className="mr-0.5 size-2.5" />
                                       Print
