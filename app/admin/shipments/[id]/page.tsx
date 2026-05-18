@@ -78,6 +78,20 @@ function formatDate(d: string | null) {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+// Count pages in a PDF File by scanning raw bytes for /Type /Page (not /Pages)
+// objects. Matches the same heuristic the backend uses to extract one
+// MetrcLabelItem per page.
+async function countPdfPages(file: File): Promise<number> {
+  try {
+    const buf = await file.arrayBuffer();
+    const text = new TextDecoder("latin1").decode(buf);
+    const matches = text.match(/\/Type\s*\/Page(?![s/\w])/g);
+    return matches ? matches.length : 1;
+  } catch {
+    return 1;
+  }
+}
+
 export default function AdminShipmentDetailPage({
   params,
 }: {
@@ -135,6 +149,7 @@ export default function AdminShipmentDetailPage({
   const [metrcLabelId, setMetrcLabelId] = useState("");
   const [metrcStrainImageId, setMetrcStrainImageId] = useState("");
   const [metrcFiles, setMetrcFiles] = useState<File[]>([]);
+  const [metrcFilePages, setMetrcFilePages] = useState<number[]>([]);
   const [metrcImporting, setMetrcImporting] = useState(false);
   const [dragOverItemId, setDragOverItemId] = useState<number | null>(null);
 
@@ -147,6 +162,16 @@ export default function AdminShipmentDetailPage({
       setMetrcLabelId("");
       setMetrcStrainImageId("");
       setMetrcFiles(prefilledFiles);
+      setMetrcFilePages(prefilledFiles.map(() => 1));
+      // Recompute page counts for prefilled files
+      prefilledFiles.forEach(async (file, idx) => {
+        const pages = await countPdfPages(file);
+        setMetrcFilePages((prev) => {
+          const next = [...prev];
+          next[idx] = pages;
+          return next;
+        });
+      });
     },
     []
   );
@@ -2018,7 +2043,17 @@ export default function AdminShipmentDetailPage({
                     className="hidden"
                     onChange={(e) => {
                       const files = Array.from(e.target.files || []);
+                      const baseIdx = metrcFiles.length;
                       setMetrcFiles((prev) => [...prev, ...files]);
+                      setMetrcFilePages((prev) => [...prev, ...files.map(() => 0)]);
+                      files.forEach(async (f, i) => {
+                        const pages = await countPdfPages(f);
+                        setMetrcFilePages((prev) => {
+                          const next = [...prev];
+                          next[baseIdx + i] = pages;
+                          return next;
+                        });
+                      });
                       e.target.value = "";
                     }}
                   />
@@ -2030,6 +2065,7 @@ export default function AdminShipmentDetailPage({
                     <tbody className="divide-y">
                       {metrcFiles.map((file, idx) => {
                         const tag = metrcTagSuffix(file.name);
+                        const pages = metrcFilePages[idx] ?? 0;
                         return (
                         <tr key={idx} className="hover:bg-muted/30">
                           <td className="px-3 py-1.5 w-20 shrink-0">
@@ -2042,12 +2078,18 @@ export default function AdminShipmentDetailPage({
                           <td className="px-2 py-1.5">
                             <p className="font-mono text-[10px] text-muted-foreground truncate max-w-[260px]" title={file.name}>{file.name}</p>
                           </td>
+                          <td className="px-2 py-1.5 w-16 text-right text-xs text-muted-foreground">
+                            {pages > 0 ? `${pages} ${pages === 1 ? "page" : "pages"}` : "…"}
+                          </td>
                           <td className="px-1 py-1.5 w-8">
                             <Button
                               variant="ghost"
                               size="icon-xs"
                               className="text-muted-foreground hover:text-destructive"
-                              onClick={() => setMetrcFiles((prev) => prev.filter((_, i) => i !== idx))}
+                              onClick={() => {
+                                setMetrcFiles((prev) => prev.filter((_, i) => i !== idx));
+                                setMetrcFilePages((prev) => prev.filter((_, i) => i !== idx));
+                              }}
                             >
                               <XIcon className="size-3" />
                             </Button>
@@ -2060,8 +2102,9 @@ export default function AdminShipmentDetailPage({
                 </div>
               )}
               {metrcFiles.length > 0 && metrcImportItemQty > 0 && (() => {
-                const matches = metrcFiles.length === metrcImportItemQty;
-                const short = metrcImportItemQty - metrcFiles.length;
+                const totalPages = metrcFilePages.reduce((s, n) => s + (n || 0), 0);
+                const matches = totalPages === metrcImportItemQty;
+                const short = metrcImportItemQty - totalPages;
                 return (
                   <p className={cn("text-xs", matches ? "text-green-700" : "text-amber-600 font-medium")}>
                     {metrcFiles.length} of {metrcImportItemQty} tags
