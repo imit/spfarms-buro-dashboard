@@ -6064,12 +6064,15 @@ export class ApiClient {
     return res.blob();
   }
 
-  async batchImportOrderMetrc(orderId: number, orderItemId: number, labelId: string, pdfs: File[]): Promise<unknown> {
+  async batchImportOrderMetrc(orderId: number, orderItemId: number, labelId: string, pdfs: File[], opts?: { strainImageId?: string }): Promise<unknown> {
     const url = `${this.baseUrl}/api/v1/orders/${orderId}/batch_import_metrc`;
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
     const form = new FormData();
     form.append("order_item_id", String(orderItemId));
     form.append("label_id", labelId);
+    if (opts?.strainImageId) {
+      form.append("strain_image_id", opts.strainImageId);
+    }
     pdfs.forEach((pdf, i) => {
       form.append(`pdfs[${i}]`, pdf);
     });

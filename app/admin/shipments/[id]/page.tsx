@@ -13,6 +13,7 @@ import {
   apiClient, type Shipment, type ShipmentStatus, type ShipmentOrderSummary,
   type Order, type SheetLayout, type Label as LabelType,
   type Company, type SampleMetrcSet, type SampleGroup,
+  type StrainImage,
   SHIPMENT_STATUS_LABELS,
 } from "@/lib/api";
 import { statusBadgeClasses } from "@/lib/order-utils";
@@ -113,6 +114,7 @@ export default function AdminShipmentDetailPage({
   // METRC print dialog
   const [sheetLayouts, setSheetLayouts] = useState<SheetLayout[]>([]);
   const [labels, setLabels] = useState<LabelType[]>([]);
+  const [strainImages, setStrainImages] = useState<StrainImage[]>([]);
   const [showMetrcDialog, setShowMetrcDialog] = useState(false);
   const [metrcSheetLayoutId, _setMetrcSheetLayoutId] = useState("");
   const setMetrcSheetLayoutId = useCallback((v: string) => { _setMetrcSheetLayoutId(v); if (v) writeStoredSheetLayout(v); }, []);
@@ -131,6 +133,7 @@ export default function AdminShipmentDetailPage({
   const [metrcImportItemQty, setMetrcImportItemQty] = useState<number>(0);
   const [metrcImportItemHasTag, setMetrcImportItemHasTag] = useState<boolean>(false);
   const [metrcLabelId, setMetrcLabelId] = useState("");
+  const [metrcStrainImageId, setMetrcStrainImageId] = useState("");
   const [metrcFiles, setMetrcFiles] = useState<File[]>([]);
   const [metrcImporting, setMetrcImporting] = useState(false);
   const [dragOverItemId, setDragOverItemId] = useState<number | null>(null);
@@ -142,6 +145,7 @@ export default function AdminShipmentDetailPage({
       setMetrcImportItemQty(item.quantity);
       setMetrcImportItemHasTag(!!item.metrc_tag);
       setMetrcLabelId("");
+      setMetrcStrainImageId("");
       setMetrcFiles(prefilledFiles);
     },
     []
@@ -197,6 +201,7 @@ export default function AdminShipmentDetailPage({
     loadShipment();
     apiClient.getSheetLayouts().then(setSheetLayouts).catch(() => {});
     apiClient.getLabels().then(setLabels).catch(() => {});
+    apiClient.getStrainImages().then(setStrainImages).catch(() => {});
     apiClient.getCompanies({ per_page: 500 }).then((r) => setCompanies(r.data)).catch(() => {});
   }, [isAuthenticated, loadShipment]);
 
@@ -634,7 +639,13 @@ export default function AdminShipmentDetailPage({
     if (!metrcImportItemId || !metrcImportOrderId || !metrcLabelId || metrcFiles.length === 0) return;
     setMetrcImporting(true);
     try {
-      await apiClient.batchImportOrderMetrc(metrcImportOrderId, metrcImportItemId, metrcLabelId, metrcFiles);
+      await apiClient.batchImportOrderMetrc(
+        metrcImportOrderId,
+        metrcImportItemId,
+        metrcLabelId,
+        metrcFiles,
+        metrcStrainImageId ? { strainImageId: metrcStrainImageId } : undefined
+      );
 
       // Auto-fill the item's METRC tag from the first PDF's filename if it's not already set.
       // Filename format: <hash>-<METRC_TAG>-<page>.pdf — see lib/metrc-filename.ts.
@@ -652,6 +663,7 @@ export default function AdminShipmentDetailPage({
       setMetrcImportOrderId(null);
       setMetrcFiles([]);
       setMetrcLabelId("");
+      setMetrcStrainImageId("");
       toast.success(`${metrcFiles.length} METRC file${metrcFiles.length !== 1 ? "s" : ""} imported`);
     } catch {
       showError("import METRC labels");
@@ -1953,6 +1965,37 @@ export default function AdminShipmentDetailPage({
                   {labels.map((label) => (
                     <SelectItem key={label.id} value={String(label.id)}>
                       {label.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Select a strain{" "}
+                <span className="text-xs">
+                  (overrides the label&apos;s strain image — optional)
+                </span>
+                :
+              </p>
+              <Select
+                value={metrcStrainImageId || "__none__"}
+                onValueChange={(v) =>
+                  setMetrcStrainImageId(v === "__none__" ? "" : v)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Use label's default" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">
+                    Use label&apos;s default
+                  </SelectItem>
+                  {strainImages.map((si) => (
+                    <SelectItem key={si.id} value={String(si.id)}>
+                      {si.strain_name
+                        ? `${si.strain_name} — ${si.name}`
+                        : si.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
