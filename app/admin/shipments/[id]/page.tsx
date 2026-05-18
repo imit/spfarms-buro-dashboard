@@ -78,15 +78,14 @@ function formatDate(d: string | null) {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-// Count pages in a PDF File by scanning raw bytes for /Type /Page (not /Pages)
-// objects. Matches the same heuristic the backend uses to extract one
-// MetrcLabelItem per page.
+// Count pages in a PDF File using pdf-lib so compressed/linearized METRC PDFs
+// are read correctly.
 async function countPdfPages(file: File): Promise<number> {
   try {
+    const { PDFDocument } = await import("pdf-lib");
     const buf = await file.arrayBuffer();
-    const text = new TextDecoder("latin1").decode(buf);
-    const matches = text.match(/\/Type\s*\/Page(?![s/\w])/g);
-    return matches ? matches.length : 1;
+    const doc = await PDFDocument.load(buf, { updateMetadata: false });
+    return doc.getPageCount();
   } catch {
     return 1;
   }
