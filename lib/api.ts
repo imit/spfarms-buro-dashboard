@@ -4319,16 +4319,50 @@ export class ApiClient {
     return res.blob();
   }
 
-  async requestAllOrderMetrcPrint(orderId: number, sheetLayoutId: string): Promise<{ id: number; print_status: string }> {
-    const res = await this.request<{ data: { id: number; print_status: string } }>(
+  async requestAllOrderMetrcPrint(
+    orderId: number,
+    sheetLayoutId: string,
+    opts?: { force?: boolean }
+  ): Promise<{ id: number; print_status: string; cached?: boolean }> {
+    const res = await this.request<{ data: { id: number; print_status: string; cached?: boolean } }>(
       `/api/v1/orders/${orderId}/request_all_metrc_print`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheet_layout_id: sheetLayoutId }),
+        body: JSON.stringify({
+          sheet_layout_id: sheetLayoutId,
+          ...(opts?.force ? { force: true } : {}),
+        }),
       }
     );
     return res.data;
+  }
+
+  async clearAllOrderMetrcPrintCache(orderId: number): Promise<void> {
+    await this.request(`/api/v1/orders/${orderId}/clear_all_metrc_print`, { method: "DELETE" });
+  }
+
+  async printBoxLabelsSheet(
+    orderId: number,
+    sheetLayoutId: string,
+    boxes: Array<Record<string, unknown>>
+  ): Promise<Blob> {
+    const url = `${this.baseUrl}/api/v1/orders/${orderId}/print_box_labels_sheet`;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ sheet_layout_id: sheetLayoutId, boxes }),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || "Box label sheet failed");
+    }
+    return res.blob();
   }
 
   async getAllOrderMetrcPrintStatus(orderId: number): Promise<{ id: number; print_status: string | null; has_file: boolean }> {

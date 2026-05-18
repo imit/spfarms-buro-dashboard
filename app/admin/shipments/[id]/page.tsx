@@ -420,26 +420,34 @@ export default function AdminShipmentDetailPage({
   };
 
   // Download all METRC labels for a single order — async flow:
-  // request the job, poll status, then download when ready.
-  const downloadOrderMetrcLabels = async () => {
+  // request the job (reuses cache if same layout was generated before),
+  // poll status, then download.
+  const downloadOrderMetrcLabels = async (opts?: { force?: boolean }) => {
     if (!metrcDownloadOrderId || !metrcDownloadLayoutId) return;
     const orderId = metrcDownloadOrderId;
     const orderNumber = metrcDownloadOrderNumber;
     setMetrcDownloadPrinting(true);
     try {
-      await apiClient.requestAllOrderMetrcPrint(orderId, metrcDownloadLayoutId);
-      toast.info("Generating PDF — this may take a minute…");
+      const r = await apiClient.requestAllOrderMetrcPrint(
+        orderId,
+        metrcDownloadLayoutId,
+        opts?.force ? { force: true } : undefined
+      );
 
-      // Poll up to ~3 minutes (1.5s intervals).
-      let status: string | null = "generating";
-      for (let i = 0; i < 120; i++) {
-        await new Promise((r) => setTimeout(r, 1500));
-        const s = await apiClient.getAllOrderMetrcPrintStatus(orderId);
-        status = s.print_status;
-        if (status === "done") break;
-        if (status === "failed") throw new Error("PDF generation failed");
+      if (!r.cached) {
+        toast.info("Generating PDF — this may take a minute…");
+
+        // Poll up to ~3 minutes (1.5s intervals).
+        let status: string | null = "generating";
+        for (let i = 0; i < 120; i++) {
+          await new Promise((r) => setTimeout(r, 1500));
+          const s = await apiClient.getAllOrderMetrcPrintStatus(orderId);
+          status = s.print_status;
+          if (status === "done") break;
+          if (status === "failed") throw new Error("PDF generation failed");
+        }
+        if (status !== "done") throw new Error("PDF generation timed out");
       }
-      if (status !== "done") throw new Error("PDF generation timed out");
 
       const blob = await apiClient.downloadAllOrderMetrcPrint(orderId);
       const url = URL.createObjectURL(blob);
@@ -451,11 +459,58 @@ export default function AdminShipmentDetailPage({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setMetrcDownloadOrderId(null);
-      toast.success("PDF downloaded");
+      toast.success(r.cached ? "Cached PDF downloaded" : "PDF downloaded");
     } catch (err) {
       showError(err instanceof Error ? err.message : "download order METRC labels");
     } finally {
       setMetrcDownloadPrinting(false);
+    }
+  };
+
+  const clearOrderMetrcCache = async () => {
+    if (!metrcDownloadOrderId) return;
+    try {
+      await apiClient.clearAllOrderMetrcPrintCache(metrcDownloadOrderId);
+      toast.success("Cached PDF cleared — next print will regenerate");
+    } catch {
+      showError("clear cached PDF");
+    }
+  };
+
+  // Print box labels onto a chosen sheet template.
+  const printBoxLabelsToSheet = async (order: ShipmentOrderSummary, layoutSlug: string) => {
+    const unitsPerBox = order.units_per_box ?? 32;
+    const boxes = packBoxes(order.items, unitsPerBox);
+    if (boxes.length === 0) {
+      toast.error("Nothing to box");
+      return;
+    }
+    const payload = boxes.map((b) => {
+      const allTags = b.items.flatMap((it) => tagsForBoxItem(it));
+      const heroItem = b.items.slice().sort((a, bb) => bb.quantity - a.quantity)[0];
+      return {
+        box_number: b.boxNumber,
+        total_boxes: b.totalBoxes,
+        single_strain: b.singleStrain,
+        hero_strain_name: heroItem?.strainName ?? null,
+        hero_product_name: heroItem?.productName ?? null,
+        total_units: b.totalUnits,
+        tag_range_text: formatTagDisplay(allTags, 4),
+      };
+    });
+    try {
+      const blob = await apiClient.printBoxLabelsSheet(order.id, layoutSlug, payload);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${order.order_number}-box-labels.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Box label sheet downloaded");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "print box labels to sheet");
     }
   };
 
@@ -1438,6 +1493,18 @@ export default function AdminShipmentDetailPage({
                                     <SelectItem value="50">50</SelectItem>
                                   </SelectContent>
                                 </Select>
+                                <Select onValueChange={(v) => printBoxLabelsToSheet(order, v)}>
+                                  <SelectTrigger className="h-7 w-44 text-xs">
+                                    <SelectValue placeholder="Print to sheet…" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {sheetLayouts.map((l) => (
+                                      <SelectItem key={l.slug} value={l.slug}>
+                                        {l.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <Button variant="outline" size="xs" className="h-7 text-xs" onClick={() => printBoxLabels(order)}>
                                   <FileTextIcon className="mr-1 size-3" />
                                   Print all
@@ -1944,11 +2011,29 @@ export default function AdminShipmentDetailPage({
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setMetrcDownloadOrderId(null)}>Cancel</Button>
-              <Button onClick={downloadOrderMetrcLabels} disabled={!metrcDownloadLayoutId || metrcDownloadPrinting}>
-                {metrcDownloadPrinting ? "Generating PDF..." : "Download"}
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearOrderMetrcCache}
+                disabled={metrcDownloadPrinting}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                Clear cached PDF
               </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setMetrcDownloadOrderId(null)}>Cancel</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => downloadOrderMetrcLabels({ force: true })}
+                  disabled={!metrcDownloadLayoutId || metrcDownloadPrinting}
+                >
+                  Regenerate
+                </Button>
+                <Button onClick={() => downloadOrderMetrcLabels()} disabled={!metrcDownloadLayoutId || metrcDownloadPrinting}>
+                  {metrcDownloadPrinting ? "Generating PDF..." : "Download"}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
