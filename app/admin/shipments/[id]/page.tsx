@@ -1245,7 +1245,12 @@ export default function AdminShipmentDetailPage({
                         <DropdownMenuItem onClick={() => downloadOrderInvoice(order.id, order.order_number)}>Invoice</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => downloadOrderDeliveryAgreement(order.id, order.order_number)}>Delivery Agreement</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => downloadOrderPaymentTerms(order.id, order.order_number)}>Payment Terms</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => printBoxLabels(order)}>Box Labels (all)</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => printBoxLabelsToSheet(order, boxLabelLayoutSlug)}>
+                          Box Labels — Sheet ({sheetLayouts.find((l) => l.slug === boxLabelLayoutSlug)?.name || "default"})
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => printBoxLabels(order)} className="text-muted-foreground">
+                          Box Labels — Classic HTML
+                        </DropdownMenuItem>
                         {order.items.some((i) => i.metrc_label_sets && i.metrc_label_sets.length > 0) && (
                           <DropdownMenuItem onClick={() => { setMetrcDownloadOrderId(order.id); setMetrcDownloadOrderNumber(order.order_number); _setMetrcDownloadLayoutId(readStoredSheetLayout()); }}>
                             METRC Labels

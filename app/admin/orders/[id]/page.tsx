@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import {
   apiClient, type Order, type OrderStatus, type Comment,
-  type Product, type PaymentStatus, ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
+  type Product, type PaymentStatus, type SheetLayout,
+  ORDER_STATUS_LABELS, ORDER_TYPE_LABELS,
   PAYMENT_STATUS_LABELS, PRODUCT_TYPE_LABELS, SHIPMENT_STATUS_LABELS,
 } from "@/lib/api";
 import { statusBadgeClasses, STATUS_COLORS, TIMELINE_STEPS, getStepIndex } from "@/lib/order-utils";
@@ -39,7 +40,7 @@ import { toast } from "sonner";
 import { showError } from "@/lib/errors";
 import { EmailTimeline } from "@/components/email-timeline";
 import { buildBoxLabelHtml } from "@/lib/box-label";
-import { packBoxes } from "@/lib/box-packing";
+import { packBoxes, tagsForBoxItem, formatTagDisplay } from "@/lib/box-packing";
 
 function formatPrice(amount: string | number | null) {
   if (amount === null || amount === undefined) return "$0.00";
@@ -68,6 +69,8 @@ export default function AdminOrderDetailPage({
   const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
+  const [sheetLayouts, setSheetLayouts] = useState<SheetLayout[]>([]);
+  const [boxLabelLayoutSlug, setBoxLabelLayoutSlug] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [internalNotes, setInternalNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -117,6 +120,10 @@ export default function AdminOrderDetailPage({
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    apiClient.getSheetLayouts().then((layouts) => {
+      setSheetLayouts(layouts);
+      if (layouts.length > 0) setBoxLabelLayoutSlug((cur) => cur || layouts[0].slug);
+    }).catch(() => {});
     async function load() {
       try {
         const [data, commentsData] = await Promise.all([
@@ -203,6 +210,47 @@ export default function AdminOrderDetailPage({
       URL.revokeObjectURL(url);
     } catch {
       showError("download the payment terms");
+    }
+  };
+
+  const printBoxLabelToSheet = async () => {
+    if (!order) return;
+    if (!boxLabelLayoutSlug) {
+      toast.error("No sheet layout available");
+      return;
+    }
+    const unitsPerBox = order.units_per_box ?? 32;
+    const boxes = packBoxes(order.items, unitsPerBox);
+    if (boxes.length === 0) {
+      toast.error("Nothing to box");
+      return;
+    }
+    const payload = boxes.map((b) => {
+      const allTags = b.items.flatMap((it) => tagsForBoxItem(it));
+      const heroItem = b.items.slice().sort((a, bb) => bb.quantity - a.quantity)[0];
+      return {
+        box_number: b.boxNumber,
+        total_boxes: b.totalBoxes,
+        single_strain: b.singleStrain,
+        hero_strain_name: heroItem?.strainName ?? null,
+        hero_product_name: heroItem?.productName ?? null,
+        total_units: b.totalUnits,
+        tag_range_text: formatTagDisplay(allTags, 4),
+      };
+    });
+    try {
+      const blob = await apiClient.printBoxLabelsSheet(order.id, boxLabelLayoutSlug, payload);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${order.order_number}-box-labels.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Box label sheet downloaded");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "print box labels to sheet");
     }
   };
 
@@ -528,7 +576,12 @@ export default function AdminOrderDetailPage({
               {order.payment_term_days != null && order.payment_term_days > 0 && (
                 <DropdownMenuItem onClick={downloadPaymentTerms}>Payment Terms</DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={printBoxLabel}>Box Label</DropdownMenuItem>
+              <DropdownMenuItem onClick={printBoxLabelToSheet}>
+                Box Labels — Sheet ({sheetLayouts.find((l) => l.slug === boxLabelLayoutSlug)?.name || "default"})
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={printBoxLabel} className="text-muted-foreground">
+                Box Labels — Classic HTML
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           {order.order_type !== "return" && (
