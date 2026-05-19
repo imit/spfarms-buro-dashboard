@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ArrowLeftIcon, PencilIcon, Trash2Icon, LockIcon, UnlockIcon } from "lucide-react";
 import { ErrorAlert } from "@/components/ui/error-alert";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 export default function StrainImageDetailPage({
   params,
@@ -33,6 +35,9 @@ export default function StrainImageDetailPage({
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
+  const [batchNumber, setBatchNumber] = useState("");
+  const [harvestDate, setHarvestDate] = useState("");
+  const [isSavingFields, setIsSavingFields] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push("/");
@@ -41,12 +46,33 @@ export default function StrainImageDetailPage({
   useEffect(() => {
     if (!isAuthenticated) return;
     Promise.all([
-      apiClient.getStrainImage(slug).then(setItem),
+      apiClient.getStrainImage(slug).then((si) => {
+        setItem(si);
+        setBatchNumber(si.batch_number ?? "");
+        setHarvestDate(si.harvest_date ?? "");
+      }),
       apiClient.getStrainImageSvg(slug).then(setSvg),
     ])
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"))
       .finally(() => setIsLoading(false));
   }, [isAuthenticated, slug]);
+
+  async function handleSaveLabelFields() {
+    if (!item) return;
+    setIsSavingFields(true);
+    try {
+      const fd = new FormData();
+      fd.append("strain_image[batch_number]", batchNumber);
+      fd.append("strain_image[harvest_date]", harvestDate);
+      const updated = await apiClient.updateStrainImage(item.slug, fd);
+      setItem(updated);
+      toast.success("Label fields saved");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setIsSavingFields(false);
+    }
+  }
 
   async function handleToggleLock() {
     if (!item) return;
@@ -152,6 +178,41 @@ export default function StrainImageDetailPage({
         ) : (
           <p className="text-sm text-muted-foreground">Loading...</p>
         )}
+      </div>
+
+      <div className="rounded-lg border bg-card p-4 max-w-xl mx-auto space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold">Label print fields</h3>
+          <p className="text-xs text-muted-foreground">
+            Used on printed labels when this strain image is selected for a
+            METRC import. Falls back to the Label&apos;s own values when blank.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label htmlFor="si-batch" className="text-xs font-medium">Batch number</label>
+            <Input
+              id="si-batch"
+              value={batchNumber}
+              onChange={(e) => setBatchNumber(e.target.value)}
+              placeholder="e.g. RM1L1-122025"
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="si-harvest" className="text-xs font-medium">Harvest date</label>
+            <Input
+              id="si-harvest"
+              type="date"
+              value={harvestDate}
+              onChange={(e) => setHarvestDate(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <Button size="sm" onClick={handleSaveLabelFields} disabled={isSavingFields}>
+            {isSavingFields ? "Saving…" : "Save"}
+          </Button>
+        </div>
       </div>
 
       <div className="text-xs text-muted-foreground">

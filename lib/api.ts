@@ -605,6 +605,8 @@ export interface StrainImage {
   generative_seed: string;
   generative_config: LabelGenerativeConfig;
   locked: boolean;
+  batch_number: string | null;
+  harvest_date: string | null;
   custom_layer_2_url: string | null;
   custom_wordmark_url: string | null;
   created_at: string;
